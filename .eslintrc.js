@@ -1,29 +1,31 @@
-// .eslintrc.js
 module.exports = {
   env: {
     browser: true,
     es2021: true,
     node: true,
+    jest: true, // Jest 환경 추가
   },
   extends: [
     'eslint:recommended',
-    // React를 사용하는 경우
     'plugin:react/recommended',
+    'plugin:@typescript-eslint/recommended',
     'plugin:prettier/recommended',
   ],
+  parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaFeatures: {
-      jsx: true, // React를 사용하는 경우
+      jsx: true,
     },
     ecmaVersion: 12,
     sourceType: 'module',
+    project: './tsconfig.json', // tsconfig.json 경로 지정
   },
-  // React를 사용하는 경우
-  plugins: ['react'],
+  plugins: ['react', '@typescript-eslint', 'react-hooks'],
   rules: {
-    // 프로젝트에 맞는 규칙 설정
     'no-console': 'warn',
-    'no-unused-vars': 'warn',
+    'no-unused-vars': 'off', // TypeScript 버전 사용
+    '@typescript-eslint/no-unused-vars': 'warn',
+    'react/react-in-jsx-scope': 'off', // React 17 이상에서는 불필요
     'prettier/prettier': [
       'error',
       {
@@ -36,5 +38,10 @@ module.exports = {
         arrowParens: 'avoid',
       },
     ],
+  },
+  settings: {
+    react: {
+      version: 'detect', // React 버전 자동 감지
+    },
   },
 };
