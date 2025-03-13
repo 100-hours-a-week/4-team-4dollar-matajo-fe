@@ -2,7 +2,7 @@
   "name": "4-team-4dollar-matajo-fe",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.tsx",
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^5.17.0",
@@ -10,7 +10,7 @@
     "@testing-library/user-event": "^14.5.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0",
+    "react-router-dom": "^6.30.0",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },
@@ -37,7 +37,7 @@
   "bugs": {
     "url": "https://github.com/100-hours-a-week/4-team-4dollar-matajo-fe/issues"
   },
-  "homepage": "https://github.com/100-hours-a-week/4-team-4dollar-matajo-fe#readme",
+  "homepage": ".",
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
       "eslint --fix",
