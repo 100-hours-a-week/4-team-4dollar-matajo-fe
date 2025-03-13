@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import Button from '../../components/common/Button';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -41,19 +43,16 @@ const LoginPage: React.FC = () => {
               required
             />
           </div>
-          <button
-            type="submit"
-            className="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 transition-colors"
-          >
+          <Button type="submit" variant="primary" fullWidth>
             로그인
-          </button>
+          </Button>
         </form>
         <div className="mt-4 text-center">
           <p className="text-sm text-gray-600">
             계정이 없으신가요?{' '}
-            <a href="#" className="text-primary-600 hover:underline">
+            <Link to="/register" className="text-primary-600 hover:underline">
               회원가입
-            </a>
+            </Link>
           </p>
         </div>
       </div>
