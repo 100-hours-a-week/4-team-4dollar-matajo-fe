@@ -170,5 +170,5 @@ thumb
 sketch
 temp
 backup
-
+.config
 # End of https://www.toptal.com/developers/gitignore/api/react,node,git
