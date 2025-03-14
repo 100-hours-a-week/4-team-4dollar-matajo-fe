@@ -54,7 +54,7 @@ const NavText = styled.div<{ isActive?: boolean }>`
 `;
 
 // 네비게이션 아이템 타입
-type NavItemType = '홈' | '게시판' | '채팅' | '마이페이지';
+type NavItemType = '홈' | '보관소' | '채팅' | '마이페이지';
 
 // Props 타입 정의
 interface BottomNavigationProps {
@@ -169,9 +169,9 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabCha
         <NavText isActive={activeTab === '홈'}>홈</NavText>
       </NavItem>
 
-      <NavItem isActive={activeTab === '게시판'} onClick={() => handleTabClick('게시판')}>
+      <NavItem isActive={activeTab === '보관소'} onClick={() => handleTabClick('보관소')}>
         <NavIcon>{renderBoardIcon()}</NavIcon>
-        <NavText isActive={activeTab === '게시판'}>게시판</NavText>
+        <NavText isActive={activeTab === '보관소'}>게시판</NavText>
       </NavItem>
 
       <NavItem isActive={activeTab === '채팅'} onClick={() => handleTabClick('채팅')}>
