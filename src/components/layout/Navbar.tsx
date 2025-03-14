@@ -19,6 +19,9 @@ const Navbar: React.FC = () => {
       <Link to="/login" className={isActive('/login')}>
         로그인
       </Link>
+      <Link to="/mypage" className={isActive('/mypage')}>
+        마이페이지
+      </Link>
       {/* 추가 메뉴 항목들 */}
     </nav>
   );
