@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import Modal from '../../components/common/Modal';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -17,27 +18,41 @@ const THEME = {
   white: '#FFFFFF',
 };
 
+// 모달관련 스타일 컴포넌트트
+const GrayText = styled.span`
+  color: #5b5a5d;
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+  font-weight: 500;
+  line-height: 19.21px;
+  word-wrap: break-word;
+`;
+
+const HighlightText = styled.span`
+  color: #010048;
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+  font-weight: 700;
+  line-height: 19.21px;
+  word-wrap: break-word;
+`;
+
 // 반복적으로 사용되는 스타일 컴포넌트 통합
 
-const MenuItem = styled.div<{ top: number }>`
-  position: absolute;
-  left: 22px;
-  top: ${props => props.top}px;
+const MenuItem = styled.div`
   color: ${THEME.grayText};
   font-size: 14px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
   letter-spacing: 0.01px;
-  word-wrap: break-word;
+  margin-left: 12px;
 `;
 
-const ChevronIcon = styled.div<{ top: number }>`
+const ChevronIcon = styled.div`
   width: 20px;
   height: 19px;
-  position: absolute;
-  left: 326px;
-  top: ${props => props.top}px;
-
+  position: relative;
+  margin-right: 12px;
   & > div {
     width: 9.05px;
     height: 14.19px;
@@ -46,6 +61,17 @@ const ChevronIcon = styled.div<{ top: number }>`
     position: absolute;
     background: ${THEME.grayText};
   }
+`;
+
+// 메뉴 아이템 래퍼 (클릭 가능한 영역)
+const MenuItemWrapper = styled.div`
+  position: relative;
+  width: 346px;
+  height: 50px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 `;
 
 const Divider = styled.div<{ top: number }>`
@@ -197,10 +223,98 @@ const Container = styled.div`
 
 // 메인 컴포넌트
 const MyPage: React.FC = () => {
+  // 모달 상태 관리
+  const [isKeeperModalOpen, setIsKeeperModalOpen] = useState(false);
+  const [isMembershipModalOpen, setIsMembershipModalOpen] = useState(false);
+
+  const moveToMyTradePage = () => {
+    console.log('내 거래내역으로~');
+    // 여기에 내 거래내역으로 페이지 이동하는 로직 추가
+  };
+
+  // 보관인 등록 모달 열기
+  const openKeeperModal = () => {
+    setIsKeeperModalOpen(true);
+  };
+
+  const moveToMyPlacePage = () => {
+    console.log('내 보관소로~');
+    // 여기에 내 보관소로 페이지 이동하는 로직 추가
+  };
+
+  // 회원 탈퇴 모달 열기
+  const openMembershipModal = () => {
+    setIsMembershipModalOpen(true);
+  };
+
+  // 보관인 등록 확인 처리
+  const handleKeeperConfirm = () => {
+    console.log('보관인 등록 처리');
+    // 여기에 보관인 등록 관련 로직 추가
+  };
+
+  // 보관인 등록 취소 처리
+  const handleKeeperCancel = () => {
+    console.log('보관인 등록 취소');
+  };
+
+  // 회원 탈퇴 확인 처리
+  const handleMembershipConfirm = () => {
+    console.log('회원 탈퇴 처리');
+    // 여기에 회원 탈퇴 관련 로직 추가
+  };
+
+  // 회원 탈퇴 취소 처리
+  const handleMembershipCancel = () => {
+    console.log('회원 탈퇴 취소');
+  };
+
+  // 모달 내용 컴포넌트 - 보관인 등록
+  const keeperRegistrationContent = (
+    <>
+      <GrayText>
+        보관인 미등록 계정입니다.
+        <br />
+      </GrayText>
+      <HighlightText>보관인 등록</HighlightText>
+      <GrayText>하시겠습니까?</GrayText>
+    </>
+  );
+
+  // 모달 내용 컴포넌트 - 회원 탈퇴퇴
+  const cancelMembershipContent = (
+    <>
+      <HighlightText>회원 탈퇴</HighlightText>
+      <GrayText>를 하시겠습니까?</GrayText>
+    </>
+  );
+
   return (
     <Container>
       {/* 페이지 헤더 */}
       <Header title="마이페이지" />
+
+      {/* 보관인 등록 모달 */}
+      <Modal
+        isOpen={isKeeperModalOpen}
+        onClose={() => setIsKeeperModalOpen(false)}
+        content={keeperRegistrationContent}
+        cancelText="취소"
+        confirmText="등록"
+        onCancel={handleKeeperCancel}
+        onConfirm={handleKeeperConfirm}
+      />
+
+      {/* 회원 탈퇴퇴 모달 */}
+      <Modal
+        isOpen={isMembershipModalOpen}
+        onClose={() => setIsMembershipModalOpen(false)}
+        content={cancelMembershipContent}
+        cancelText="취소"
+        confirmText="탈퇴"
+        onCancel={handleMembershipCancel}
+        onConfirm={handleMembershipConfirm}
+      />
 
       {/* 프로필 카드 */}
       <ProfileCard />
@@ -226,31 +340,42 @@ const MyPage: React.FC = () => {
 
       {/* 메뉴 항목 */}
       <Divider top={240} />
-      <MenuItem top={260}>내 거래 내역 보기</MenuItem>
-      <ChevronIcon top={259}>
-        <div />
-      </ChevronIcon>
-
-      <Divider top={297} />
-      <MenuItem top={316}>보관인 등록</MenuItem>
-      <ChevronIcon top={316}>
-        <div />
-      </ChevronIcon>
-
-      <Divider top={350} />
-      <MenuItem top={372}>내 보관소 조회</MenuItem>
-      <ChevronIcon top={369}>
-        <div />
-      </ChevronIcon>
-
-      <Divider top={407} />
+      <div style={{ position: 'absolute', left: '11px', top: '245px', width: '346px' }}>
+        <MenuItemWrapper onClick={moveToMyTradePage}>
+          <MenuItem>내 거래 내역 보기</MenuItem>
+          <ChevronIcon>
+            <div />
+          </ChevronIcon>
+        </MenuItemWrapper>
+      </div>
+      <Divider top={300} />
+      <div style={{ position: 'absolute', left: '11px', top: '305px', width: '346px' }}>
+        <MenuItemWrapper onClick={openKeeperModal}>
+          <MenuItem>보관인 등록</MenuItem>
+          <ChevronIcon>
+            <div />
+          </ChevronIcon>
+        </MenuItemWrapper>
+      </div>
+      <Divider top={360} />
+      <div style={{ position: 'absolute', left: '11px', top: '365px', width: '346px' }}>
+        <MenuItemWrapper onClick={moveToMyPlacePage}>
+          <MenuItem>내 보관소 조회</MenuItem>
+          <ChevronIcon>
+            <div />
+          </ChevronIcon>
+        </MenuItemWrapper>
+      </div>
+      <Divider top={420} />
 
       {/* 푸터 링크 */}
       <FooterText left={74}>개인정보 약관</FooterText>
       <Separator left={153}>|</Separator>
       <FooterText left={168}>로그아웃</FooterText>
       <Separator left={224}>|</Separator>
-      <FooterText left={239}>회원탈퇴</FooterText>
+      <FooterText left={239} onClick={openMembershipModal}>
+        회원탈퇴
+      </FooterText>
 
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="마이페이지" />
