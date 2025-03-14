@@ -4,6 +4,9 @@ import { RouteObject } from 'react-router-dom';
 // 페이지 컴포넌트 가져오기
 import HomePage from '../pages/Home';
 import LoginPage from '../pages/Login';
+import MyPage from '../pages/MyPage/MyPage';
+import MyPlace from '../pages/MyPlace/MyPlace';
+import MyTrade from '../pages/MyTrade/MyTrade';
 import NotFoundPage from '../pages/NotFound';
 
 // 레이아웃 컴포넌트
@@ -22,6 +25,18 @@ const routes: RouteObject[] = [
       {
         path: 'login',
         element: <LoginPage />,
+      },
+      {
+        path: 'mypage',
+        element: <MyPage />,
+      },
+      {
+        path: 'myplace',
+        element: <MyPlace />,
+      },
+      {
+        path: 'mytrade',
+        element: <MyTrade />,
       },
       {
         path: '*',
