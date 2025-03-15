@@ -19,8 +19,8 @@ const FixedNavContainer = styled.div`
 
 const NavContainer = styled.div`
   width: 375px;
-  height: 76px;
-  padding: 16px 16px 34px 16px;
+  height: 60px;
+  padding: 16px 0px 0px;
   background: ${THEME.background};
   overflow: hidden;
   border-top: 1px #efeff0 solid;
@@ -31,8 +31,8 @@ const NavContainer = styled.div`
 `;
 
 const NavItem = styled.div<{ isActive?: boolean }>`
-  width: 60px;
-  padding: 0 8px;
+  width: 70px;
+  padding: 0 3px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -49,14 +49,15 @@ const NavIcon = styled.div`
 
 const NavText = styled.div<{ isActive?: boolean }>`
   text-align: center;
+  width: 60px;
   color: ${props => (props.isActive ? THEME.primary : '#61646B')};
-  font-size: 12px;
+  font-size: 11px;
   font-family: 'Noto Sans KR';
   font-weight: 350;
   line-height: 16px;
   letter-spacing: 0.6px;
   word-wrap: break-word;
-  padding: 2px 8px 4px 8px;
+  padding: 4px 0px;
 `;
 
 // 네비게이션 아이템 타입

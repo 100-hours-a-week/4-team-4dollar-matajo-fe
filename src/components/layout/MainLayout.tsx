@@ -1,6 +1,5 @@
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
-import Navbar from './Navbar';
 
 const MainLayout: React.FC = () => {
   return (
@@ -14,10 +13,6 @@ const MainLayout: React.FC = () => {
                 마타조
               </Link>
             </div>
-            <nav>
-              {/* Navbar 컴포넌트 사용 */}
-              <Navbar />
-            </nav>
           </div>
         </div>
       </header>
