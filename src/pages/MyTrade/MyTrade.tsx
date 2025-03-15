@@ -101,31 +101,15 @@ const Divider = styled.div<{ top: number }>`
   outline-offset: -0.5px;
 `;
 
-const BackButton = styled.div`
-  width: 24px;
-  height: 24px;
-  position: absolute;
-  left: 12px;
-  top: 33px;
-  z-index: 10;
-`;
-
-const BackArrow = styled.div`
-  width: 10.86px;
-  height: 17.93px;
-  position: absolute;
-  left: 7px;
-  top: 3px;
-  background: #212121;
-`;
-
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 375px;
-  height: 812px;
+  height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
 `;
 
 // 트랜잭션 항목 타입 정의
@@ -139,13 +123,12 @@ interface TransactionItem {
   amount: number;
 }
 
-// 메인 컴포넌트
-const MyTrade: React.FC = () => {
-  const onBackClick = () => {
-    console.log('Back button clicked');
-    // 실제 구현에서는 라우터 history를 이용한 뒤로가기 기능 구현
-  };
+interface MyTradeProps {
+  onBack?: () => void;
+}
 
+// 메인 컴포넌트
+const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
   // 더미 데이터
   const transactions: TransactionItem[] = [
     {
@@ -176,11 +159,7 @@ const MyTrade: React.FC = () => {
   return (
     <Container>
       {/* 페이지 헤더 */}
-      <Header title="내 거래 내역" />
-      {/* 뒤로가기 버튼 */}
-      <BackButton onClick={onBackClick}>
-        <BackArrow />
-      </BackButton>
+      <Header title="내 거래 내역" showBackButton={true} onBack={onBack} />
       {/* 거래 내역 목록 */}
       {transactions.map((item, index) => {
         const baseTop = 87 + index * 162;

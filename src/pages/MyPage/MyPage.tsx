@@ -87,7 +87,7 @@ const Divider = styled.div<{ top: number }>`
 const FooterText = styled.div<{ left: number }>`
   position: absolute;
   left: ${props => props.left}px;
-  top: 678px;
+  top: 578px;
   color: black;
   font-size: 12px;
   font-family: 'Noto Sans KR';
@@ -215,10 +215,12 @@ const ActionIcon = styled.div<{ left: number; color: string }>`
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 375px;
-  height: 812px;
+  height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
 `;
 
 // 메인 컴포넌트
@@ -281,7 +283,7 @@ const MyPage: React.FC = () => {
     </>
   );
 
-  // 모달 내용 컴포넌트 - 회원 탈퇴퇴
+  // 모달 내용 컴포넌트 - 회원 탈퇴
   const cancelMembershipContent = (
     <>
       <HighlightText>회원 탈퇴</HighlightText>

@@ -8,6 +8,7 @@ import MyPage from '../pages/MyPage/MyPage';
 import MyPlace from '../pages/MyPlace/MyPlace';
 import MyTrade from '../pages/MyTrade/MyTrade';
 import StorageList from '../pages/StorageList/StorageList';
+import StorageDetail from '../pages/StorageDetail/StorageDetail';
 import NotFoundPage from '../pages/NotFound';
 
 // 레이아웃 컴포넌트
@@ -42,6 +43,10 @@ const routes: RouteObject[] = [
       {
         path: 'storagelist',
         element: <StorageList />,
+      },
+      {
+        path: 'storagedetail',
+        element: <StorageDetail />,
       },
       {
         path: '*',

@@ -19,19 +19,22 @@ const THEME = {
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 375px;
-  height: 812px;
+  height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-top: -76px;
+  margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
 `;
 
 // 검색창 컴포넌트
 const SearchInput = styled.div`
   width: 294px;
   height: 45px;
-  position: absolute;
+  position: fixed;
   left: 20px;
-  top: 92px;
+  top: 55px;
   border-radius: 30px;
   border: 1px ${THEME.primaryLight} solid;
 `;
@@ -40,10 +43,9 @@ const SearchInput = styled.div`
 const SearchIcon = styled.div`
   width: 30px;
   height: 30px;
-  position: absolute;
-  right: 20px;
-  top: 126px;
-  transform: rotate(180deg);
+  position: fixed;
+  left: 325px;
+  top: 63px;
   transform-origin: top left;
   text-align: center;
   color: ${THEME.primaryLight};
@@ -56,11 +58,11 @@ const SearchIcon = styled.div`
 
 // 필터 스크롤 컨테이너
 const FilterContainer = styled.div`
-  position: absolute;
-  top: 158px;
+  position: fixed;
+  top: 108px;
   left: 0;
-  width: 100%;
-  height: 28px;
+  width: 335px;
+  height: 30px;
   overflow-x: auto;
   white-space: nowrap;
   scrollbar-width: none; /* Firefox */
@@ -93,10 +95,10 @@ const FilterTag = styled.div<{ isActive: boolean }>`
 // 아이템 그리드 컨테이너
 const ItemGridContainer = styled.div`
   position: absolute;
-  top: 200px;
+  top: 180px;
   left: 0;
   width: 100%;
-  height: calc(100% - 200px - 76px); /* 헤더 + 필터 + 네비게이션 높이 제외 */
+  height: calc(100% - 180px - 76px); /* 헤더 + 필터 + 네비게이션 높이 제외 */
   overflow-y: auto;
   padding: 0 15px;
   display: grid;

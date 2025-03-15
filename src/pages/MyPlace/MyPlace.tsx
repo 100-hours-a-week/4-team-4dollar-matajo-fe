@@ -88,10 +88,12 @@ const VisibilityBorder = styled.div<{ top: number; isPublic: boolean }>`
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 375px;
-  height: 812px;
+  height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
 `;
 
 // 보관소 항목 타입 정의
@@ -103,8 +105,12 @@ interface StorageItem {
   imageUrl: string;
 }
 
+interface MyPlaceProps {
+  onBack?: () => void;
+}
+
 // 메인 컴포넌트
-const MyPlace: React.FC = () => {
+const MyPlace: React.FC<MyPlaceProps> = ({ onBack }) => {
   // 더미 데이터
   const storageItems: StorageItem[] = [
     {
@@ -140,7 +146,7 @@ const MyPlace: React.FC = () => {
   return (
     <Container>
       {/* 페이지 헤더 */}
-      <Header title="내 보관소" />
+      <Header title="내 보관소" showBackButton={true} onBack={onBack} />
 
       {/* 보관소 목록 */}
       {storageItems.map((item, index) => {
