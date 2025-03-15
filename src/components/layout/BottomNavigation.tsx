@@ -8,13 +8,19 @@ const THEME = {
 };
 
 // 스타일 정의
+const FixedNavContainer = styled.div`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+  background: ${THEME.background};
+`;
+
 const NavContainer = styled.div`
   width: 375px;
   height: 76px;
-  position: absolute;
   padding: 16px 16px 34px 16px;
-  left: 0;
-  bottom: 0;
   background: ${THEME.background};
   overflow: hidden;
   border-top: 1px #efeff0 solid;
@@ -163,27 +169,29 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabCha
   );
 
   return (
-    <NavContainer>
-      <NavItem isActive={activeTab === '홈'} onClick={() => handleTabClick('홈')}>
-        <NavIcon>{renderHomeIcon()}</NavIcon>
-        <NavText isActive={activeTab === '홈'}>홈</NavText>
-      </NavItem>
+    <FixedNavContainer>
+      <NavContainer>
+        <NavItem isActive={activeTab === '홈'} onClick={() => handleTabClick('홈')}>
+          <NavIcon>{renderHomeIcon()}</NavIcon>
+          <NavText isActive={activeTab === '홈'}>홈</NavText>
+        </NavItem>
 
-      <NavItem isActive={activeTab === '보관소'} onClick={() => handleTabClick('보관소')}>
-        <NavIcon>{renderBoardIcon()}</NavIcon>
-        <NavText isActive={activeTab === '보관소'}>게시판</NavText>
-      </NavItem>
+        <NavItem isActive={activeTab === '보관소'} onClick={() => handleTabClick('보관소')}>
+          <NavIcon>{renderBoardIcon()}</NavIcon>
+          <NavText isActive={activeTab === '보관소'}>보관소</NavText>
+        </NavItem>
 
-      <NavItem isActive={activeTab === '채팅'} onClick={() => handleTabClick('채팅')}>
-        <NavIcon>{renderChatIcon()}</NavIcon>
-        <NavText isActive={activeTab === '채팅'}>채팅</NavText>
-      </NavItem>
+        <NavItem isActive={activeTab === '채팅'} onClick={() => handleTabClick('채팅')}>
+          <NavIcon>{renderChatIcon()}</NavIcon>
+          <NavText isActive={activeTab === '채팅'}>채팅</NavText>
+        </NavItem>
 
-      <NavItem isActive={activeTab === '마이페이지'} onClick={() => handleTabClick('마이페이지')}>
-        <NavIcon>{renderProfileIcon()}</NavIcon>
-        <NavText isActive={activeTab === '마이페이지'}>마이페이지</NavText>
-      </NavItem>
-    </NavContainer>
+        <NavItem isActive={activeTab === '마이페이지'} onClick={() => handleTabClick('마이페이지')}>
+          <NavIcon>{renderProfileIcon()}</NavIcon>
+          <NavText isActive={activeTab === '마이페이지'}>마이페이지</NavText>
+        </NavItem>
+      </NavContainer>
+    </FixedNavContainer>
   );
 };
 
