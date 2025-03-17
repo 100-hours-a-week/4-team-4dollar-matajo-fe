@@ -4,6 +4,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 
+const RegistrationContainer = styled.div`
+  width: 100%;
+  max-width: 375px;
+  min-height: 100vh;
+  margin: 0 auto;
+  background-color: #f5f5ff;
+  padding: 0;
+  position: relative;
+`;
+
 // 테마 컬러 상수 정의
 const THEME = {
   primary: '#5E5CFD',
@@ -270,93 +280,93 @@ const Registration2: React.FC = () => {
     <>
       {/* 상단 헤더 */}
       <Header title="보관소 등록" showBackButton={true} />
+      <RegistrationContainer>
+        <Container>
+          {/* 프로그레스 바 */}
+          <ProgressContainer>
+            <ProgressBackground>
+              <ProgressFill />
+            </ProgressBackground>
+            <ProgressText>2/3</ProgressText>
+          </ProgressContainer>
 
-      <Container>
-        {/* 프로그레스 바 */}
-        <ProgressContainer>
-          <ProgressBackground>
-            <ProgressFill />
-          </ProgressBackground>
-          <ProgressText>2/3</ProgressText>
-        </ProgressContainer>
-
-        {/* 보관 위치 선택 */}
-        <SectionTitle>보관 위치</SectionTitle>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '14px' }}>
-          <LocationOptionButton
-            isSelected={storageLocation === '실내'}
-            onClick={() => handleLocationSelect('실내')}
-          >
-            <IconContainer>
-              <img src="https://placehold.co/24x24" alt="실내 아이콘" />
-            </IconContainer>
-            <LocationOptionText>실내</LocationOptionText>
-          </LocationOptionButton>
-          <LocationOptionButton
-            isSelected={storageLocation === '실외'}
-            onClick={() => handleLocationSelect('실외')}
-          >
-            <IconContainer>
-              <img src="https://placehold.co/21x21" alt="실외 아이콘" />
-            </IconContainer>
-            <LocationOptionText>실외</LocationOptionText>
-          </LocationOptionButton>
-        </div>
-
-        {/* 물건 유형 선택 */}
-        <SectionTitle>물건 유형</SectionTitle>
-        <OptionGroupContainer>
-          {itemTypes.map(itemType => (
-            <TagButton
-              key={itemType}
-              isSelected={selectedItemTypes.includes(itemType)}
-              onClick={() => toggleItemType(itemType)}
+          {/* 보관 위치 선택 */}
+          <SectionTitle>보관 위치</SectionTitle>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '14px' }}>
+            <LocationOptionButton
+              isSelected={storageLocation === '실내'}
+              onClick={() => handleLocationSelect('실내')}
             >
-              {itemType}
-            </TagButton>
-          ))}
-        </OptionGroupContainer>
-
-        {/* 보관 방식 선택 */}
-        <SectionTitle>보관 방식</SectionTitle>
-        <OptionGroupContainer>
-          {storageTypes.map(storageType => (
-            <TagButton
-              key={storageType}
-              isSelected={selectedStorageTypes.includes(storageType)}
-              onClick={() => toggleStorageType(storageType)}
+              <IconContainer>
+                <img src="https://placehold.co/24x24" alt="실내 아이콘" />
+              </IconContainer>
+              <LocationOptionText>실내</LocationOptionText>
+            </LocationOptionButton>
+            <LocationOptionButton
+              isSelected={storageLocation === '실외'}
+              onClick={() => handleLocationSelect('실외')}
             >
-              {storageType}
+              <IconContainer>
+                <img src="https://placehold.co/21x21" alt="실외 아이콘" />
+              </IconContainer>
+              <LocationOptionText>실외</LocationOptionText>
+            </LocationOptionButton>
+          </div>
+
+          {/* 물건 유형 선택 */}
+          <SectionTitle>물건 유형</SectionTitle>
+          <OptionGroupContainer>
+            {itemTypes.map(itemType => (
+              <TagButton
+                key={itemType}
+                isSelected={selectedItemTypes.includes(itemType)}
+                onClick={() => toggleItemType(itemType)}
+              >
+                {itemType}
+              </TagButton>
+            ))}
+          </OptionGroupContainer>
+
+          {/* 보관 방식 선택 */}
+          <SectionTitle>보관 방식</SectionTitle>
+          <OptionGroupContainer>
+            {storageTypes.map(storageType => (
+              <TagButton
+                key={storageType}
+                isSelected={selectedStorageTypes.includes(storageType)}
+                onClick={() => toggleStorageType(storageType)}
+              >
+                {storageType}
+              </TagButton>
+            ))}
+          </OptionGroupContainer>
+
+          {/* 보관 기간 선택 */}
+          <SectionTitle>보관 기간</SectionTitle>
+          <OptionGroupContainer>
+            {durationOptions.map(duration => (
+              <TagButton
+                key={duration}
+                isSelected={selectedDurationOptions.includes(duration)}
+                onClick={() => toggleDuration(duration)}
+              >
+                {duration}
+              </TagButton>
+            ))}
+          </OptionGroupContainer>
+
+          {/* 귀중품 선택 */}
+          <SectionTitle>귀중품</SectionTitle>
+          <OptionGroupContainer>
+            <TagButton isSelected={isValuableSelected} onClick={toggleValuable}>
+              귀중품
             </TagButton>
-          ))}
-        </OptionGroupContainer>
+          </OptionGroupContainer>
 
-        {/* 보관 기간 선택 */}
-        <SectionTitle>보관 기간</SectionTitle>
-        <OptionGroupContainer>
-          {durationOptions.map(duration => (
-            <TagButton
-              key={duration}
-              isSelected={selectedDurationOptions.includes(duration)}
-              onClick={() => toggleDuration(duration)}
-            >
-              {duration}
-            </TagButton>
-          ))}
-        </OptionGroupContainer>
-
-        {/* 귀중품 선택 */}
-        <SectionTitle>귀중품</SectionTitle>
-        <OptionGroupContainer>
-          <TagButton isSelected={isValuableSelected} onClick={toggleValuable}>
-            귀중품
-          </TagButton>
-        </OptionGroupContainer>
-
-        {/* 다음 버튼 */}
-        <NextButton onClick={handleSubmit}>다음</NextButton>
-      </Container>
-
+          {/* 다음 버튼 */}
+          <NextButton onClick={handleSubmit}>다음</NextButton>
+        </Container>
+      </RegistrationContainer>
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="보관소" />
 

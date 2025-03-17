@@ -1,5 +1,5 @@
-import React from 'react';
 import { RouteObject } from 'react-router-dom';
+import { UserRole } from '../contexts/AuthContext';
 
 // 페이지 컴포넌트 가져오기
 import HomePage from '../pages/Home';
@@ -17,56 +17,65 @@ import NotFoundPage from '../pages/NotFound';
 // 레이아웃 컴포넌트
 import MainLayout from '../components/layout/MainLayout';
 
+// 라우트 가드 컴포넌트
+import PrivateRoute from './PrivateRoute';
+import PublicRoute from './PublicRoute';
+
 // 라우트 정의
 const routes: RouteObject[] = [
+  // 공개 라우트 (로그인하지 않아도 접근 가능)
   {
     path: '/',
-    element: <MainLayout />,
+    element: <PublicRoute />,
     children: [
-      {
-        index: true,
-        element: <HomePage />,
-      },
       {
         path: 'login',
         element: <LoginPage />,
       },
+    ],
+  },
+
+  // 인증된 사용자만 접근 가능한 라우트
+  {
+    path: '/',
+    element: <PrivateRoute />,
+    children: [
       {
-        path: 'mypage',
-        element: <MyPage />,
+        path: '/',
+        element: <MainLayout />,
+        children: [
+          { index: true, element: <HomePage /> },
+          { path: 'mypage', element: <MyPage /> },
+          { path: 'mytrade', element: <MyTrade /> },
+          { path: 'storagelist', element: <StorageList /> },
+          { path: 'storagedetail', element: <StorageDetail /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
       },
+    ],
+  },
+
+  // 보관인만 접근 가능한 라우트
+  {
+    path: '/',
+    element: <PrivateRoute requiredRole={UserRole.Keeper} />,
+    children: [
       {
-        path: 'myplace',
-        element: <MyPlace />,
+        path: '/',
+        element: <MainLayout />,
+        children: [{ path: 'myplace', element: <MyPlace /> }],
       },
-      {
-        path: 'mytrade',
-        element: <MyTrade />,
-      },
-      {
-        path: 'storagelist',
-        element: <StorageList />,
-      },
-      {
-        path: 'storagedetail',
-        element: <StorageDetail />,
-      },
-      {
-        path: 'registration/step1',
-        element: <Registration1 />,
-      },
-      {
-        path: 'registration/step2',
-        element: <Registration2 />,
-      },
-      {
-        path: 'registration/step3',
-        element: <Registration3 />,
-      },
-      {
-        path: '*',
-        element: <NotFoundPage />,
-      },
+    ],
+  },
+
+  // 보관인 등록 과정 (의뢰인만 접근 가능)
+  {
+    path: 'registration',
+    element: <PrivateRoute requiredRole={UserRole.Client} />,
+    children: [
+      { path: 'step1', element: <Registration1 /> },
+      { path: 'step2', element: <Registration2 /> },
+      { path: 'step3', element: <Registration3 /> },
     ],
   },
 ];

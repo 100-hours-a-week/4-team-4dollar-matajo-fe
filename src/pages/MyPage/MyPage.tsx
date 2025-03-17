@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
+import { useAuth, UserRole } from '../../contexts/AuthContext';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -16,6 +19,11 @@ const THEME = {
   darkBlue: '#010048',
   borderColor: '#DCDCDC',
   white: '#FFFFFF',
+};
+
+const USER_STATE = {
+  isKeeper: true, // true면 보관인, false면 의뢰인
+  userName: '타조 89389',
 };
 
 // 모달관련 스타일 컴포넌트트
@@ -38,7 +46,6 @@ const HighlightText = styled.span`
 `;
 
 // 반복적으로 사용되는 스타일 컴포넌트 통합
-
 const MenuItem = styled.div`
   color: ${THEME.grayText};
   font-size: 14px;
@@ -48,19 +55,14 @@ const MenuItem = styled.div`
   margin-left: 12px;
 `;
 
+// 화살표 아이콘 SVG로 교체
 const ChevronIcon = styled.div`
-  width: 20px;
-  height: 19px;
+  width: 24px;
+  height: 24px;
   position: relative;
   margin-right: 12px;
-  & > div {
-    width: 9.05px;
-    height: 14.19px;
-    left: 5.83px;
-    top: 2.38px;
-    position: absolute;
-    background: ${THEME.grayText};
-  }
+  background: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 17L15 12L10 7' stroke='%237F7F7F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat center center;
 `;
 
 // 메뉴 아이템 래퍼 (클릭 가능한 영역)
@@ -94,6 +96,7 @@ const FooterText = styled.div<{ left: number }>`
   font-weight: 300;
   line-height: 14.4px;
   word-wrap: break-word;
+  cursor: pointer;
 `;
 
 const Separator = styled.div<{ left: number }>`
@@ -101,7 +104,7 @@ const Separator = styled.div<{ left: number }>`
   height: 27px;
   position: absolute;
   left: ${props => props.left}px;
-  top: 671px;
+  top: 571px;
   color: black;
   font-size: 12px;
   font-family: 'Noto Sans KR';
@@ -225,23 +228,90 @@ const Container = styled.div`
 
 // 메인 컴포넌트
 const MyPage: React.FC = () => {
+  const navigate = useNavigate();
+
+  // 실제로는 useAuth를 사용해 사용자 정보 가져오기
+  // const { user, logout, isKeeper, registerAsKeeper } = useAuth();
+
+  // 백엔드 연동 전 임시 상수
+  const USER_STATE = {
+    isKeeper: false, // 보관인 여부 (true: 보관인, false: 의뢰인)
+    userName: '타조 89389', // 사용자 이름
+  };
+
   // 모달 상태 관리
   const [isKeeperModalOpen, setIsKeeperModalOpen] = useState(false);
   const [isMembershipModalOpen, setIsMembershipModalOpen] = useState(false);
 
-  const moveToMyTradePage = () => {
-    console.log('내 거래내역으로~');
-    // 여기에 내 거래내역으로 페이지 이동하는 로직 추가
+  // 토스트 메시지 상태 관리
+  const [toastMessage, setToastMessage] = useState('');
+  const [isToastVisible, setIsToastVisible] = useState(false);
+
+  // 토스트 메시지 표시 함수
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setIsToastVisible(true);
+
+    // 3초 후 토스트 메시지 숨기기
+    setTimeout(() => {
+      setIsToastVisible(false);
+    }, 3000);
   };
 
-  // 보관인 등록 모달 열기
-  const openKeeperModal = () => {
+  // 내 거래내역 보기 이동 핸들러
+  const moveToMyTradePage = () => {
+    // 내 거래내역 페이지로 이동
+    navigate('/mytrade');
+  };
+
+  // 보관인 등록 핸들러
+  const handleKeeperRegistration = () => {
+    // 이미 보관인인 경우 토스트 메시지 표시
+    if (USER_STATE.isKeeper) {
+      showToast('이미 보관인으로 등록되었습니다.');
+      return;
+    }
+
+    // 의뢰인인 경우 모달 표시
     setIsKeeperModalOpen(true);
   };
 
+  // 내 보관소 조회 핸들러
   const moveToMyPlacePage = () => {
-    console.log('내 보관소로~');
-    // 여기에 내 보관소로 페이지 이동하는 로직 추가
+    // 보관인이 아닌 경우 보관인 등록 모달 표시
+    if (!USER_STATE.isKeeper) {
+      setIsKeeperModalOpen(true);
+      return;
+    }
+
+    // 보관인인 경우 내 보관소 페이지로 이동
+    navigate('/myplace');
+  };
+
+  // 개인정보 약관 이동 핸들러
+  const moveToPrivacyPolicy = () => {
+    // 개인정보 약관 페이지로 이동 (임시로 외부 링크로 처리)
+    window.open('https://www.notion.so', '_blank');
+  };
+
+  // 로그아웃 핸들러
+  const handleLogout = () => {
+    // 로그아웃 처리
+    showToast('로그아웃 되었습니다');
+
+    // 실제 로그아웃 로직 (주석처리)
+    /*
+    // 로컬 스토리지에서 토큰 제거
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // 상태 초기화 로직이 있다면 여기에 추가
+    
+    // 로그인 페이지로 이동
+    setTimeout(() => {
+      navigate('/login');
+    }, 1000);
+    */
   };
 
   // 회원 탈퇴 모달 열기
@@ -251,24 +321,37 @@ const MyPage: React.FC = () => {
 
   // 보관인 등록 확인 처리
   const handleKeeperConfirm = () => {
-    console.log('보관인 등록 처리');
-    // 여기에 보관인 등록 관련 로직 추가
+    // 보관인 등록 페이지로 이동
+    // 실제 구현 시에는 API 호출 및 정보 검증 로직 추가
+    navigate('/registration/step1');
   };
 
   // 보관인 등록 취소 처리
   const handleKeeperCancel = () => {
-    console.log('보관인 등록 취소');
+    setIsKeeperModalOpen(false);
   };
 
   // 회원 탈퇴 확인 처리
   const handleMembershipConfirm = () => {
-    console.log('회원 탈퇴 처리');
-    // 여기에 회원 탈퇴 관련 로직 추가
+    // 회원 탈퇴 처리 로직 (주석처리)
+    /*
+    // API 호출로 회원 탈퇴 처리
+    // 성공 시 로컬 스토리지 정보 제거 및 로그인 페이지로 이동
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    */
+
+    showToast('회원 탈퇴가 완료되었습니다');
+
+    // 로그인 페이지로 이동 (실제로는 API 호출 성공 후 이동)
+    setTimeout(() => {
+      navigate('/login');
+    }, 1000);
   };
 
   // 회원 탈퇴 취소 처리
   const handleMembershipCancel = () => {
-    console.log('회원 탈퇴 취소');
+    setIsMembershipModalOpen(false);
   };
 
   // 모달 내용 컴포넌트 - 보관인 등록
@@ -296,6 +379,13 @@ const MyPage: React.FC = () => {
       {/* 페이지 헤더 */}
       <Header title="마이페이지" />
 
+      {/* 토스트 메시지 */}
+      <Toast
+        message={toastMessage}
+        visible={isToastVisible}
+        onClose={() => setIsToastVisible(false)}
+      />
+
       {/* 보관인 등록 모달 */}
       <Modal
         isOpen={isKeeperModalOpen}
@@ -307,7 +397,7 @@ const MyPage: React.FC = () => {
         onConfirm={handleKeeperConfirm}
       />
 
-      {/* 회원 탈퇴퇴 모달 */}
+      {/* 회원 탈퇴 모달 */}
       <Modal
         isOpen={isMembershipModalOpen}
         onClose={() => setIsMembershipModalOpen(false)}
@@ -322,15 +412,20 @@ const MyPage: React.FC = () => {
       <ProfileCard />
       <ProfileImageContainer />
       <ProfileImage src="https://placehold.co/58x59" />
-      <UserName>타조 89389</UserName>
+      <UserName>{USER_STATE.userName}</UserName>
       <ProfileDivider />
       <HelperText>헬퍼텍스트입니다</HelperText>
 
       {/* 배지 영역 */}
       <BadgeContainer left={107} />
-      <BadgeContainer left={143} />
       <BadgeText left={111}>의뢰인</BadgeText>
-      <BadgeText left={147}>보관인</BadgeText>
+
+      {USER_STATE.isKeeper && (
+        <>
+          <BadgeContainer left={143} />
+          <BadgeText left={147}>보관인</BadgeText>
+        </>
+      )}
 
       {/* 액션 아이콘 */}
       <ActionIcon left={223} color={THEME.accentGreen}>
@@ -345,35 +440,33 @@ const MyPage: React.FC = () => {
       <div style={{ position: 'absolute', left: '11px', top: '245px', width: '346px' }}>
         <MenuItemWrapper onClick={moveToMyTradePage}>
           <MenuItem>내 거래 내역 보기</MenuItem>
-          <ChevronIcon>
-            <div />
-          </ChevronIcon>
+          <ChevronIcon />
         </MenuItemWrapper>
       </div>
       <Divider top={300} />
       <div style={{ position: 'absolute', left: '11px', top: '305px', width: '346px' }}>
-        <MenuItemWrapper onClick={openKeeperModal}>
+        <MenuItemWrapper onClick={handleKeeperRegistration}>
           <MenuItem>보관인 등록</MenuItem>
-          <ChevronIcon>
-            <div />
-          </ChevronIcon>
+          <ChevronIcon />
         </MenuItemWrapper>
       </div>
       <Divider top={360} />
       <div style={{ position: 'absolute', left: '11px', top: '365px', width: '346px' }}>
         <MenuItemWrapper onClick={moveToMyPlacePage}>
           <MenuItem>내 보관소 조회</MenuItem>
-          <ChevronIcon>
-            <div />
-          </ChevronIcon>
+          <ChevronIcon />
         </MenuItemWrapper>
       </div>
       <Divider top={420} />
 
       {/* 푸터 링크 */}
-      <FooterText left={74}>개인정보 약관</FooterText>
+      <FooterText left={74} onClick={moveToPrivacyPolicy}>
+        개인정보 약관
+      </FooterText>
       <Separator left={153}>|</Separator>
-      <FooterText left={168}>로그아웃</FooterText>
+      <FooterText left={168} onClick={handleLogout}>
+        로그아웃
+      </FooterText>
       <Separator left={224}>|</Separator>
       <FooterText left={239} onClick={openMembershipModal}>
         회원탈퇴

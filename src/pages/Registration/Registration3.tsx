@@ -5,6 +5,16 @@ import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 
+const RegistrationContainer = styled.div`
+  width: 100%;
+  max-width: 375px;
+  min-height: 100vh;
+  margin: 0 auto;
+  background-color: #f5f5ff;
+  padding: 0;
+  position: relative;
+`;
+
 // 테마 컬러 상수 정의
 const THEME = {
   primary: '#5E5CFD',
@@ -428,122 +438,122 @@ const Registration3: React.FC = () => {
     <>
       {/* 상단 헤더 */}
       <Header title="보관소 등록" showBackButton={true} />
+      <RegistrationContainer>
+        <Container>
+          {/* 프로그레스 바 */}
+          <ProgressContainer>
+            <ProgressBackground>
+              <ProgressFill />
+            </ProgressBackground>
+            <ProgressText>3/3</ProgressText>
+          </ProgressContainer>
 
-      <Container>
-        {/* 프로그레스 바 */}
-        <ProgressContainer>
-          <ProgressBackground>
-            <ProgressFill />
-          </ProgressBackground>
-          <ProgressText>3/3</ProgressText>
-        </ProgressContainer>
-
-        {/* 확인 모달 */}
-        <Modal
-          isOpen={isConfirmModalOpen}
-          onClose={() => setIsConfirmModalOpen(false)}
-          content={confirmContent}
-          cancelText="홈으로 가기"
-          confirmText="내 보관소로 이동"
-          onCancel={handleConfirmCancel}
-          onConfirm={handleConfirmConfirm}
-        />
-
-        {/* 폼 컨테이너 */}
-        <FormContainer>
-          {/* 대표 이미지 업로드 */}
-          <SectionLabel>
-            <LabelText>대표이미지</LabelText>
-            <RequiredMark>*</RequiredMark>
-          </SectionLabel>
-
-          <MainImageUploadArea>
-            {mainImage ? (
-              <UploadedImageContainer>
-                <UploadedMainImage src={mainImage} alt="대표 이미지" />
-                <DeleteImageButton onClick={handleDeleteMainImage}>×</DeleteImageButton>
-              </UploadedImageContainer>
-            ) : (
-              <>
-                <UploadGuideText>
-                  이미지를 업로드해주세요
-                  <br />
-                  (필수)
-                </UploadGuideText>
-                <UploadButton onClick={handleMainImageUpload}>파일 업로드</UploadButton>
-              </>
-            )}
-          </MainImageUploadArea>
-
-          {/* 숨겨진 파일 업로드 입력 필드 */}
-          <input
-            type="file"
-            ref={mainImageInputRef}
-            onChange={handleMainImageChange}
-            accept="image/*"
-            style={{ display: 'none' }}
+          {/* 확인 모달 */}
+          <Modal
+            isOpen={isConfirmModalOpen}
+            onClose={() => setIsConfirmModalOpen(false)}
+            content={confirmContent}
+            cancelText="홈으로 가기"
+            confirmText="내 보관소로 이동"
+            onCancel={handleConfirmCancel}
+            onConfirm={handleConfirmConfirm}
           />
 
-          {/* 추가 이미지 업로드 */}
-          <SectionLabel>
-            <LabelText>이미지</LabelText>
-            <RequiredMark>*</RequiredMark>
-          </SectionLabel>
+          {/* 폼 컨테이너 */}
+          <FormContainer>
+            {/* 대표 이미지 업로드 */}
+            <SectionLabel>
+              <LabelText>대표이미지</LabelText>
+              <RequiredMark>*</RequiredMark>
+            </SectionLabel>
 
-          <SubImageUploadArea>
-            {subImages.length > 0 ? (
-              <SubImagesScrollContainer>
-                {subImages.map((img, index) => (
-                  <SubImageItem key={index}>
-                    <SubImage src={img} alt={`추가 이미지 ${index + 1}`} />
-                    <DeleteImageButton onClick={() => handleDeleteSubImage(index)}>
-                      ×
-                    </DeleteImageButton>
-                  </SubImageItem>
-                ))}
-                {subImages.length < 4 && (
-                  <SubImageItem
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      background: THEME.lightGray,
-                    }}
-                    onClick={handleSubImagesUpload}
-                  >
-                    <UploadGuideText>추가 이미지</UploadGuideText>
-                    <div style={{ fontSize: '24px', marginTop: '10px' }}>+</div>
-                  </SubImageItem>
-                )}
-              </SubImagesScrollContainer>
-            ) : (
-              <>
-                <UploadGuideText>
-                  이미지를 업로드해주세요
-                  <br />
-                  (선택사항)
-                </UploadGuideText>
-                <UploadButton onClick={handleSubImagesUpload}>파일 업로드</UploadButton>
-              </>
-            )}
-          </SubImageUploadArea>
+            <MainImageUploadArea>
+              {mainImage ? (
+                <UploadedImageContainer>
+                  <UploadedMainImage src={mainImage} alt="대표 이미지" />
+                  <DeleteImageButton onClick={handleDeleteMainImage}>×</DeleteImageButton>
+                </UploadedImageContainer>
+              ) : (
+                <>
+                  <UploadGuideText>
+                    이미지를 업로드해주세요
+                    <br />
+                    (필수)
+                  </UploadGuideText>
+                  <UploadButton onClick={handleMainImageUpload}>파일 업로드</UploadButton>
+                </>
+              )}
+            </MainImageUploadArea>
 
-          {/* 숨겨진 파일 업로드 입력 필드 (다중 선택) */}
-          <input
-            type="file"
-            ref={subImagesInputRef}
-            onChange={handleSubImagesChange}
-            accept="image/*"
-            multiple
-            style={{ display: 'none' }}
-          />
-        </FormContainer>
+            {/* 숨겨진 파일 업로드 입력 필드 */}
+            <input
+              type="file"
+              ref={mainImageInputRef}
+              onChange={handleMainImageChange}
+              accept="image/*"
+              style={{ display: 'none' }}
+            />
 
-        {/* 완료 버튼 */}
-        <CompleteButton onClick={handleSubmit}>완료</CompleteButton>
-      </Container>
+            {/* 추가 이미지 업로드 */}
+            <SectionLabel>
+              <LabelText>이미지</LabelText>
+              <RequiredMark>*</RequiredMark>
+            </SectionLabel>
 
+            <SubImageUploadArea>
+              {subImages.length > 0 ? (
+                <SubImagesScrollContainer>
+                  {subImages.map((img, index) => (
+                    <SubImageItem key={index}>
+                      <SubImage src={img} alt={`추가 이미지 ${index + 1}`} />
+                      <DeleteImageButton onClick={() => handleDeleteSubImage(index)}>
+                        ×
+                      </DeleteImageButton>
+                    </SubImageItem>
+                  ))}
+                  {subImages.length < 4 && (
+                    <SubImageItem
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        background: THEME.lightGray,
+                      }}
+                      onClick={handleSubImagesUpload}
+                    >
+                      <UploadGuideText>추가 이미지</UploadGuideText>
+                      <div style={{ fontSize: '24px', marginTop: '10px' }}>+</div>
+                    </SubImageItem>
+                  )}
+                </SubImagesScrollContainer>
+              ) : (
+                <>
+                  <UploadGuideText>
+                    이미지를 업로드해주세요
+                    <br />
+                    (선택사항)
+                  </UploadGuideText>
+                  <UploadButton onClick={handleSubImagesUpload}>파일 업로드</UploadButton>
+                </>
+              )}
+            </SubImageUploadArea>
+
+            {/* 숨겨진 파일 업로드 입력 필드 (다중 선택) */}
+            <input
+              type="file"
+              ref={subImagesInputRef}
+              onChange={handleSubImagesChange}
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+            />
+          </FormContainer>
+
+          {/* 완료 버튼 */}
+          <CompleteButton onClick={handleSubmit}>완료</CompleteButton>
+        </Container>
+      </RegistrationContainer>
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="보관소" />
 
