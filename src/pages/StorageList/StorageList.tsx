@@ -24,7 +24,7 @@ const Container = styled.div`
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
-  margin-top: -76px;
+  margin-top: -36px;
   margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
 `;
 
