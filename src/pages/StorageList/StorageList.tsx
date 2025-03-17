@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import StorageFilterModal, { FilterOptions } from './StorageFilterModal';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -186,14 +187,34 @@ interface StorageItemType {
   location: string;
   price: number;
   imageUrl?: string;
+  storageLocation?: '실내' | '실외';
+  itemTypes?: string[];
+  storageTypes?: string[];
+  durationOptions?: string[];
+  isValuableItem?: boolean;
 }
 
 const StorageList: React.FC = () => {
   // 활성화된 필터 상태
-  const [activeFilter, setActiveFilter] = useState<FilterType>('전체');
+  const [currentFilter, setCurrentFilter] = useState<FilterType>('전체');
+
+  // 필터 모달 상태
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  // 적용된 필터 옵션 상태
+  const [appliedFilters, setAppliedFilters] = useState<FilterOptions>({
+    storageLocation: '',
+    itemTypes: [],
+    storageTypes: [],
+    durationOptions: [],
+    isValuableSelected: false,
+  });
 
   // 보관소 아이템 데이터 상태
   const [storageItems, setStorageItems] = useState<StorageItemType[]>([]);
+
+  // 필터링된 아이템 상태
+  const [filteredItems, setFilteredItems] = useState<StorageItemType[]>([]);
 
   // 전체 아이템 개수
   const [totalItems, setTotalItems] = useState<number>(24);
@@ -222,28 +243,94 @@ const StorageList: React.FC = () => {
               ? 1000
               : 80000,
       imageUrl: start + i <= 5 ? `https://placehold.co/150x120?text=공간${start + i}` : undefined,
+      storageLocation: (start + i) % 2 === 0 ? '실내' : '실외',
+      itemTypes: [
+        (start + i) % 5 === 0
+          ? '식물'
+          : (start + i) % 5 === 1
+            ? '전자기기'
+            : (start + i) % 5 === 2
+              ? '가전'
+              : (start + i) % 5 === 3
+                ? '의류'
+                : '서적',
+      ],
+      storageTypes: [
+        (start + i) % 3 === 0 ? '상온 보관' : (start + i) % 3 === 1 ? '냉장 보관' : '냉동 보관',
+      ],
+      durationOptions: [
+        (start + i) % 3 === 0 ? '일주일 이내' : (start + i) % 3 === 1 ? '한달 이내' : '3개월 이상',
+      ],
+      isValuableItem: (start + i) % 7 === 0,
     }));
   };
 
   // 초기 데이터 로드
   useEffect(() => {
-    setStorageItems(generateDummyItems(1, 12));
+    const initialItems = generateDummyItems(1, 12);
+    setStorageItems(initialItems);
+    setFilteredItems(initialItems);
   }, []);
+
+  // 필터 활성화 상태 확인 함수
+  const isFilterActive = (filter: FilterType): boolean => {
+    if (filter === '전체') {
+      // '전체'는 다른 필터가 모두 비활성화되었을 때 활성화
+      return (
+        !appliedFilters.storageLocation &&
+        appliedFilters.itemTypes.length === 0 &&
+        appliedFilters.storageTypes.length === 0 &&
+        appliedFilters.durationOptions.length === 0 &&
+        !appliedFilters.isValuableSelected
+      );
+    }
+
+    // 각 필터 타입별로 해당하는 필터가 적용되었는지 확인
+    switch (filter) {
+      case '보관위치':
+        return !!appliedFilters.storageLocation;
+      case '물건유형':
+        return appliedFilters.itemTypes.length > 0;
+      case '보관방식':
+        return appliedFilters.storageTypes.length > 0;
+      case '보관기간':
+        return appliedFilters.durationOptions.length > 0;
+      case '귀중품':
+        return appliedFilters.isValuableSelected;
+      default:
+        return false;
+    }
+  };
 
   // 필터 변경 핸들러
   const handleFilterChange = (filter: FilterType) => {
-    setActiveFilter(filter);
+    setCurrentFilter(filter);
     // 실제 구현에서는 이 부분에서 필터에 맞는 데이터를 불러오는 API 호출을 할 수 있습니다.
+    // '전체'가 아닌 필터를 클릭하면 필터 모달 열기
+    if (filter === '전체') {
+      // '전체' 필터면 모든 필터 초기화
+      setAppliedFilters({
+        storageLocation: '',
+        itemTypes: [],
+        storageTypes: [],
+        durationOptions: [],
+        isValuableSelected: false,
+      });
+      setFilteredItems(storageItems);
+    } else {
+      // '전체'가 아닌 필터를 클릭하면 필터 모달 열기
+      setIsFilterModalOpen(true);
+    }
   };
 
   // 인피니티 스크롤 구현
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!e.currentTarget || loading) return;
+    if (!gridRef.current || loading) return;
 
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
 
     // 스크롤이 하단에 도달했는지 확인
-    if (scrollTop + clientHeight >= scrollHeight - 50 && storageItems.length < totalItems) {
+    if (scrollTop + clientHeight >= scrollHeight - 50 && filteredItems.length < totalItems) {
       loadMoreItems();
     }
   };
@@ -255,18 +342,70 @@ const StorageList: React.FC = () => {
     // 로딩 딜레이 시뮬레이션 (실제 구현에서는 API 호출)
     setTimeout(() => {
       const newItems = generateDummyItems(storageItems.length + 1, 12);
-      setStorageItems(prev => [...prev, ...newItems]);
+      const updatedItems = [...storageItems, ...newItems];
+      setStorageItems(updatedItems);
+
+      // 필터 적용
+      const newFilteredItems = filterItems(updatedItems, appliedFilters);
+      setFilteredItems(newFilteredItems);
+
       setLoading(false);
     }, 1000);
   };
 
-  // 스크롤 이벤트 리스너 등록
-  useEffect(() => {
-    // 인피니티 스크롤은 이제 onScroll 이벤트 핸들러를 통해 직접 처리
-    return () => {
-      // 클린업 함수 (필요시 여기에 코드를 추가할 수 있음)
-    };
-  }, [storageItems, loading]);
+  // 필터 적용 핸들러
+  const handleApplyFilter = (options: FilterOptions) => {
+    setAppliedFilters(options);
+    const newFilteredItems = filterItems(storageItems, options);
+    setFilteredItems(newFilteredItems);
+  };
+
+  // 아이템 필터링 함수
+  const filterItems = (items: StorageItemType[], options: FilterOptions): StorageItemType[] => {
+    return items.filter(item => {
+      // 보관 위치 필터
+      if (options.storageLocation && item.storageLocation !== options.storageLocation) {
+        return false;
+      }
+
+      // 물건 유형 필터
+      if (
+        options.itemTypes.length > 0 &&
+        !item.itemTypes?.some(type => options.itemTypes.includes(type))
+      ) {
+        return false;
+      }
+
+      // 보관 방식 필터
+      if (
+        options.storageTypes.length > 0 &&
+        !item.storageTypes?.some(type => options.storageTypes.includes(type))
+      ) {
+        return false;
+      }
+
+      // 보관 기간 필터
+      if (
+        options.durationOptions.length > 0 &&
+        !item.durationOptions?.some(duration => options.durationOptions.includes(duration))
+      ) {
+        return false;
+      }
+
+      // 귀중품 필터
+      if (options.isValuableSelected && !item.isValuableItem) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+
+  // 상세 페이지로 이동하는 함수
+  const handleItemClick = (id: number) => {
+    // navigate(`/storagedetail/${id}`);
+    console.log(`아이템 ${id} 클릭됨, 상세 페이지로 이동`);
+  };
 
   // 가격 포맷 함수
   const formatPrice = (price: number) => {
@@ -287,7 +426,7 @@ const StorageList: React.FC = () => {
         {filters.map(filter => (
           <FilterTag
             key={filter}
-            isActive={activeFilter === filter}
+            isActive={isFilterActive(filter)}
             onClick={() => handleFilterChange(filter)}
           >
             {filter}
@@ -300,8 +439,8 @@ const StorageList: React.FC = () => {
 
       {/* 아이템 그리드 */}
       <ItemGridContainer ref={gridRef} onScroll={handleScroll}>
-        {storageItems.map(item => (
-          <StorageItem key={item.id}>
+        {filteredItems.map(item => (
+          <StorageItem key={item.id} onClick={() => handleItemClick(item.id)}>
             <StorageImageContainer>
               {item.imageUrl ? (
                 <StorageImage src={item.imageUrl} alt={item.name} />
@@ -320,6 +459,14 @@ const StorageList: React.FC = () => {
           </div>
         )}
       </ItemGridContainer>
+
+      {/* 필터 모달 */}
+      <StorageFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApplyFilter={handleApplyFilter}
+        initialFilters={appliedFilters}
+      />
 
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="보관소" />

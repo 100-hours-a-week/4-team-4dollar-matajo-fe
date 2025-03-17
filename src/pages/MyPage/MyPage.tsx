@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
+import MapBottomSheet from '../Home/MapBottomSheet';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -295,7 +296,6 @@ const MyPage: React.FC = () => {
     <Container>
       {/* 페이지 헤더 */}
       <Header title="마이페이지" />
-
       {/* 보관인 등록 모달 */}
       <Modal
         isOpen={isKeeperModalOpen}
@@ -306,7 +306,6 @@ const MyPage: React.FC = () => {
         onCancel={handleKeeperCancel}
         onConfirm={handleKeeperConfirm}
       />
-
       {/* 회원 탈퇴퇴 모달 */}
       <Modal
         isOpen={isMembershipModalOpen}
@@ -317,7 +316,6 @@ const MyPage: React.FC = () => {
         onCancel={handleMembershipCancel}
         onConfirm={handleMembershipConfirm}
       />
-
       {/* 프로필 카드 */}
       <ProfileCard />
       <ProfileImageContainer />
@@ -325,13 +323,11 @@ const MyPage: React.FC = () => {
       <UserName>타조 89389</UserName>
       <ProfileDivider />
       <HelperText>헬퍼텍스트입니다</HelperText>
-
       {/* 배지 영역 */}
       <BadgeContainer left={107} />
       <BadgeContainer left={143} />
       <BadgeText left={111}>의뢰인</BadgeText>
       <BadgeText left={147}>보관인</BadgeText>
-
       {/* 액션 아이콘 */}
       <ActionIcon left={223} color={THEME.accentGreen}>
         <div style={{ width: 14.62, height: 12.29, left: 3.5, top: 4.38, position: 'absolute' }} />
@@ -339,7 +335,6 @@ const MyPage: React.FC = () => {
       <ActionIcon left={248} color={THEME.accentRed}>
         <div style={{ width: 14.44, height: 14.44, left: 3.5, top: 3.5, position: 'absolute' }} />
       </ActionIcon>
-
       {/* 메뉴 항목 */}
       <Divider top={240} />
       <div style={{ position: 'absolute', left: '11px', top: '245px', width: '346px' }}>
@@ -369,7 +364,6 @@ const MyPage: React.FC = () => {
         </MenuItemWrapper>
       </div>
       <Divider top={420} />
-
       {/* 푸터 링크 */}
       <FooterText left={74}>개인정보 약관</FooterText>
       <Separator left={153}>|</Separator>
@@ -378,7 +372,8 @@ const MyPage: React.FC = () => {
       <FooterText left={239} onClick={openMembershipModal}>
         회원탈퇴
       </FooterText>
-
+      {/* 테스트 */}
+      <MapBottomSheet location="영등포구 여의도동" />
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="마이페이지" />
     </Container>
