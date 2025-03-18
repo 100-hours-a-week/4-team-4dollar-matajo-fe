@@ -12,6 +12,9 @@ import StorageDetail from '../pages/StorageDetail/StorageDetail';
 import Registration1 from '../pages/Registration/Registration1';
 import Registration2 from '../pages/Registration/Registration2';
 import Registration3 from '../pages/Registration/Registration3';
+import ChatroomList from '../pages/Chat/ChatroomList';
+import Chat from '../pages/Chat/Chat';
+import EditStorage from '../pages/EditStorage/EditStorage';
 import NotFoundPage from '../pages/NotFound';
 
 // 레이아웃 컴포넌트
@@ -49,6 +52,8 @@ const routes: RouteObject[] = [
           { path: 'mytrade', element: <MyTrade /> },
           { path: 'storagelist', element: <StorageList /> },
           { path: 'storagedetail', element: <StorageDetail /> },
+          { path: 'chatroomlist', element: <ChatroomList /> },
+          { path: 'chat', element: <Chat /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },
@@ -63,7 +68,10 @@ const routes: RouteObject[] = [
       {
         path: '/',
         element: <MainLayout />,
-        children: [{ path: 'myplace', element: <MyPlace /> }],
+        children: [
+          { path: 'myplace', element: <MyPlace /> },
+          { path: 'editstorage', element: <EditStorage /> },
+        ],
       },
     ],
   },

@@ -6,6 +6,7 @@ import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
 import { useAuth, UserRole } from '../../contexts/AuthContext';
+import MapBottomSheet from '../Home/MapBottomSheet';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -407,7 +408,6 @@ const MyPage: React.FC = () => {
         onCancel={handleMembershipCancel}
         onConfirm={handleMembershipConfirm}
       />
-
       {/* 프로필 카드 */}
       <ProfileCard />
       <ProfileImageContainer />
@@ -415,7 +415,6 @@ const MyPage: React.FC = () => {
       <UserName>{USER_STATE.userName}</UserName>
       <ProfileDivider />
       <HelperText>헬퍼텍스트입니다</HelperText>
-
       {/* 배지 영역 */}
       <BadgeContainer left={107} />
       <BadgeText left={111}>의뢰인</BadgeText>
@@ -434,7 +433,6 @@ const MyPage: React.FC = () => {
       <ActionIcon left={248} color={THEME.accentRed}>
         <div style={{ width: 14.44, height: 14.44, left: 3.5, top: 3.5, position: 'absolute' }} />
       </ActionIcon>
-
       {/* 메뉴 항목 */}
       <Divider top={240} />
       <div style={{ position: 'absolute', left: '11px', top: '245px', width: '346px' }}>
@@ -458,7 +456,6 @@ const MyPage: React.FC = () => {
         </MenuItemWrapper>
       </div>
       <Divider top={420} />
-
       {/* 푸터 링크 */}
       <FooterText left={74} onClick={moveToPrivacyPolicy}>
         개인정보 약관
@@ -471,7 +468,8 @@ const MyPage: React.FC = () => {
       <FooterText left={239} onClick={openMembershipModal}>
         회원탈퇴
       </FooterText>
-
+      {/* 테스트 */}
+      <MapBottomSheet location="영등포구 여의도동" />
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="마이페이지" />
     </Container>
