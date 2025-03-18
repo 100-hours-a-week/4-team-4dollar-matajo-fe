@@ -23,15 +23,6 @@ const MainLayout: React.FC = () => {
           <Outlet />
         </div>
       </main>
-
-      {/* 푸터 */}
-      <footer className="bg-gray-100 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="text-center text-sm text-gray-500">
-            <p>© 2025 마타조. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

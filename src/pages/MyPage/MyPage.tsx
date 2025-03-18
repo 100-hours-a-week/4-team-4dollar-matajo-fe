@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
@@ -230,6 +231,9 @@ const MyPage: React.FC = () => {
   const [isKeeperModalOpen, setIsKeeperModalOpen] = useState(false);
   const [isMembershipModalOpen, setIsMembershipModalOpen] = useState(false);
 
+  // 네비게이션 훅
+  const navigate = useNavigate();
+
   const moveToMyTradePage = () => {
     console.log('내 거래내역으로~');
     // 여기에 내 거래내역으로 페이지 이동하는 로직 추가
@@ -254,6 +258,7 @@ const MyPage: React.FC = () => {
   const handleKeeperConfirm = () => {
     console.log('보관인 등록 처리');
     // 여기에 보관인 등록 관련 로직 추가
+    navigate('/keeper-registration');
   };
 
   // 보관인 등록 취소 처리
@@ -372,8 +377,6 @@ const MyPage: React.FC = () => {
       <FooterText left={239} onClick={openMembershipModal}>
         회원탈퇴
       </FooterText>
-      {/* 테스트 */}
-      <MapBottomSheet location="영등포구 여의도동" />
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="마이페이지" />
     </Container>
