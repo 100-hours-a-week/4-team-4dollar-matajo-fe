@@ -61,11 +61,32 @@ const ImageContainer = styled.div`
   overflow: hidden;
 `;
 
-const MainImage = styled.img`
-  width: 375px;
-  height: 375px;
-  top: -50px;
-  position: absolute;
+const ImageSlider = styled.div<{ currentIndex: number }>`
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transform: translateX(${props => -props.currentIndex * 100}%);
+  transition: transform 0.3s ease-in-out;
+  will-change: transform;
+  touch-action: pan-y;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+`;
+
+const ImageSlide = styled.div`
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  position: relative;
+`;
+
+const SlideImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 `;
 
 const InfoSection = styled.div`
@@ -272,22 +293,24 @@ const ImageIndicator = styled.div`
   display: flex;
   align-items: center;
   gap: 11px;
+  z-index: 10;
 `;
 
-const ActiveDot = styled.div`
+const Dot = styled.div<{ isActive: boolean }>`
   width: 10px;
   height: 9px;
   opacity: 0.8;
-  background: #9e9dfe;
+  background: ${props => (props.isActive ? '#9e9dfe' : '#efeff0')};
   border-radius: 9999px;
-`;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  padding: 8px; /* 클릭 영역 확장 */
+  margin: -4px; /* 간격 유지를 위한 네거티브 마진 */
+  box-sizing: content-box;
 
-const InactiveDot = styled.div`
-  width: 10px;
-  height: 9px;
-  opacity: 0.8;
-  background: #efeff0;
-  border-radius: 9999px;
+  &:hover {
+    opacity: 1;
+  }
 `;
 
 const ScrollToTopButton = styled.img`
@@ -302,6 +325,12 @@ const ScrollToTopButton = styled.img`
   z-index: 99;
 `;
 
+// 이미지 데이터 타입 정의
+interface StorageImage {
+  id: number;
+  url: string;
+}
+
 interface StorageDetailProps {
   id?: string;
   onBack?: () => void;
@@ -310,6 +339,51 @@ interface StorageDetailProps {
 const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
   // 컨테이너 참조 생성
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // 이미지 슬라이더 관련 상태 및 참조
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState(0);
+  const [touchEndX, setTouchEndX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const sliderRef = useRef<HTMLDivElement>(null);
+
+  // 더미 이미지 데이터 및 API 로딩 상태
+  const [storageImages, setStorageImages] = useState<StorageImage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // API에서 보관소 이미지 로드 (실제 구현 시 실제 API 호출로 대체)
+  useEffect(() => {
+    const fetchStorageImages = async () => {
+      try {
+        setIsLoading(true);
+        // 실제 API 호출 대신 더미 데이터 사용
+        // const response = await api.getStorageImages(id);
+
+        // 더미 데이터
+        const dummyImages = [
+          { id: 1, url: 'https://placehold.co/375x260?text=Living+Room' },
+          { id: 2, url: 'https://placehold.co/375x260?text=Kitchen' },
+          { id: 3, url: 'https://placehold.co/375x260?text=Bedroom' },
+          { id: 4, url: 'https://placehold.co/375x260?text=Storage+Space' },
+          { id: 5, url: 'https://placehold.co/375x260?text=Outside+View' },
+        ];
+
+        // 실제 구현에서는 응답에서 이미지 배열을 추출
+        // const images = response.data.images;
+
+        setStorageImages(dummyImages);
+      } catch (error) {
+        console.error('보관소 이미지 로드 실패:', error);
+        // 오류 시 기본 이미지 설정
+        setStorageImages([{ id: 1, url: 'https://placehold.co/375x260?text=Default+Image' }]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStorageImages();
+  }, [id]);
 
   const handleChatClick = () => {
     console.log('Chat button clicked');
@@ -320,6 +394,208 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
     // 컨테이너 요소가 있으면 해당 요소의 스크롤 위치를 맨 위로 이동
     if (containerRef.current) {
       containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // 터치 이벤트 핸들러
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+    setTouchEndX(e.touches[0].clientX); // 초기화
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.touches[0].clientX);
+
+    // 슬라이더가 있고 이미지가 2개 이상일 때만 실시간 드래그 효과 적용
+    if (sliderRef.current && storageImages.length > 1) {
+      const dragDistance = e.touches[0].clientX - touchStartX;
+      const slideWidth = sliderRef.current.offsetWidth;
+      const maxOffset = (storageImages.length - 1) * slideWidth;
+
+      // 현재 위치에서의 드래그 오프셋 계산
+      let newOffset = currentImageIndex * slideWidth - dragDistance;
+
+      // 경계 처리 (맨 앞, 맨 뒤 이미지에서 고무줄 효과)
+      if (newOffset < 0) {
+        newOffset = newOffset / 3; // 저항 효과
+      } else if (newOffset > maxOffset) {
+        newOffset = maxOffset + (newOffset - maxOffset) / 3; // 저항 효과
+      }
+
+      // translate3d를 사용하여 하드웨어 가속 적용
+      sliderRef.current.style.transform = `translate3d(${-newOffset}px, 0, 0)`;
+      sliderRef.current.style.transition = 'none';
+    }
+  };
+
+  const handleTouchEnd = () => {
+    // 최소 드래그 거리 (px)
+    const minSwipeDistance = 50;
+    const distance = touchStartX - touchEndX;
+
+    if (Math.abs(distance) < minSwipeDistance) {
+      // 작은 드래그는 원위치로 복원
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+      }
+      return;
+    }
+
+    // 상태 업데이트 및 이미지 이동
+    if (distance > 0 && currentImageIndex < storageImages.length - 1) {
+      // 오른쪽에서 왼쪽으로 스와이프 (다음 이미지)
+      const newIndex = currentImageIndex + 1;
+      setCurrentImageIndex(newIndex);
+
+      // 애니메이션 적용
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+      }
+    } else if (distance < 0 && currentImageIndex > 0) {
+      // 왼쪽에서 오른쪽으로 스와이프 (이전 이미지)
+      const newIndex = currentImageIndex - 1;
+      setCurrentImageIndex(newIndex);
+
+      // 애니메이션 적용
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+      }
+    } else {
+      // 첫 번째나 마지막 이미지에서 경계를 벗어나려는 시도는 원위치로
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+      }
+    }
+  };
+
+  // 마우스 이벤트 핸들러 (데스크톱 지원)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStartX(e.clientX);
+    setTouchStartX(e.clientX);
+    setTouchEndX(e.clientX);
+
+    // 이미지 드래그 중 텍스트 선택 방지
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+
+    setTouchEndX(e.clientX);
+
+    // 슬라이더가 있고 이미지가 2개 이상일 때만 실시간 드래그 효과 적용
+    if (sliderRef.current && storageImages.length > 1) {
+      const dragDistance = e.clientX - dragStartX;
+      const slideWidth = sliderRef.current.offsetWidth;
+      const maxOffset = (storageImages.length - 1) * slideWidth;
+
+      // 현재 위치에서의 드래그 오프셋 계산
+      let newOffset = currentImageIndex * slideWidth - dragDistance;
+
+      // 경계 처리 (맨 앞, 맨 뒤 이미지에서 고무줄 효과)
+      if (newOffset < 0) {
+        newOffset = newOffset / 3;
+      } else if (newOffset > maxOffset) {
+        newOffset = maxOffset + (newOffset - maxOffset) / 3;
+      }
+
+      // translate3d를 사용하여 하드웨어 가속 적용
+      sliderRef.current.style.transform = `translate3d(${-newOffset}px, 0, 0)`;
+      sliderRef.current.style.transition = 'none';
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (!isDragging) return;
+
+    // 최소 드래그 거리 (px)
+    const minSwipeDistance = 50;
+    const distance = touchStartX - touchEndX;
+
+    if (Math.abs(distance) < minSwipeDistance) {
+      // 작은 드래그는 원위치로 복원
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+      }
+      setIsDragging(false);
+      return;
+    }
+
+    // 상태 업데이트 및 이미지 이동
+    if (distance > 0 && currentImageIndex < storageImages.length - 1) {
+      // 오른쪽에서 왼쪽으로 드래그 (다음 이미지)
+      const newIndex = currentImageIndex + 1;
+      setCurrentImageIndex(newIndex);
+
+      // 애니메이션 적용
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+      }
+    } else if (distance < 0 && currentImageIndex > 0) {
+      // 왼쪽에서 오른쪽으로 드래그 (이전 이미지)
+      const newIndex = currentImageIndex - 1;
+      setCurrentImageIndex(newIndex);
+
+      // 애니메이션 적용
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+      }
+    } else {
+      // 첫 번째나 마지막 이미지에서 경계를 벗어나려는 시도는 원위치로
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+      }
+    }
+
+    setIsDragging(false);
+  };
+
+  // 이미지 제어 함수
+  const nextImage = () => {
+    if (currentImageIndex < storageImages.length - 1) {
+      const newIndex = currentImageIndex + 1;
+      setCurrentImageIndex(newIndex);
+
+      // 슬라이더 애니메이션 적용
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+      }
+    }
+  };
+
+  const prevImage = () => {
+    if (currentImageIndex > 0) {
+      const newIndex = currentImageIndex - 1;
+      setCurrentImageIndex(newIndex);
+
+      // 슬라이더 애니메이션 적용
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+      }
+    }
+  };
+
+  // 특정 인덱스로 이동
+  const goToImage = (index: number) => {
+    if (index >= 0 && index < storageImages.length) {
+      setCurrentImageIndex(index);
+
+      // 슬라이더 애니메이션 적용
+      if (sliderRef.current) {
+        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+        sliderRef.current.style.transform = `translate3d(${-index * 100}%, 0, 0)`;
+      }
     }
   };
 
@@ -398,16 +674,66 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
         <ContentContainer>
           {/* 이미지 섹션 */}
           <ImageContainer>
-            <MainImage src="https://placehold.co/452x452" alt="보관소 이미지" />
+            {isLoading ? (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  background: '#f0f0f0',
+                }}
+              >
+                <div>이미지 로딩 중...</div>
+              </div>
+            ) : storageImages.length === 0 ? (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  background: '#f0f0f0',
+                }}
+              >
+                <div>이미지가 없습니다</div>
+              </div>
+            ) : (
+              <>
+                <ImageSlider
+                  ref={sliderRef}
+                  currentIndex={currentImageIndex}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                >
+                  {storageImages.map((image, index) => (
+                    <ImageSlide key={image.id}>
+                      <SlideImage src={image.url} alt={`보관소 이미지 ${index + 1}`} />
+                    </ImageSlide>
+                  ))}
+                </ImageSlider>
 
-            {/* 이미지 인디케이터 */}
-            <ImageIndicator>
-              <ActiveDot />
-              <InactiveDot />
-              <InactiveDot />
-              <InactiveDot />
-              <InactiveDot />
-            </ImageIndicator>
+                {/* 이미지 인디케이터 - 이미지가 2개 이상일 때만 표시 */}
+                {storageImages.length > 1 && (
+                  <ImageIndicator>
+                    {storageImages.map((_, index) => (
+                      <Dot
+                        key={index}
+                        isActive={currentImageIndex === index}
+                        onClick={() => goToImage(index)}
+                      />
+                    ))}
+                  </ImageIndicator>
+                )}
+              </>
+            )}
           </ImageContainer>
 
           {/* 제목 및 정보 */}
