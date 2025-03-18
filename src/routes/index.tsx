@@ -9,6 +9,7 @@ import MyPlace from '../pages/MyPlace/MyPlace';
 import MyTrade from '../pages/MyTrade/MyTrade';
 import StorageList from '../pages/StorageList/StorageList';
 import StorageDetail from '../pages/StorageDetail/StorageDetail';
+import KeeperRegistration from '../pages/Keeper/KeeperRegistration';
 import Registration1 from '../pages/Registration/Registration1';
 import Registration2 from '../pages/Registration/Registration2';
 import Registration3 from '../pages/Registration/Registration3';
@@ -53,6 +54,10 @@ const routes: RouteObject[] = [
       {
         path: 'storagedetail',
         element: <StorageDetail />,
+      },
+      {
+        path: 'keeper-registration',
+        element: <KeeperRegistration />,
       },
       {
         path: 'registration/step1',
