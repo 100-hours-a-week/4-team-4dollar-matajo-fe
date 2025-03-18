@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
+import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
@@ -468,8 +468,6 @@ const MyPage: React.FC = () => {
       <FooterText left={239} onClick={openMembershipModal}>
         회원탈퇴
       </FooterText>
-      {/* 테스트 */}
-      <MapBottomSheet location="영등포구 여의도동" />
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="마이페이지" />
     </Container>

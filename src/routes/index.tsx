@@ -9,6 +9,7 @@ import MyPlace from '../pages/MyPlace/MyPlace';
 import MyTrade from '../pages/MyTrade/MyTrade';
 import StorageList from '../pages/StorageList/StorageList';
 import StorageDetail from '../pages/StorageDetail/StorageDetail';
+import KeeperRegistration from '../pages/Keeper/KeeperRegistration';
 import Registration1 from '../pages/Registration/Registration1';
 import Registration2 from '../pages/Registration/Registration2';
 import Registration3 from '../pages/Registration/Registration3';
@@ -66,12 +67,61 @@ const routes: RouteObject[] = [
     element: <PrivateRoute requiredRole={UserRole.Keeper} />,
     children: [
       {
+<<<<<<< HEAD
         path: '/',
         element: <MainLayout />,
         children: [
           { path: 'myplace', element: <MyPlace /> },
           { path: 'editstorage', element: <EditStorage /> },
         ],
+=======
+        path: 'myplace',
+        element: <MyPlace />,
+      },
+      {
+        path: 'mytrade',
+        element: <MyTrade />,
+      },
+      {
+        path: 'storagelist',
+        element: <StorageList />,
+      },
+      {
+        path: 'storagedetail',
+        element: <StorageDetail />,
+      },
+      {
+        path: 'keeper-registration',
+        element: <KeeperRegistration />,
+      },
+      {
+        path: 'registration/step1',
+        element: <Registration1 />,
+      },
+      {
+        path: 'registration/step2',
+        element: <Registration2 />,
+      },
+      {
+        path: 'registration/step3',
+        element: <Registration3 />,
+      },
+      {
+        path: 'editstorage',
+        element: <EditStorage />,
+      },
+      {
+        path: 'chatroomlist',
+        element: <ChatroomList />,
+      },
+      {
+        path: 'chat',
+        element: <Chat />,
+      },
+      {
+        path: '*',
+        element: <NotFoundPage />,
+>>>>>>> a0fa272c04059a69ecd8b3a18ed2c0cf9ac3753c
       },
     ],
   },
