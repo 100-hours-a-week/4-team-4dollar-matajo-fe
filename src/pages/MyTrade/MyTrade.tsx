@@ -18,99 +18,97 @@ const THEME = {
   white: '#FFFFFF',
 };
 
-// 반복적으로 사용되는 스타일 컴포넌트 통합
-const TransactionCard = styled.div<{ top: number }>`
-  width: 326px;
-  height: 150px;
-  position: absolute;
-  left: 23px;
-  top: ${props => props.top}px;
-  background: rgba(217, 217, 217, 0);
-  border-radius: 10px;
-  border: 1px ${THEME.borderColor} solid;
+// 컨테이너 컴포넌트
+const Container = styled.div`
+  width: 100%;
+  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
+  position: relative;
+  background: white;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding-bottom: 40px;
+  padding-top: 10px;
 `;
 
-const TransactionType = styled.span<{ isDeposit?: boolean; top: number; left: number }>`
-  position: absolute;
-  left: ${props => props.left}px;
-  top: ${props => props.top}px;
+// 트랜잭션 카드 스타일 - 절대 위치 제거
+const TransactionCard = styled.div`
+  width: 300px;
+  height: 130px;
+  margin: 15px;
+  background: rgba(217, 217, 217, 0);
+  border-radius: 10px;
+  border: 2px ${THEME.borderColor} solid;
+  position: relative;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+`;
+
+// 상단 정보 영역
+const CardHeader = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+`;
+
+const TransactionType = styled.span<{ isDeposit?: boolean }>`
   color: ${props => (props.isDeposit ? THEME.primaryAlpha : THEME.darkText)};
   font-size: 18px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
   letter-spacing: 0.02px;
-  word-wrap: break-word;
+  margin-right: 10px;
 `;
 
-const ItemName = styled.span<{ top: number; left: number }>`
-  position: absolute;
-  left: ${props => props.left}px;
-  top: ${props => props.top}px;
+const ItemName = styled.span`
   color: ${THEME.darkText};
   font-size: 18px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
   letter-spacing: 0.02px;
-  word-wrap: break-word;
 `;
 
-const UserInfo = styled.div<{ top: number }>`
-  position: absolute;
-  left: 43px;
-  top: ${props => props.top}px;
+// 중간 정보 영역
+const CardContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const UserInfo = styled.div`
   color: ${THEME.lightGrayText};
   font-size: 17px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
   letter-spacing: 0.02px;
-  word-wrap: break-word;
 `;
 
-const LocationDate = styled.div<{ top: number }>`
-  position: absolute;
-  left: 42px;
-  top: ${props => props.top}px;
+const LocationDate = styled.div`
   color: ${THEME.lightGrayText};
   font-size: 14px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
   letter-spacing: 0.01px;
-  word-wrap: break-word;
+  margin-bottom: 6px;
 `;
 
-const TotalAmount = styled.div<{ top: number }>`
-  position: absolute;
-  left: 42px;
-  top: ${props => props.top}px;
-  width: 297px;
+// 구분선
+const Divider = styled.div`
+  width: 100%;
+  height: 1px;
+  background-color: ${THEME.dividerColor};
+  margin: 8px 0;
+`;
+
+// 하단 금액 정보
+const TotalAmount = styled.div`
+  width: 100%;
   text-align: right;
   color: ${THEME.blackText};
   font-size: 16px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
   letter-spacing: 0.02px;
-  word-wrap: break-word;
-`;
-
-const Divider = styled.div<{ top: number }>`
-  width: 294px;
-  height: 0;
-  position: absolute;
-  left: 43px;
-  top: ${props => props.top}px;
-  outline: 1px ${THEME.dividerColor} solid;
-  outline-offset: -0.5px;
-`;
-
-// 컨테이너 컴포넌트
-const Container = styled.div`
-  width: 375px;
-  height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
-  position: relative;
-  background: white;
-  overflow-y: auto;
-  overflow-x: hidden;
-  margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
 `;
 
 // 트랜잭션 항목 타입 정의
@@ -157,6 +155,24 @@ const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
       period: '2024.09.14.~2025.03.02',
       amount: 70000,
     },
+    {
+      id: 3,
+      type: 'deposited',
+      itemName: '농구공',
+      userCode: '타조 20229',
+      location: '서울시 성동구',
+      period: '2024.09.14.~2025.03.02',
+      amount: 20000,
+    },
+    {
+      id: 4,
+      type: 'stored',
+      itemName: '노트북',
+      userCode: '타조 23229',
+      location: '서울시 중랑구',
+      period: '2024.09.14.~2025.03.02',
+      amount: 70000,
+    },
   ];
 
   // 금액 포맷 함수
@@ -165,49 +181,38 @@ const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
   };
 
   return (
-    <Container>
+    <>
       {/* 페이지 헤더 - onBack prop을 handleBackClick으로 설정 */}
       <Header title="내 거래 내역" showBackButton={true} onBack={handleBackClick} />
-      {/* 거래 내역 목록 */}
-      {transactions.map((item, index) => {
-        const baseTop = 87 + index * 162;
-        return (
-          <React.Fragment key={item.id}>
-            <TransactionCard top={baseTop} />
-            {/* 거래 타입에 따른 내용 */}
-            {item.type === 'deposited' && (
-              <>
-                <TransactionType top={baseTop + 29} left={42} isDeposit={true}>
-                  맡아줬어요
-                </TransactionType>
-                <ItemName top={baseTop + 29} left={133}>
-                  {item.itemName}
-                </ItemName>
-              </>
-            )}
-            {item.type === 'stored' && (
-              <>
-                <TransactionType top={baseTop + 29} left={43} isDeposit={true}>
-                  보관했어요
-                </TransactionType>
-                <ItemName top={baseTop + 29} left={134}>
-                  {item.itemName}
-                </ItemName>
-              </>
-            )}
-            <UserInfo top={baseTop + 55}>{item.userCode}</UserInfo>
-            <LocationDate top={baseTop + 77}>
-              {item.location} | {item.period}
-            </LocationDate>
-            <Divider top={baseTop + 102} />
-            <TotalAmount top={baseTop + 112}>{formatAmount(item.amount)}</TotalAmount>
-          </React.Fragment>
-        );
-      })}
+
+      <Container>
+        {/* 거래 내역 목록 */}
+        {transactions.map(item => (
+          <TransactionCard key={item.id}>
+            <CardHeader>
+              <TransactionType isDeposit={true}>
+                {item.type === 'deposited' ? '맡아줬어요' : '보관했어요'}
+              </TransactionType>
+              <ItemName>{item.itemName}</ItemName>
+            </CardHeader>
+
+            <CardContent>
+              <UserInfo>{item.userCode}</UserInfo>
+              <LocationDate>
+                {item.location} | {item.period}
+              </LocationDate>
+            </CardContent>
+
+            <Divider />
+
+            <TotalAmount>{formatAmount(item.amount)}</TotalAmount>
+          </TransactionCard>
+        ))}
+      </Container>
 
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="마이페이지" />
-    </Container>
+    </>
   );
 };
 
