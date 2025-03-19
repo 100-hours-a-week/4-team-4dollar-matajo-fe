@@ -17,21 +17,23 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 375px;
+  width: 100%; // 변경: 100%로 설정하여 반응형으로 변경
+  max-width: 375px; // 추가: 최대 너비 제한
   height: 100vh;
   position: relative;
   background: ${THEME.background};
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  margin: 0 auto; // 추가: 중앙 정렬
 `;
 
-// 채팅 영역
+// 채팅 영역 - bottom padding 증가
 const ChatContainer = styled.div`
   flex: 1;
   padding: 10px 24px;
   padding-top: 90px; // 헤더 높이 고려
-  padding-bottom: 70px; // 입력창 높이 고려
+  padding-bottom: 80px; // 입력창 높이 고려 (증가)
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -140,12 +142,13 @@ const MessageTime = styled.div`
   margin-top: 5px;
 `;
 
-// 확정하기 버튼
+// 확정하기 버튼 - 위치 수정
 const ConfirmButton = styled.button`
   width: 94px;
   height: 35px;
   position: fixed;
-  left: 270px;
+  right: 10px; // 변경: 우측 기준으로 변경
+  left: auto; // 변경: left 제거
   top: 60px;
   background: rgba(56, 53, 252, 0.8);
   border-radius: 10px;
@@ -155,6 +158,10 @@ const ConfirmButton = styled.button`
   align-items: center;
   cursor: pointer;
   z-index: 10;
+
+  @media (max-width: 375px) {
+    right: 10px; // 모바일 환경에서 위치 조정
+  }
 `;
 
 const ConfirmButtonText = styled.span`
@@ -166,21 +173,25 @@ const ConfirmButtonText = styled.span`
   letter-spacing: 0.32px;
 `;
 
-// 메시지 입력 영역
+// 메시지 입력 영역 - 수정
 const InputContainer = styled.div`
   position: fixed;
   bottom: 0;
-  width: 375px;
+  left: 0;
+  right: 0;
+  max-width: 375px; // 추가: 최대 너비 제한
   height: 60px;
   background: white;
   padding: 10px;
   display: flex;
   align-items: center;
   z-index: 100;
+  margin: 0 auto; // 추가: 중앙 정렬
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); // 추가: 그림자 효과
 `;
 
 const AddButton = styled.button`
-  width: 40px;
+  min-width: 40px; // 변경: 최소 너비 설정
   height: 40px;
   border: none;
   background: transparent;
@@ -234,7 +245,7 @@ const MessageInput = styled.input`
 `;
 
 const SendButton = styled.button`
-  width: 40px;
+  min-width: 40px; // 변경: 최소 너비 설정
   height: 40px;
   border: none;
   background: transparent;
@@ -277,6 +288,15 @@ interface ChatProps {
 }
 
 const Chat: React.FC<ChatProps> = ({ onBack }) => {
+  // 뒤로가기 처리 함수
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      // 채팅룸 목록으로 이동 (기본값)
+      window.location.href = '/chat/list';
+    }
+  };
   // 메시지 상태 관리
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -410,7 +430,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   return (
     <Container>
       {/* 상단 헤더 */}
-      <Header title="공간한줄의최대글자는얼마일까요" showBackButton={true} onBack={onBack} />
+      <Header title="공간한줄의최대글자는얼마일까요" showBackButton={true} onBack={handleBack} />
 
       {/* 확정하기 버튼 */}
       <ConfirmButton onClick={handleConfirm}>

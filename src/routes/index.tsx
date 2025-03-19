@@ -51,89 +51,26 @@ const routes: RouteObject[] = [
           { index: true, element: <HomePage /> },
           { path: 'mypage', element: <MyPage /> },
           { path: 'mytrade', element: <MyTrade /> },
-          { path: 'storagelist', element: <StorageList /> },
-          { path: 'storagedetail', element: <StorageDetail /> },
-          { path: 'chatroomlist', element: <ChatroomList /> },
-          { path: 'chat', element: <Chat /> },
+          { path: 'myplace', element: <MyPlace /> },
+          { path: 'storage', element: <StorageList /> },
+          { path: 'storagedetail/:id', element: <StorageDetail /> },
+          // 채팅 리스트만 MainLayout에 포함
+          { path: 'chat/list', element: <ChatroomList /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },
-    ],
-  },
+      // 채팅 상세 페이지는 MainLayout 없이 독립적으로 렌더링 (네비바 제거)
+      { path: 'chat', element: <Chat onBack={() => window.history.back()} /> },
+      { path: 'chat/:id', element: <Chat onBack={() => window.history.back()} /> },
 
-  // 보관인만 접근 가능한 라우트
-  {
-    path: '/',
-    element: <PrivateRoute requiredRole={UserRole.Keeper} />,
-    children: [
-      {
-<<<<<<< HEAD
-        path: '/',
-        element: <MainLayout />,
-        children: [
-          { path: 'myplace', element: <MyPlace /> },
-          { path: 'editstorage', element: <EditStorage /> },
-        ],
-=======
-        path: 'myplace',
-        element: <MyPlace />,
-      },
-      {
-        path: 'mytrade',
-        element: <MyTrade />,
-      },
-      {
-        path: 'storagelist',
-        element: <StorageList />,
-      },
-      {
-        path: 'storagedetail',
-        element: <StorageDetail />,
-      },
-      {
-        path: 'keeper-registration',
-        element: <KeeperRegistration />,
-      },
-      {
-        path: 'registration/step1',
-        element: <Registration1 />,
-      },
-      {
-        path: 'registration/step2',
-        element: <Registration2 />,
-      },
-      {
-        path: 'registration/step3',
-        element: <Registration3 />,
-      },
-      {
-        path: 'editstorage',
-        element: <EditStorage />,
-      },
-      {
-        path: 'chatroomlist',
-        element: <ChatroomList />,
-      },
-      {
-        path: 'chat',
-        element: <Chat />,
-      },
-      {
-        path: '*',
-        element: <NotFoundPage />,
->>>>>>> a0fa272c04059a69ecd8b3a18ed2c0cf9ac3753c
-      },
-    ],
-  },
+      // 보관인 등록 관련 페이지
+      { path: 'keeper/registration', element: <KeeperRegistration /> }, // 보관인 등록 시작 페이지
+      { path: 'registration/step1', element: <Registration1 /> }, // 보관소 등록 1단계
+      { path: 'registration/step2', element: <Registration2 /> }, // 보관소 등록 2단계
+      { path: 'registration/step3', element: <Registration3 /> }, // 보관소 등록 3단계
 
-  // 보관인 등록 과정 (의뢰인만 접근 가능)
-  {
-    path: 'registration',
-    element: <PrivateRoute requiredRole={UserRole.Client} />,
-    children: [
-      { path: 'step1', element: <Registration1 /> },
-      { path: 'step2', element: <Registration2 /> },
-      { path: 'step3', element: <Registration3 /> },
+      // 보관소 수정 페이지
+      { path: 'editstorage', element: <EditStorage /> }, // 보관소 등록/수정 페이지
     ],
   },
 ];

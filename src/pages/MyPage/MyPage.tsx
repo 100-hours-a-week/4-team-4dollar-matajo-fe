@@ -6,7 +6,6 @@ import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
 import { useAuth, UserRole } from '../../contexts/AuthContext';
-import MapBottomSheet from '../Home/MapBottomSheet';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -22,10 +21,49 @@ const THEME = {
   white: '#FFFFFF',
 };
 
-const USER_STATE = {
-  isKeeper: true, // true면 보관인, false면 의뢰인
-  userName: '타조 89389',
-};
+// 푸터 컨테이너 추가
+const FooterContainer = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 20px;
+  margin-bottom: 10px;
+`;
+
+// 푸터 텍스트 스타일 수정
+const FooterText = styled.div<{ left?: number }>`
+  color: #666;
+  font-size: 12px;
+  font-family: 'Noto Sans KR';
+  font-weight: 300;
+  line-height: 14.4px;
+  word-wrap: break-word;
+  cursor: pointer;
+  margin: 0 5px;
+`;
+
+// 사업자 정보 컨테이너 추가
+const BusinessInfoContainer = styled.div`
+  margin-top: 30px;
+  text-align: center;
+  padding: 10px;
+  width: 100%;
+  border-top: 1px solid #eee;
+`;
+
+// 사업자 정보 스타일 추가
+const BusinessInfo = styled.p`
+  color: #999;
+  font-size: 10px;
+  font-family: 'Noto Sans KR';
+  font-weight: 300;
+  line-height: 1.4;
+  margin: 3px 0;
+`;
 
 // 모달관련 스타일 컴포넌트트
 const GrayText = styled.span`
@@ -44,6 +82,21 @@ const HighlightText = styled.span`
   font-weight: 700;
   line-height: 19.21px;
   word-wrap: break-word;
+`;
+
+// 메뉴 링크 컨테이너
+const MenuLinksContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+`;
+
+// 구분선 스타일 수정
+const Separator = styled.span`
+  color: #999;
+  font-size: 12px;
+  font-family: 'Noto Sans KR';
+  font-weight: 300;
 `;
 
 // 반복적으로 사용되는 스타일 컴포넌트 통합
@@ -85,33 +138,6 @@ const Divider = styled.div<{ top: number }>`
   top: ${props => props.top}px;
   outline: 1px ${THEME.borderColor} solid;
   outline-offset: -0.5px;
-`;
-
-const FooterText = styled.div<{ left: number }>`
-  position: absolute;
-  left: ${props => props.left}px;
-  top: 578px;
-  color: black;
-  font-size: 12px;
-  font-family: 'Noto Sans KR';
-  font-weight: 300;
-  line-height: 14.4px;
-  word-wrap: break-word;
-  cursor: pointer;
-`;
-
-const Separator = styled.div<{ left: number }>`
-  width: 8px;
-  height: 27px;
-  position: absolute;
-  left: ${props => props.left}px;
-  top: 571px;
-  color: black;
-  font-size: 12px;
-  font-family: 'Noto Sans KR';
-  font-weight: 300;
-  line-height: 14.4px;
-  word-wrap: break-word;
 `;
 
 const ProfileCard = styled.div`
@@ -218,12 +244,14 @@ const ActionIcon = styled.div<{ left: number; color: string }>`
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 375px;
+  width: 100%;
+  max-width: 375px;
   height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
+  margin: 0 auto;
   margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
 `;
 
@@ -324,9 +352,8 @@ const MyPage: React.FC = () => {
   const handleKeeperConfirm = () => {
     // 보관인 등록 페이지로 이동
     // 실제 구현 시에는 API 호출 및 정보 검증 로직 추가
-    navigate('/registration/step1');
+    navigate('/keeper/registration');
   };
-
   // 보관인 등록 취소 처리
   const handleKeeperCancel = () => {
     setIsKeeperModalOpen(false);
@@ -456,18 +483,28 @@ const MyPage: React.FC = () => {
         </MenuItemWrapper>
       </div>
       <Divider top={420} />
-      {/* 푸터 링크 */}
-      <FooterText left={74} onClick={moveToPrivacyPolicy}>
-        개인정보 약관
-      </FooterText>
-      <Separator left={153}>|</Separator>
-      <FooterText left={168} onClick={handleLogout}>
-        로그아웃
-      </FooterText>
-      <Separator left={224}>|</Separator>
-      <FooterText left={239} onClick={openMembershipModal}>
-        회원탈퇴
-      </FooterText>
+
+      {/* 푸터 영역 */}
+      <FooterContainer>
+        {/* 푸터 링크 */}
+        <MenuLinksContainer>
+          <FooterText onClick={moveToPrivacyPolicy}>개인정보 약관</FooterText>
+          <Separator>|</Separator>
+          <FooterText onClick={handleLogout}>로그아웃</FooterText>
+          <Separator>|</Separator>
+          <FooterText onClick={openMembershipModal}>회원탈퇴</FooterText>
+        </MenuLinksContainer>
+
+        {/* 사업자 정보 */}
+        <BusinessInfoContainer>
+          <BusinessInfo>(주)마타조 | 대표이사: 홍길동</BusinessInfo>
+          <BusinessInfo>사업자등록번호: 123-45-67890</BusinessInfo>
+          <BusinessInfo>주소: 서울특별시 영등포구 여의도동 국제금융로 10</BusinessInfo>
+          <BusinessInfo>고객센터: 1588-0000 | 이메일: support@matoajo.com</BusinessInfo>
+          <BusinessInfo>© 2025 마타조(MATOAJO) Inc. All rights reserved.</BusinessInfo>
+        </BusinessInfoContainer>
+      </FooterContainer>
+
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="마이페이지" />
     </Container>

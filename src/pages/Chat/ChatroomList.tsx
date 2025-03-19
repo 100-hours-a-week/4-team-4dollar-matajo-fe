@@ -400,7 +400,7 @@ const ChatroomList: React.FC = () => {
   return (
     <>
       {/* 상단 헤더 */}
-      <Header title="채팅 리스트" showBackButton={true} />
+      <Header title="채팅 리스트" showBackButton={true} onBack={() => navigate('/')} />
 
       <Container>
         {/* 로딩 상태 표시 */}

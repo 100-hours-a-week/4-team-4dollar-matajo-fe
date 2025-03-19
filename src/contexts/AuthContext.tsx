@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import * as authApi from '../api/auth';
 
 // 사용자 역할 타입 정의
 export enum UserRole {
@@ -12,6 +13,7 @@ export interface User {
   id: string;
   name: string;
   role: UserRole;
+  email?: string;
   token?: string;
 }
 
@@ -31,7 +33,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
-  loading: false, // 로딩 상태를 false로 변경
+  loading: false,
   login: async () => {},
   logout: () => {},
   registerAsKeeper: async () => false,
@@ -46,6 +48,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     id: '123456',
     name: '테스트 사용자',
     role: UserRole.Client,
+    email: 'test@example.com',
     token: 'dummy-token',
   });
 
@@ -56,15 +59,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const initAuth = async () => {
       try {
+        setLoading(true);
         const storedUser = localStorage.getItem('user');
         const token = localStorage.getItem('token');
 
         if (storedUser && token) {
           const userData = JSON.parse(storedUser);
 
-          // 토큰 유효성 검증 (실제로는 API 호출로 처리)
-          // const isValid = await validateToken(token);
-          const isValid = true; // 임시 코드
+          // 토큰 유효성 검증
+          const response = await authApi.validateToken(token);
+          const isValid = response.data.valid;
 
           if (isValid) {
             setUser({ ...userData, token });
@@ -72,10 +76,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // 토큰이 유효하지 않으면 로그아웃 처리
             localStorage.removeItem('user');
             localStorage.removeItem('token');
+            setUser(null);
           }
         }
       } catch (error) {
         console.error('인증 초기화 오류:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -90,17 +96,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setLoading(true);
 
-      // API 호출로 로그인 (임시 코드)
-      // const response = await api.login(email, password);
-      // const { user: userData, token } = response.data;
-
-      // 임시 데이터
-      const userData = {
-        id: '123456',
-        name: '타조 89389',
-        role: UserRole.Client,
-      };
-      const token = 'dummy-token';
+      // API 호출로 로그인
+      const response = await authApi.login(email, password);
+      const { user: userData, token } = response.data;
 
       // 사용자 정보와 토큰 저장
       localStorage.setItem('user', JSON.stringify(userData));
@@ -129,24 +127,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return false;
       }
 
-      // API 호출로 보관인 등록 (임시 코드)
-      // const response = await api.registerAsKeeper(user.id);
-      // const { success } = response.data;
+      // API 호출로 보관인 등록 (API 호출은 useAuth.ts에서 처리)
+      // 여기서는 상태만 업데이트
+      const updatedUser = {
+        ...user,
+        role: UserRole.Keeper,
+      };
 
-      const success = true; // 임시 코드
-
-      if (success) {
-        const updatedUser = {
-          ...user,
-          role: UserRole.Keeper,
-        };
-
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-        return true;
-      }
-
-      return false;
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      return true;
     } catch (error) {
       console.error('보관인 등록 오류:', error);
       return false;

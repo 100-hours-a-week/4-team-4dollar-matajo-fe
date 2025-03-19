@@ -15,9 +15,7 @@ const LayoutContainer = styled.div`
   position: relative;
 `;
 
-// LayoutContainer는 수정할 필요 없음
-
-// MainContent를 수정해야 함
+// MainContent 스타일
 const MainContent = styled.main`
   flex: 1;
   padding: 47px 0 60px 0; // 헤더(47px)와 네비게이션(60px) 높이만큼 패딩
@@ -28,19 +26,20 @@ const MainContent = styled.main`
   position: relative; // 위치 지정
 `;
 
-// 네비게이션 메뉴 매핑
+// 네비게이션 메뉴 매핑 - routes/index.tsx와 일치하도록 수정
 const tabPathMap = {
   홈: '/',
-  보관소: '/storagelist',
-  채팅: '/chat',
+  보관소: '/storage', // '/storagelist'에서 '/storage'로 수정
+  채팅: '/chat/list', // '/chat'에서 '/chat/list'로 수정
   마이페이지: '/mypage',
 };
 
-// 경로에 따른 헤더 제목 매핑
+// 경로에 따른 헤더 제목 매핑 - 실제 라우트와 일치하도록 수정
 const pathTitleMap: { [key: string]: string } = {
   '/': '홈',
-  '/storagelist': '보관소',
+  '/storage': '보관소', // '/storagelist'에서 '/storage'로 수정
   '/storagedetail': '보관소 상세',
+  '/chat/list': '채팅', // '/chat'에서 '/chat/list'로 수정
   '/chat': '채팅',
   '/mypage': '마이페이지',
   '/login': '로그인',
@@ -49,10 +48,17 @@ const pathTitleMap: { [key: string]: string } = {
   '/registration/step1': '회원가입 (1/3)',
   '/registration/step2': '회원가입 (2/3)',
   '/registration/step3': '회원가입 (3/3)',
+  '/editstorage': '보관소 등록', // 보관소 등록 페이지 추가
 };
 
 // 네비게이션이 표시되지 않는 경로 목록
-const noNavPaths = ['/login', '/registration/step1', '/registration/step2', '/registration/step3'];
+const noNavPaths = [
+  '/login',
+  '/registration/step1',
+  '/registration/step2',
+  '/registration/step3',
+  '/chat/', // 채팅 상세 페이지에서 네비바 숨기기 (앞부분만 매칭)
+];
 
 const MainLayout: React.FC = () => {
   const location = useLocation();
@@ -65,18 +71,34 @@ const MainLayout: React.FC = () => {
   useEffect(() => {
     const path = location.pathname;
 
+    // 경로의 첫 번째 부분을 추출 (예: '/chat/123' -> '/chat')
+    const basePath = '/' + path.split('/')[1];
+
+    // 상세 페이지 경로 처리 (storagedetail/:id 와 같은 패턴)
+    const isDetailPath = path.includes('/storagedetail/');
+
     // 현재 경로에 해당하는 타이틀 설정
-    const title = pathTitleMap[path] || '마타조';
-    setPageTitle(title);
+    let title = pathTitleMap[path] || pathTitleMap[basePath];
+
+    // 상세 페이지의 경우 기본 타이틀 사용
+    if (isDetailPath) {
+      title = '보관소 상세';
+    } else if (path.match(/^\/chat\/\d+$/)) {
+      title = '채팅';
+    }
+
+    setPageTitle(title || '마타조');
 
     // 네비게이션 표시 여부 결정
-    const shouldShowNav = !noNavPaths.some(noNavPath => path.startsWith(noNavPath));
+    const shouldShowNav = !noNavPaths.some(
+      noNavPath => path === noNavPath || (noNavPath.endsWith('/') && path.startsWith(noNavPath)),
+    );
     setShowNav(shouldShowNav);
 
     // 현재 경로에 해당하는 활성 탭 설정
     if (path === '/') {
       setActiveTab('홈');
-    } else if (path.startsWith('/storagelist') || path.startsWith('/storagedetail')) {
+    } else if (path.startsWith('/storage') || path.startsWith('/storagedetail')) {
       setActiveTab('보관소');
     } else if (path.startsWith('/chat')) {
       setActiveTab('채팅');
@@ -107,7 +129,7 @@ const MainLayout: React.FC = () => {
         showBackButton={location.pathname !== '/'}
         onBack={handleBack}
         showOptionButton={
-          location.pathname === '/storagedetail' || location.pathname === '/mytrade'
+          location.pathname.startsWith('/storagedetail/') || location.pathname === '/mytrade'
         }
         dropdownOptions={[
           {

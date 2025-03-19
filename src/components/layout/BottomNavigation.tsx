@@ -1,170 +1,129 @@
 import React from 'react';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
-// 테마 상수 - 실제로는 공통 테마 파일에서 import
+// 테마 컬러 상수 정의
 const THEME = {
-  primary: '#3835FD',
-  background: '#F5F5FF',
+  primary: '#3A00E5', // 선택되었을 때
+  inactive: '#61646B', // 선택 안 되었을 때
+  background: '#FFFFFF',
+  gray: '#9E9E9E',
 };
 
-// 스타일 정의
-const FixedNavContainer = styled.div`
+// 네비게이션 컨테이너
+const NavContainer = styled.div`
   position: fixed;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
   width: 100%;
-  z-index: 100;
+  max-width: 375px;
+  height: 76px;
   background: ${THEME.background};
-  display: flex;
-  justify-content: center;
-`;
-
-const NavContainer = styled.div`
-  width: 375px;
-  height: 60px;
-  padding: 16px 0px 0px;
-  background: ${THEME.background};
-  overflow: hidden;
-  border-top: 1px #efeff0 solid;
   display: flex;
   justify-content: space-around;
-  align-items: flex-start;
+  align-items: center;
+  box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  margin: 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
 `;
 
-const NavItem = styled.div<{ isActive?: boolean }>`
-  width: 70px;
-  padding: 0 3px;
+// 네비게이션 아이템
+const NavItem = styled.div<{ isActive: boolean }>`
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
   cursor: pointer;
-`;
-
-const NavIcon = styled.div<{ isActive?: boolean }>`
-  width: 28px;
-  height: 28px;
-  position: relative;
-`;
-
-const NavText = styled.div<{ isActive?: boolean }>`
-  text-align: center;
-  width: 60px;
-  color: ${props => (props.isActive ? THEME.primary : '#61646B')};
-  font-size: 11px;
+  color: ${props => (props.isActive ? THEME.primary : THEME.inactive)};
+  font-size: 10px;
   font-family: 'Noto Sans KR';
-  font-weight: 350;
-  line-height: 16px;
-  letter-spacing: 0.6px;
-  word-wrap: break-word;
-  padding: 4px 0px;
+  font-weight: ${props => (props.isActive ? 700 : 500)};
+  transition: all 0.2s ease;
 `;
 
-// SVG 아이콘 컴포넌트
-const HomeIcon = styled.div<{ isActive?: boolean }>`
-  width: 23.92px;
-  height: 25.09px;
-  left: 2.33px;
-  top: 1.17px;
-  position: absolute;
-  background: ${props => (props.isActive ? THEME.primary : '#61646B')};
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='26' fill='none'%3E%3Cpath fill='%23000' d='m23.217 10.523-2.916-2.525V3.5a.591.591 0 0 0-.583-.6h-2.333a.591.591 0 0 0-.584.6v1.68l-4.3-3.721a1.167 1.167 0 0 0-1.533 0L.285 10.523a.597.597 0 0 0-.049.835l1.015 1.236a.58.58 0 0 0 .823.051L11.92 4.04l9.846 8.606a.58.58 0 0 0 .823-.051l1.015-1.236a.597.597 0 0 0-.385-.835Zm-11.3 1.67v9.3a.591.591 0 0 0 .583.6h3.5a.591.591 0 0 0 .583-.6v-5.4h3.5v5.4a.591.591 0 0 0 .584.6h3.5a.591.591 0 0 0 .583-.6v-9.3L11.92 4.04l-10.003 8.153v9.3a.591.591 0 0 0 .583.6h3.5a.591.591 0 0 0 .584-.6v-5.4h3.5v5.4a.591.591 0 0 0 .583.6'/%3E%3C/svg%3E")
-    no-repeat 50% 50%;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='26' fill='none'%3E%3Cpath fill='%23000' d='m23.217 10.523-2.916-2.525V3.5a.591.591 0 0 0-.583-.6h-2.333a.591.591 0 0 0-.584.6v1.68l-4.3-3.721a1.167 1.167 0 0 0-1.533 0L.285 10.523a.597.597 0 0 0-.049.835l1.015 1.236a.58.58 0 0 0 .823.051L11.92 4.04l9.846 8.606a.58.58 0 0 0 .823-.051l1.015-1.236a.597.597 0 0 0-.385-.835Zm-11.3 1.67v9.3a.591.591 0 0 0 .583.6h3.5a.591.591 0 0 0 .583-.6v-5.4h3.5v5.4a.591.591 0 0 0 .584.6h3.5a.591.591 0 0 0 .583-.6v-9.3L11.92 4.04l-10.003 8.153v9.3a.591.591 0 0 0 .583.6h3.5a.591.591 0 0 0 .584-.6v-5.4h3.5v5.4a.591.591 0 0 0 .583.6'/%3E%3C/svg%3E")
-    no-repeat 50% 50%;
+// 네비게이션 아이콘 (SVG를 위한 스타일)
+const NavIcon = styled.svg<{ isActive: boolean }>`
+  width: 24px;
+  height: 24px;
+  margin-bottom: 4px;
+  fill: ${props => (props.isActive ? THEME.primary : THEME.inactive)};
+  transition: fill 0.2s ease;
 `;
 
-const StorageIcon = styled.div<{ isActive?: boolean }>`
-  width: 22.72px;
-  height: 22.72px;
-  left: 2.33px;
-  top: 2.33px;
-  position: absolute;
-  background: ${props => (props.isActive ? THEME.primary : '#61646B')};
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='23' height='23' fill='none'%3E%3Cpath fill='%23000' d='M20.392 2.333H8.975a1.424 1.424 0 0 0-1.017.425L2.758 8.017a1.424 1.424 0 0 0-.425 1.025v10.333c0 .781.642 1.423 1.422 1.423h16.637a1.422 1.422 0 0 0 1.422-1.423V3.756a1.422 1.422 0 0 0-1.422-1.423ZM8.975 10.083a1.417 1.417 0 0 1-1.417-1.423V3.756h12.834v14.197H3.755v-7.042h3.803a1.424 1.424 0 0 0 1.417-1.423v.595Zm0-2.042V4.664L6.639 8.041h2.336Z'/%3E%3C/svg%3E")
-    no-repeat 50% 50%;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='23' height='23' fill='none'%3E%3Cpath fill='%23000' d='M20.392 2.333H8.975a1.424 1.424 0 0 0-1.017.425L2.758 8.017a1.424 1.424 0 0 0-.425 1.025v10.333c0 .781.642 1.423 1.422 1.423h16.637a1.422 1.422 0 0 0 1.422-1.423V3.756a1.422 1.422 0 0 0-1.422-1.423ZM8.975 10.083a1.417 1.417 0 0 1-1.417-1.423V3.756h12.834v14.197H3.755v-7.042h3.803a1.424 1.424 0 0 0 1.417-1.423v.595Zm0-2.042V4.664L6.639 8.041h2.336Z'/%3E%3C/svg%3E")
-    no-repeat 50% 50%;
-`;
+// 탭 정의 타입
+export type TabType = '홈' | '보관소' | '채팅' | '마이페이지';
 
-const ChatIcon = styled.div<{ isActive?: boolean }>`
-  width: 21.58px;
-  height: 20.24px;
-  left: 3.5px;
-  top: 1.17px;
-  position: absolute;
-  background: ${props => (props.isActive ? THEME.primary : '#61646B')};
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='23' fill='none'%3E%3Cpath fill='%23000' d='M19.25 1.167H3.5c-1.925 0-3.5 1.58-3.5 3.5v10.5c0 1.92 1.575 3.5 3.5 3.5h5.25l3.5 3.5 3.5-3.5h3.5c1.925 0 3.5-1.58 3.5-3.5v-10.5c0-1.92-1.575-3.5-3.5-3.5Zm1.75 14c0 .962-.788 1.75-1.75 1.75h-4.08l-1.92 1.925-1.925-1.925H3.5c-.963 0-1.75-.788-1.75-1.75v-10.5c0-.962.787-1.75 1.75-1.75h15.75c.962 0 1.75.788 1.75 1.75v10.5Zm-7-5.833v-1.75h-7v1.75h7Zm3.5-3.5v-1.75h-10.5v1.75h10.5Z'/%3E%3C/svg%3E")
-    no-repeat 50% 50%;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='23' fill='none'%3E%3Cpath fill='%23000' d='M19.25 1.167H3.5c-1.925 0-3.5 1.58-3.5 3.5v10.5c0 1.92 1.575 3.5 3.5 3.5h5.25l3.5 3.5 3.5-3.5h3.5c1.925 0 3.5-1.58 3.5-3.5v-10.5c0-1.92-1.575-3.5-3.5-3.5Zm1.75 14c0 .962-.788 1.75-1.75 1.75h-4.08l-1.92 1.925-1.925-1.925H3.5c-.963 0-1.75-.788-1.75-1.75v-10.5c0-.962.787-1.75 1.75-1.75h15.75c.962 0 1.75.788 1.75 1.75v10.5Zm-7-5.833v-1.75h-7v1.75h7Zm3.5-3.5v-1.75h-10.5v1.75h10.5Z'/%3E%3C/svg%3E")
-    no-repeat 50% 50%;
-`;
-
-const ProfileIcon = styled.div<{ isActive?: boolean }>`
-  width: 18.48px;
-  height: 23px;
-  left: 4.67px;
-  top: 2.33px;
-  position: absolute;
-  background: ${props => (props.isActive ? THEME.primary : '#61646B')};
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='23' fill='none'%3E%3Cpath fill='%23000' d='M9.333 10.083c2.35 0 4.25-1.905 4.25-4.25 0-2.345-1.9-4.25-4.25-4.25-2.35 0-4.25 1.905-4.25 4.25 0 2.345 1.9 4.25 4.25 4.25Zm0-6.791c1.4 0 2.542 1.141 2.542 2.541 0 1.4-1.142 2.542-2.542 2.542-1.4 0-2.541-1.142-2.541-2.542 0-1.4 1.141-2.541 2.541-2.541Zm0 9.333c-2.833 0-8.5 1.425-8.5 4.25v2.542h17v-2.542c0-2.825-5.667-4.25-8.5-4.25Zm0 1.708c3.184 0 5.892 1.283 6.792 2.542H2.542c.891-1.26 3.608-2.542 6.791-2.542Z'/%3E%3C/svg%3E")
-    no-repeat 50% 50%;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='23' fill='none'%3E%3Cpath fill='%23000' d='M9.333 10.083c2.35 0 4.25-1.905 4.25-4.25 0-2.345-1.9-4.25-4.25-4.25-2.35 0-4.25 1.905-4.25 4.25 0 2.345 1.9 4.25 4.25 4.25Zm0-6.791c1.4 0 2.542 1.141 2.542 2.541 0 1.4-1.142 2.542-2.542 2.542-1.4 0-2.541-1.142-2.541-2.542 0-1.4 1.141-2.541 2.541-2.541Zm0 9.333c-2.833 0-8.5 1.425-8.5 4.25v2.542h17v-2.542c0-2.825-5.667-4.25-8.5-4.25Zm0 1.708c3.184 0 5.892 1.283 6.792 2.542H2.542c.891-1.26 3.608-2.542 6.791-2.542Z'/%3E%3C/svg%3E")
-    no-repeat 50% 50%;
-`;
-
-// 네비게이션 아이템 타입
-type NavItemType = '홈' | '보관소' | '채팅' | '마이페이지';
-
-// Props 타입 정의
+// 프롭스 정의
 interface BottomNavigationProps {
-  activeTab: NavItemType;
-  onTabChange?: (tab: NavItemType) => void;
+  activeTab: string;
+  onTabChange?: (tab: TabType) => void;
 }
 
-// 하단 네비게이션 컴포넌트
+// SVG 아이콘 컴포넌트 정의
+const HomeIcon = ({ isActive }: { isActive: boolean }) => (
+  <NavIcon isActive={isActive} viewBox="0 0 24 24">
+    <path d="M12 2L2 9v12h8v-6h4v6h8V9L12 2zm0 2.83l6 5V19h-4v-6H10v6H6V9.83l6-5z" />
+  </NavIcon>
+);
+
+const StorageIcon = ({ isActive }: { isActive: boolean }) => (
+  <NavIcon isActive={isActive} viewBox="0 0 24 24">
+    <path d="M20 2H4a2 2 0 00-2 2v16a2 2 0 002 2h16a2 2 0 002-2V4a2 2 0 00-2-2zM4 4h16v4H4V4zm0 6h16v10H4V10z" />
+  </NavIcon>
+);
+
+const ChatIcon = ({ isActive }: { isActive: boolean }) => (
+  <NavIcon isActive={isActive} viewBox="0 0 24 24">
+    <path d="M20 2H4a2 2 0 00-2 2v14l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2zm0 12H6l-2 2V4h16v10z" />
+  </NavIcon>
+);
+
+const MyPageIcon = ({ isActive }: { isActive: boolean }) => (
+  <NavIcon isActive={isActive} viewBox="0 0 24 24">
+    <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.42 0-8 2.24-8 5v2h16v-2c0-2.76-3.58-5-8-5z" />
+  </NavIcon>
+);
+
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabChange }) => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  // 탭 데이터
+  const tabs: Array<{ name: TabType; icon: React.FC<{ isActive: boolean }>; path: string }> = [
+    { name: '홈', icon: HomeIcon, path: '/' },
+    { name: '보관소', icon: StorageIcon, path: '/storage' },
+    { name: '채팅', icon: ChatIcon, path: '/chat/list' },
+    { name: '마이페이지', icon: MyPageIcon, path: '/mypage' },
+  ];
+
   // 탭 클릭 핸들러
-  const handleTabClick = (tab: NavItemType) => {
+  const handleTabClick = (tab: TabType, path: string) => {
     if (onTabChange) {
       onTabChange(tab);
+    } else {
+      if (!isAuthenticated && path !== '/') {
+        navigate('/login');
+        return;
+      }
+      navigate(path);
     }
   };
 
   return (
-    <FixedNavContainer>
-      <NavContainer>
-        <NavItem isActive={activeTab === '홈'} onClick={() => handleTabClick('홈')}>
-          <NavIcon>
-            <HomeIcon isActive={activeTab === '홈'} />
-          </NavIcon>
-          <NavText isActive={activeTab === '홈'}>홈</NavText>
+    <NavContainer>
+      {tabs.map(tab => (
+        <NavItem
+          key={tab.name}
+          isActive={activeTab === tab.name}
+          onClick={() => handleTabClick(tab.name, tab.path)}
+        >
+          <tab.icon isActive={activeTab === tab.name} />
+          {tab.name}
         </NavItem>
-
-        <NavItem isActive={activeTab === '보관소'} onClick={() => handleTabClick('보관소')}>
-          <NavIcon>
-            <StorageIcon isActive={activeTab === '보관소'} />
-          </NavIcon>
-          <NavText isActive={activeTab === '보관소'}>보관소</NavText>
-        </NavItem>
-
-        <NavItem isActive={activeTab === '채팅'} onClick={() => handleTabClick('채팅')}>
-          <NavIcon>
-            <ChatIcon isActive={activeTab === '채팅'} />
-          </NavIcon>
-          <NavText isActive={activeTab === '채팅'}>채팅</NavText>
-        </NavItem>
-
-        <NavItem isActive={activeTab === '마이페이지'} onClick={() => handleTabClick('마이페이지')}>
-          <NavIcon>
-            <ProfileIcon isActive={activeTab === '마이페이지'} />
-          </NavIcon>
-          <NavText isActive={activeTab === '마이페이지'}>마이페이지</NavText>
-        </NavItem>
-      </NavContainer>
-    </FixedNavContainer>
+      ))}
+    </NavContainer>
   );
 };
 
