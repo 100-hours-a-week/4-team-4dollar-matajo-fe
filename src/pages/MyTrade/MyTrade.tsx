@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import { useNavigate } from 'react-router-dom';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -129,6 +130,13 @@ interface MyTradeProps {
 
 // 메인 컴포넌트
 const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
+  const navigate = useNavigate();
+
+  // 뒤로가기 핸들러 함수 - MyPage로 이동
+  const handleBackClick = () => {
+    navigate('/mypage');
+  };
+
   // 더미 데이터
   const transactions: TransactionItem[] = [
     {
@@ -158,8 +166,8 @@ const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
 
   return (
     <Container>
-      {/* 페이지 헤더 */}
-      <Header title="내 거래 내역" showBackButton={true} onBack={onBack} />
+      {/* 페이지 헤더 - onBack prop을 handleBackClick으로 설정 */}
+      <Header title="내 거래 내역" showBackButton={true} onBack={handleBackClick} />
       {/* 거래 내역 목록 */}
       {transactions.map((item, index) => {
         const baseTop = 87 + index * 162;

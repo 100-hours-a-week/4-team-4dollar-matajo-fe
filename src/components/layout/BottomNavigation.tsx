@@ -1,198 +1,129 @@
 import React from 'react';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
-// 테마 상수 - 실제로는 공통 테마 파일에서 import
+// 테마 컬러 상수 정의
 const THEME = {
-  primary: '#3835FD',
-  background: '#F5F5FF',
+  primary: '#3A00E5', // 선택되었을 때
+  inactive: '#61646B', // 선택 안 되었을 때
+  background: '#FFFFFF',
+  gray: '#9E9E9E',
 };
 
-// 스타일 정의
-const FixedNavContainer = styled.div`
+// 네비게이션 컨테이너
+const NavContainer = styled.div`
   position: fixed;
   bottom: 0;
-  left: 0;
   width: 100%;
-  z-index: 100;
+  max-width: 375px;
+  height: 76px;
   background: ${THEME.background};
-`;
-
-const NavContainer = styled.div`
-  width: 375px;
-  height: 60px;
-  padding: 16px 0px 0px;
-  background: ${THEME.background};
-  overflow: hidden;
-  border-top: 1px #efeff0 solid;
   display: flex;
-  justify-content: flex-start;
-  align-items: flex-start;
-  gap: 32px;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  margin: 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
 `;
 
-const NavItem = styled.div<{ isActive?: boolean }>`
-  width: 70px;
-  padding: 0 3px;
+// 네비게이션 아이템
+const NavItem = styled.div<{ isActive: boolean }>`
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
   cursor: pointer;
-`;
-
-const NavIcon = styled.div`
-  width: 28px;
-  height: 28px;
-  position: relative;
-`;
-
-const NavText = styled.div<{ isActive?: boolean }>`
-  text-align: center;
-  width: 60px;
-  color: ${props => (props.isActive ? THEME.primary : '#61646B')};
-  font-size: 11px;
+  color: ${props => (props.isActive ? THEME.primary : THEME.inactive)};
+  font-size: 10px;
   font-family: 'Noto Sans KR';
-  font-weight: 350;
-  line-height: 16px;
-  letter-spacing: 0.6px;
-  word-wrap: break-word;
-  padding: 4px 0px;
+  font-weight: ${props => (props.isActive ? 700 : 500)};
+  transition: all 0.2s ease;
 `;
 
-// 네비게이션 아이템 타입
-type NavItemType = '홈' | '보관소' | '채팅' | '마이페이지';
+// 네비게이션 아이콘 (SVG를 위한 스타일)
+const NavIcon = styled.svg<{ isActive: boolean }>`
+  width: 24px;
+  height: 24px;
+  margin-bottom: 4px;
+  fill: ${props => (props.isActive ? THEME.primary : THEME.inactive)};
+  transition: fill 0.2s ease;
+`;
 
-// Props 타입 정의
+// 탭 정의 타입
+export type TabType = '홈' | '보관소' | '채팅' | '마이페이지';
+
+// 프롭스 정의
 interface BottomNavigationProps {
-  activeTab: NavItemType;
-  onTabChange?: (tab: NavItemType) => void;
+  activeTab: string;
+  onTabChange?: (tab: TabType) => void;
 }
 
-// 하단 네비게이션 컴포넌트
+// SVG 아이콘 컴포넌트 정의
+const HomeIcon = ({ isActive }: { isActive: boolean }) => (
+  <NavIcon isActive={isActive} viewBox="0 0 24 24">
+    <path d="M12 2L2 9v12h8v-6h4v6h8V9L12 2zm0 2.83l6 5V19h-4v-6H10v6H6V9.83l6-5z" />
+  </NavIcon>
+);
+
+const StorageIcon = ({ isActive }: { isActive: boolean }) => (
+  <NavIcon isActive={isActive} viewBox="0 0 24 24">
+    <path d="M20 2H4a2 2 0 00-2 2v16a2 2 0 002 2h16a2 2 0 002-2V4a2 2 0 00-2-2zM4 4h16v4H4V4zm0 6h16v10H4V10z" />
+  </NavIcon>
+);
+
+const ChatIcon = ({ isActive }: { isActive: boolean }) => (
+  <NavIcon isActive={isActive} viewBox="0 0 24 24">
+    <path d="M20 2H4a2 2 0 00-2 2v14l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2zm0 12H6l-2 2V4h16v10z" />
+  </NavIcon>
+);
+
+const MyPageIcon = ({ isActive }: { isActive: boolean }) => (
+  <NavIcon isActive={isActive} viewBox="0 0 24 24">
+    <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.42 0-8 2.24-8 5v2h16v-2c0-2.76-3.58-5-8-5z" />
+  </NavIcon>
+);
+
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabChange }) => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  // 탭 데이터
+  const tabs: Array<{ name: TabType; icon: React.FC<{ isActive: boolean }>; path: string }> = [
+    { name: '홈', icon: HomeIcon, path: '/' },
+    { name: '보관소', icon: StorageIcon, path: '/storage' },
+    { name: '채팅', icon: ChatIcon, path: '/chat/list' },
+    { name: '마이페이지', icon: MyPageIcon, path: '/mypage' },
+  ];
+
   // 탭 클릭 핸들러
-  const handleTabClick = (tab: NavItemType) => {
+  const handleTabClick = (tab: TabType, path: string) => {
     if (onTabChange) {
       onTabChange(tab);
+    } else {
+      if (!isAuthenticated && path !== '/') {
+        navigate('/login');
+        return;
+      }
+      navigate(path);
     }
   };
 
-  // 각 아이콘의 렌더링 - 실제로는 SVG나 아이콘 컴포넌트를 사용하는 것이 좋음
-  const renderHomeIcon = () => (
-    <div style={{ width: 28, height: 28, left: 0, top: 0, position: 'absolute' }}>
-      <div
-        style={{
-          width: 23.92,
-          height: 25.09,
-          left: 2.33,
-          top: 1.17,
-          position: 'absolute',
-          background: 'black',
-        }}
-      />
-    </div>
-  );
-
-  const renderBoardIcon = () => (
-    <div style={{ width: 28, height: 28, left: 0, top: 0, position: 'absolute' }}>
-      <div
-        style={{
-          width: 22.72,
-          height: 22.72,
-          left: 2.33,
-          top: 2.33,
-          position: 'absolute',
-          background: 'black',
-        }}
-      />
-      <div
-        style={{
-          width: 5.86,
-          height: 5.85,
-          left: 20.11,
-          top: 20.66,
-          position: 'absolute',
-          background: '#61646B',
-        }}
-      />
-    </div>
-  );
-
-  const renderChatIcon = () => (
-    <div style={{ width: 28, height: 28, left: 0, top: 0, position: 'absolute' }}>
-      <div
-        style={{
-          width: 21.58,
-          height: 20.24,
-          left: 3.5,
-          top: 1.17,
-          position: 'absolute',
-          background: 'black',
-        }}
-      />
-      <div
-        style={{
-          width: 7.43,
-          height: 3.08,
-          left: 10.52,
-          top: 23.17,
-          position: 'absolute',
-          background: '#61646B',
-        }}
-      />
-    </div>
-  );
-
-  const renderProfileIcon = () => (
-    <div style={{ width: 28, height: 28, left: 0, top: 0, position: 'absolute' }}>
-      <div
-        style={{
-          width: 18.48,
-          height: 8.6,
-          left: 4.67,
-          top: 16.91,
-          position: 'absolute',
-          background: 'black',
-        }}
-      />
-      <div
-        style={{
-          width: 12.39,
-          height: 12.39,
-          left: 7.71,
-          top: 2.33,
-          position: 'absolute',
-          background: 'black',
-        }}
-      />
-    </div>
-  );
-
   return (
-    <FixedNavContainer>
-      <NavContainer>
-        <NavItem isActive={activeTab === '홈'} onClick={() => handleTabClick('홈')}>
-          <NavIcon>{renderHomeIcon()}</NavIcon>
-          <NavText isActive={activeTab === '홈'}>홈</NavText>
+    <NavContainer>
+      {tabs.map(tab => (
+        <NavItem
+          key={tab.name}
+          isActive={activeTab === tab.name}
+          onClick={() => handleTabClick(tab.name, tab.path)}
+        >
+          <tab.icon isActive={activeTab === tab.name} />
+          {tab.name}
         </NavItem>
-
-        <NavItem isActive={activeTab === '보관소'} onClick={() => handleTabClick('보관소')}>
-          <NavIcon>{renderBoardIcon()}</NavIcon>
-          <NavText isActive={activeTab === '보관소'}>보관소</NavText>
-        </NavItem>
-
-        <NavItem isActive={activeTab === '채팅'} onClick={() => handleTabClick('채팅')}>
-          <NavIcon>{renderChatIcon()}</NavIcon>
-          <NavText isActive={activeTab === '채팅'}>채팅</NavText>
-        </NavItem>
-
-        <NavItem isActive={activeTab === '마이페이지'} onClick={() => handleTabClick('마이페이지')}>
-          <NavIcon>{renderProfileIcon()}</NavIcon>
-          <NavText isActive={activeTab === '마이페이지'}>마이페이지</NavText>
-        </NavItem>
-      </NavContainer>
-    </FixedNavContainer>
+      ))}
+    </NavContainer>
   );
 };
 

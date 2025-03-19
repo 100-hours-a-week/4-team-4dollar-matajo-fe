@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import StorageFilterModal, { FilterOptions } from './StorageFilterModal';
+import { getStorageList } from '../../api/place';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -19,12 +21,14 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 375px;
+  width: 100%;
+  max-width: 375px;
   height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
+  margin: 0 auto;
   margin-top: -36px;
   margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
 `;
@@ -57,23 +61,6 @@ const SearchIcon = styled.div`
   line-height: 0.7;
 `;
 
-// 필터 스크롤 컨테이너
-const FilterContainer = styled.div`
-  position: fixed;
-  top: 108px;
-  left: 0;
-  width: 335px;
-  height: 30px;
-  overflow-x: auto;
-  white-space: nowrap;
-  scrollbar-width: none; /* Firefox */
-  &::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Edge */
-  }
-  padding-left: 20px;
-  padding-right: 20px;
-`;
-
 // 필터 태그 기본 스타일
 const FilterTag = styled.div<{ isActive: boolean }>`
   display: inline-flex;
@@ -92,22 +79,42 @@ const FilterTag = styled.div<{ isActive: boolean }>`
   white-space: nowrap;
   cursor: pointer;
 `;
+// 필터 스크롤 컨테이너 (개선된 버전)
+const FilterContainer = styled.div`
+  position: fixed;
+  top: 108px;
+  left: 0;
+  width: 100%;
+  max-width: 375px;
+  height: 40px; // 약간 높이 증가
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none; /* Firefox */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+  }
+  padding: 5px 20px;
+  z-index: 999; // z-index 증가
+  background-color: ${THEME.white};
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); // 약간의 그림자 추가
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+`;
 
-// 아이템 그리드 컨테이너
+// 아이템 그리드 컨테이너 (패딩 상단 조정)
 const ItemGridContainer = styled.div`
   position: absolute;
-  top: 180px;
+  top: 180px; // 필터 컨테이너 높이에 맞게 조정
   left: 0;
   width: 100%;
   height: calc(100% - 180px - 76px); /* 헤더 + 필터 + 네비게이션 높이 제외 */
   overflow-y: auto;
-  padding: 0 15px;
+  padding: 10px 15px 76px; // 상단 패딩과 하단 패딩 조정
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
-  padding-bottom: 76px; /* 네비게이션 높이만큼 패딩 */
 `;
-
 // 스크롤바 스타일링
 const ScrollIndicator = styled.div`
   position: absolute;
@@ -124,11 +131,16 @@ const StorageItem = styled.div`
   display: flex;
   flex-direction: column;
   margin-bottom: 20px;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.9;
+  }
 `;
 
 // 보관소 이미지 컨테이너
 const StorageImageContainer = styled.div`
-  width: 150px;
+  width: 100%;
   height: 120px;
   background-color: #f0f0f0;
   border-radius: 8px;
@@ -138,6 +150,7 @@ const StorageImageContainer = styled.div`
   align-items: center;
   color: #aaa;
   font-size: 14px;
+  overflow: hidden;
 `;
 
 // 보관소 이미지
@@ -182,7 +195,7 @@ type FilterType = '전체' | '보관위치' | '보관방식' | '물건유형' | 
 
 // 보관소 아이템 타입 정의
 interface StorageItemType {
-  id: number;
+  id: number | string;
   name: string;
   location: string;
   price: number;
@@ -195,6 +208,8 @@ interface StorageItemType {
 }
 
 const StorageList: React.FC = () => {
+  const navigate = useNavigate();
+
   // 활성화된 필터 상태
   const [currentFilter, setCurrentFilter] = useState<FilterType>('전체');
 
@@ -220,7 +235,7 @@ const StorageList: React.FC = () => {
   const [totalItems, setTotalItems] = useState<number>(24);
 
   // 로딩 상태
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   // 스크롤 컨테이너 ref
   const gridRef = useRef<HTMLDivElement>(null);
@@ -267,9 +282,33 @@ const StorageList: React.FC = () => {
 
   // 초기 데이터 로드
   useEffect(() => {
-    const initialItems = generateDummyItems(1, 12);
-    setStorageItems(initialItems);
-    setFilteredItems(initialItems);
+    const fetchStorageList = async () => {
+      try {
+        setLoading(true);
+
+        // API 호출을 통해 보관소 목록 가져오기
+        // 실제 구현에서는 API 호출을 사용하지만, 현재는 주석 처리하고 더미 데이터 사용
+        // const response = await getStorageList();
+        // const items = response.data.items.map(item => ({
+        //   id: item.id,
+        //   name: item.name,
+        //   location: item.location,
+        //   price: item.price,
+        //   imageUrl: item.imageUrl,
+        // }));
+
+        // 더미 데이터 사용
+        const initialItems = generateDummyItems(1, 12);
+        setStorageItems(initialItems);
+        setFilteredItems(initialItems);
+      } catch (error) {
+        console.error('보관소 목록 로드 오류:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStorageList();
   }, []);
 
   // 필터 활성화 상태 확인 함수
@@ -402,8 +441,8 @@ const StorageList: React.FC = () => {
   };
 
   // 상세 페이지로 이동하는 함수
-  const handleItemClick = (id: number) => {
-    // navigate(`/storagedetail/${id}`);
+  const handleItemClick = (id: number | string) => {
+    navigate(`/storagedetail/${id}`);
     console.log(`아이템 ${id} 클릭됨, 상세 페이지로 이동`);
   };
 
@@ -439,23 +478,33 @@ const StorageList: React.FC = () => {
 
       {/* 아이템 그리드 */}
       <ItemGridContainer ref={gridRef} onScroll={handleScroll}>
-        {filteredItems.map(item => (
-          <StorageItem key={item.id} onClick={() => handleItemClick(item.id)}>
-            <StorageImageContainer>
-              {item.imageUrl ? (
-                <StorageImage src={item.imageUrl} alt={item.name} />
-              ) : (
-                <span>이미지 준비중</span>
-              )}
-            </StorageImageContainer>
-            <StorageName>{item.name}</StorageName>
-            <StorageLocation>{item.location}</StorageLocation>
-            <StoragePrice>{formatPrice(item.price)}</StoragePrice>
-          </StorageItem>
-        ))}
-        {loading && (
+        {loading && filteredItems.length === 0 ? (
           <div style={{ gridColumn: '1 / span 2', textAlign: 'center', padding: '20px 0' }}>
-            로딩 중...
+            보관소 목록을 불러오는 중...
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div style={{ gridColumn: '1 / span 2', textAlign: 'center', padding: '20px 0' }}>
+            해당 조건에 맞는 보관소가 없습니다.
+          </div>
+        ) : (
+          filteredItems.map(item => (
+            <StorageItem key={item.id} onClick={() => handleItemClick(item.id)}>
+              <StorageImageContainer>
+                {item.imageUrl ? (
+                  <StorageImage src={item.imageUrl} alt={item.name} />
+                ) : (
+                  <span>이미지 준비중</span>
+                )}
+              </StorageImageContainer>
+              <StorageName>{item.name}</StorageName>
+              <StorageLocation>{item.location}</StorageLocation>
+              <StoragePrice>{formatPrice(item.price)}</StoragePrice>
+            </StorageItem>
+          ))
+        )}
+        {loading && filteredItems.length > 0 && (
+          <div style={{ gridColumn: '1 / span 2', textAlign: 'center', padding: '20px 0' }}>
+            더 불러오는 중...
           </div>
         )}
       </ItemGridContainer>

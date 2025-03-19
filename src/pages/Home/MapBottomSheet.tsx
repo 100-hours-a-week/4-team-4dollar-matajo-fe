@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../hooks/useAuth';
+import { DiscountItem, StorageItem } from '../../api/place';
+import Modal from '../../components/common/Modal';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -133,28 +136,24 @@ const Divider = styled.div`
   margin: 16px 0;
   opacity: 0.6;
 `;
-
-// 메뉴 컨테이너
+// 메뉴 컨테이너 - 가로 배치로 변경
 const MenuContainer = styled.div`
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 16px;
 `;
 
-// 메뉴 아이템
+// 메뉴 아이템 - 너비 조정
 const MenuItem = styled.div`
   flex: 1;
   padding: 12px;
   border: 1px solid ${THEME.gray300};
   border-radius: 8px;
-  text-align: center;
+  text-align: left;
   cursor: pointer;
   position: relative;
-  margin-right: 8px;
-
-  &:last-child {
-    margin-right: 0;
-  }
 `;
 
 // 메뉴 제목
@@ -209,7 +208,7 @@ const DiscountGrid = styled.div`
 `;
 
 // 특가 아이템
-const DiscountItem = styled.div`
+const DiscountItemBox = styled.div`
   position: relative;
   background-color: ${THEME.gray100};
   border-radius: 8px;
@@ -297,6 +296,8 @@ const ItemImage = styled.div`
   border-radius: 8px;
   margin-right: 12px;
   flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
 `;
 
 // 아이템 정보
@@ -343,23 +344,48 @@ const ItemTags = styled.div`
   color: ${THEME.gray500};
 `;
 
+// 모달 관련 스타일 컴포넌트
+const GrayText = styled.span`
+  color: #5b5a5d;
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+  font-weight: 500;
+  line-height: 19.21px;
+  word-wrap: break-word;
+`;
+
+const HighlightText = styled.span`
+  color: #010048;
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+  font-weight: 700;
+  line-height: 19.21px;
+  word-wrap: break-word;
+`;
+
 // 타입 정의
 type BottomSheetState = 'closed' | 'half-expanded' | 'full';
 
-interface StorageItem {
-  name: string;
-  price: number;
-  tags: string[];
-  imageUrl?: string;
-}
-
 interface MapBottomSheetProps {
   location?: string;
+  onRegisterStorage?: () => void;
+  onGoToBoard?: () => void;
+  onDiscountItemClick?: (id: string) => void;
+  discountItems?: DiscountItem[];
+  recentItems?: StorageItem[];
 }
 
-const MapBottomSheet: React.FC<MapBottomSheetProps> = ({ location = '영등포구 여의도동' }) => {
+const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
+  location = '영등포구 여의도동',
+  onRegisterStorage,
+  onGoToBoard,
+  onDiscountItemClick,
+  discountItems = [],
+  recentItems = [],
+}) => {
   // 네비게이션
   const navigate = useNavigate();
+  const { isKeeper, isClient } = useAuth();
 
   // 시트 상태 관리
   const [sheetState, setSheetState] = useState<BottomSheetState>('half-expanded');
@@ -372,21 +398,8 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({ location = '영등포�
   const [currentY, setCurrentY] = useState<number>(halfY);
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
-  // 샘플 아이템 데이터
-  const storageItems: StorageItem[] = [
-    {
-      name: '플레이스테이션',
-      price: 12000,
-      tags: ['전자기기', '일주일 이내'],
-      imageUrl: 'https://placehold.co/64x64',
-    },
-    {
-      name: '산세베리아',
-      price: 12000,
-      tags: ['식물', '장기'],
-      imageUrl: 'https://placehold.co/64x64',
-    },
-  ];
+  // 모달 상태
+  const [showKeeperModal, setShowKeeperModal] = useState<boolean>(false);
 
   // 현재 상태에 따른 목표 위치 계산
   const getTargetY = (): number => {
@@ -486,20 +499,65 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({ location = '영등포�
     };
   }, [isDragging, startY, currentY]);
 
-  // 보관소 등록 페이지로 이동
+  // 보관소 등록 핸들러
   const handleRegisterStorage = (): void => {
-    navigate('/registration/step1');
+    if (isKeeper()) {
+      // 이미 보관인인 경우, 보관소 등록 페이지로 이동
+      navigate('/registration/step1');
+    } else if (isClient()) {
+      // 보관인이 아닌 경우 모달 표시
+      setShowKeeperModal(true);
+    } else {
+      // 로그인이 필요한 경우
+      navigate('/login');
+    }
+  };
+
+  // 의뢰인이 보관인 등록 확인 모달 처리
+  const handleKeeperConfirmModal = () => {
+    // 보관인 등록 페이지로 이동
+    navigate('/keeper/registration');
+  };
+
+  // 모달 취소 처리
+  const handleKeeperCancelModal = () => {
+    setShowKeeperModal(false);
   };
 
   // 게시판 페이지로 이동
   const handleGoToBoard = (): void => {
-    navigate('/board');
+    if (onGoToBoard) {
+      onGoToBoard();
+    } else {
+      navigate('/storage');
+    }
   };
 
   // 아이템 상세 페이지로 이동
-  const handleItemClick = (id: number): void => {
+  const handleItemClick = (id: string): void => {
     navigate(`/storagedetail/${id}`);
   };
+
+  // 지역 특가 아이템 클릭 핸들러
+  const handleDiscountItemClick = (id: string): void => {
+    if (onDiscountItemClick) {
+      onDiscountItemClick(id);
+    } else {
+      navigate(`/storagedetail/${id}`);
+    }
+  };
+
+  // 보관인 등록 모달 컨텐츠
+  const keeperRegistrationContent = (
+    <>
+      <GrayText>
+        보관인 미등록 계정입니다.
+        <br />
+      </GrayText>
+      <HighlightText>보관인 등록</HighlightText>
+      <GrayText>하시겠습니까?</GrayText>
+    </>
+  );
 
   return (
     <Container>
@@ -562,37 +620,74 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({ location = '영등포�
           <Divider />
 
           {/* 지역 특가 섹션 */}
-          <SectionTitle>여의도동 지역 특가</SectionTitle>
+          <SectionTitle>{location.split(' ')[1]} 지역 특가</SectionTitle>
           <DiscountGrid>
-            <DiscountItem>
-              <DiscountTag>-45%</DiscountTag>
-              <AreaText>여의도동</AreaText>
-            </DiscountItem>
-            <MatjoItem>
+            {discountItems.length > 0 ? (
+              discountItems.slice(0, 1).map(item => (
+                <DiscountItemBox key={item.id} onClick={() => handleDiscountItemClick(item.id)}>
+                  <DiscountTag>-{item.discountRate}%</DiscountTag>
+                  <AreaText>{location.split(' ')[1]}</AreaText>
+                </DiscountItemBox>
+              ))
+            ) : (
+              <DiscountItemBox>
+                <DiscountTag>-45%</DiscountTag>
+                <AreaText>{location.split(' ')[1]}</AreaText>
+              </DiscountItemBox>
+            )}
+            <MatjoItem onClick={handleRegisterStorage}>
               <MatjoIcon />
               <MatjoText>내가 마타조?</MatjoText>
             </MatjoItem>
           </DiscountGrid>
 
           {/* 최근 거래 내역 */}
-          <SectionTitle>여의도동 최근 거래 내역</SectionTitle>
+          <SectionTitle>{location.split(' ')[1]} 최근 거래 내역</SectionTitle>
           <ItemList>
-            {storageItems.map((item, index) => (
-              <ItemCard key={index} onClick={() => handleItemClick(index)}>
+            {recentItems.length > 0 ? (
+              recentItems.map(item => (
+                // 아이템 카드에서 onClick 속성 제거
+                <ItemCard key={item.id}>
+                  <ItemImage
+                    style={{ backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : 'none' }}
+                  />
+                  <ItemInfo>
+                    <ItemName>{item.name}</ItemName>
+                    <ItemPrice>
+                      <PriceText>{item.price.toLocaleString()}원</PriceText>
+                      <PriceUnit> /일</PriceUnit>
+                    </ItemPrice>
+                    <ItemTags>{item.tags.join(' | ')}</ItemTags>
+                  </ItemInfo>
+                </ItemCard>
+              ))
+            ) : (
+              <ItemCard>
                 <ItemImage />
                 <ItemInfo>
-                  <ItemName>{item.name}</ItemName>
+                  <ItemName>플레이스테이션</ItemName>
                   <ItemPrice>
-                    <PriceText>{item.price.toLocaleString()}원</PriceText>
+                    <PriceText>12,000원</PriceText>
                     <PriceUnit> /일</PriceUnit>
                   </ItemPrice>
-                  <ItemTags>{item.tags.join(' | ')}</ItemTags>
+                  <ItemTags>전자기기 | 일주일 이내</ItemTags>
                 </ItemInfo>
               </ItemCard>
-            ))}
+            )}
           </ItemList>
         </ContentContainer>
       </BottomSheet>
+
+      {/* 보관인 등록 확인 모달 */}
+      <Modal
+        isOpen={showKeeperModal}
+        onClose={handleKeeperCancelModal}
+        content={keeperRegistrationContent}
+        cancelText="취소"
+        confirmText="등록"
+        onCancel={handleKeeperCancelModal}
+        onConfirm={handleKeeperConfirmModal}
+      />
     </Container>
   );
 };
