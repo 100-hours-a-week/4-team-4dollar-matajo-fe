@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import Header, { HeaderDropdownOption } from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
+import KakaoMap from '../../components/map/KakaoMap';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -219,11 +220,12 @@ const LocationText = styled.div`
   letter-spacing: 0.24px;
 `;
 
-const MapImage = styled.img`
+const MapContainer = styled.div`
   width: 100%;
   height: 125px;
-  object-fit: cover;
   border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 15px;
 `;
 
 const KeeperSection = styled.div`
@@ -785,8 +787,25 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
             {/* 구분선 */}
             <Divider />
 
-            {/* 지도 */}
-            <MapImage src="https://placehold.co/335x125" alt="위치 지도" />
+            {/* 지도 - 기존 MapImage 대신 KakaoMap 사용 */}
+            <MapContainer>
+              <KakaoMap
+                center={{ lat: 37.5198, lng: 126.9402 }} // 여의도 63빌딩 좌표 (더미 데이터)
+                level={3} // 상세 페이지에서는 레벨 3으로 지정
+                storageMarkers={[
+                  {
+                    id: '1',
+                    name: '제주시청 근처 큰 방',
+                    latitude: 37.5198,
+                    longitude: 126.9402,
+                    address: '제주특별자치도 제주시 월성로',
+                  },
+                ]}
+                detailMode={true} // 상세 페이지 모드 활성화
+                draggable={false} // 드래그 비활성화
+                zoomable={false} // 줌 비활성화
+              />
+            </MapContainer>
           </LocationSection>
 
           {/* 보관인 정보 */}
