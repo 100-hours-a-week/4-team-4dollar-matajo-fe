@@ -20,14 +20,14 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 375px;
-  height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
+  width: 100%;
+  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
-  overflow-x: hidden;
-  margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
-  padding-top: 30px; /* 헤더 높이만큼 패딩 */
+  overflow-x: auto;
+  padding-bottom: 40px;
+  padding-top: 10px;
 `;
 
 // 채팅방 아이템 컨테이너

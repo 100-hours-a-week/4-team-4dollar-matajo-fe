@@ -28,25 +28,6 @@ const THEME = {
   white: '#FFFFFF',
 };
 
-// 모달관련 스타일 컴포넌트트
-const GrayText = styled.span`
-  color: #5b5a5d;
-  font-size: 16px;
-  font-family: 'Noto Sans KR';
-  font-weight: 500;
-  line-height: 19.21px;
-  word-wrap: break-word;
-`;
-
-const HighlightText = styled.span`
-  color: #010048;
-  font-size: 16px;
-  font-family: 'Noto Sans KR';
-  font-weight: 700;
-  line-height: 19.21px;
-  word-wrap: break-word;
-`;
-
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 375px;
@@ -314,6 +295,12 @@ const Registration3: React.FC = () => {
   const [mainImage, setMainImage] = useState<string | null>(null);
   const [subImages, setSubImages] = useState<string[]>([]);
 
+  // 모달 상태 관리
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  // 첫 렌더링 체크 (useEffect 첫 실행시 저장 방지)
+  const [isInitialRender, setIsInitialRender] = useState(true);
+
   // 이전 단계 데이터 로드
   useEffect(() => {
     if (location.state) {
@@ -321,6 +308,41 @@ const Registration3: React.FC = () => {
       console.log('이전 단계 데이터 로드됨:', location.state);
     }
   }, [location.state]);
+
+  // 로컬 스토리지에서 이미지 데이터 불러오기
+  useEffect(() => {
+    const savedData = localStorage.getItem('registration_step3');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        if (parsedData.mainImage) setMainImage(parsedData.mainImage);
+        if (parsedData.subImages) setSubImages(parsedData.subImages);
+      } catch (error) {
+        console.error('Error parsing saved data:', error);
+      }
+    }
+
+    // 초기 렌더링 완료 표시
+    setIsInitialRender(false);
+  }, []);
+
+  // 이미지 상태 변경 시 로컬 스토리지에 자동 저장
+  useEffect(() => {
+    // 초기 렌더링 시에는 저장하지 않음
+    if (isInitialRender) return;
+
+    saveToLocalStorage();
+  }, [mainImage, subImages]);
+
+  // 로컬 스토리지에 데이터 저장
+  const saveToLocalStorage = () => {
+    const dataToSave = {
+      mainImage,
+      subImages,
+    };
+
+    localStorage.setItem('registration_step3', JSON.stringify(dataToSave));
+  };
 
   // 메인 이미지 업로드 핸들러
   const handleMainImageUpload = () => {
@@ -342,7 +364,9 @@ const Registration3: React.FC = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setMainImage(reader.result as string);
+        const imageData = reader.result as string;
+        setMainImage(imageData);
+        // useEffect에서 로컬 스토리지 저장 처리됨
       };
       reader.readAsDataURL(file);
     }
@@ -357,10 +381,19 @@ const Registration3: React.FC = () => {
       const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
       if (filesToProcess.length > 0) {
+        const newImages = [...subImages];
+        let processed = 0;
+
         filesToProcess.forEach(file => {
           const reader = new FileReader();
           reader.onloadend = () => {
-            setSubImages(prev => [...prev, reader.result as string]);
+            newImages.push(reader.result as string);
+            processed++;
+
+            if (processed === filesToProcess.length) {
+              setSubImages(newImages);
+              // useEffect에서 로컬 스토리지 저장 처리됨
+            }
           };
           reader.readAsDataURL(file);
         });
@@ -374,43 +407,29 @@ const Registration3: React.FC = () => {
     if (mainImageInputRef.current) {
       mainImageInputRef.current.value = '';
     }
+    // useEffect에서 로컬 스토리지 저장 처리됨
   };
 
   // 서브 이미지 삭제 핸들러
   const handleDeleteSubImage = (index: number) => {
     setSubImages(prev => prev.filter((_, i) => i !== index));
+
     if (subImagesInputRef.current) {
       subImagesInputRef.current.value = '';
     }
+    // useEffect에서 로컬 스토리지 저장 처리됨
   };
 
-  // 모달 상태 관리
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  // 뒤로가기 핸들러
+  const handleBack = () => {
+    // 변경 사항은 로컬 스토리지에 자동 저장됨
+    navigate(-1);
+  };
 
   // 등록 확인 모달 열기
   const openConfirmModal = () => {
     setIsConfirmModalOpen(true);
   };
-
-  // 등록 확인 처리
-  const handleConfirmConfirm = () => {
-    console.log('내 보관소로 이동');
-    navigate('/myplace');
-  };
-
-  // 등록 확인 취소 처리
-  const handleConfirmCancel = () => {
-    console.log('홈으로 가기');
-    navigate('/');
-  };
-
-  // 모달 내용 컴포넌트 - 등록 확인
-  const confirmContent = (
-    <>
-      <HighlightText></HighlightText>
-      <GrayText>보관장소가 등록되었습니다!</GrayText>
-    </>
-  );
 
   // 폼 제출 핸들러
   const handleSubmit = () => {
@@ -427,17 +446,43 @@ const Registration3: React.FC = () => {
       subImages,
     };
 
+    // 여기서 finalData를 백엔드로 전송하는 로직이 있어야할듯?
     console.log('등록 완료, 최종 데이터:', finalData);
+
+    // 모든 단계의 로컬 스토리지 데이터 삭제
+    localStorage.removeItem('registration_step1');
+    localStorage.removeItem('registration_step2');
+    localStorage.removeItem('registration_step3');
+
+    // 등록 확인 모달 열기
     openConfirmModal();
-    /* // 최종 데이터 제출 및 완료 페이지로 이동
-    alert('보관소 등록이 완료되었습니다!');
-    navigate('/'); // 홈 화면으로 이동 */
   };
+
+  // 등록 확인 처리 (내 보관소로 이동)
+  const handleConfirmConfirm = () => {
+    navigate('/myplace');
+  };
+
+  // 등록 확인 취소 처리 (홈으로 이동)
+  const handleConfirmCancel = () => {
+    navigate('/');
+  };
+
+  // 모달 내용 컴포넌트 - 등록 확인
+  const confirmModalContent = (
+    <div style={{ textAlign: 'center' }}>
+      <span style={{ color: '#010048', fontSize: '16px', fontWeight: 700 }}></span>
+      <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>
+        보관장소가 등록되었습니다!
+      </span>
+    </div>
+  );
 
   return (
     <>
       {/* 상단 헤더 */}
-      <Header title="보관소 등록" showBackButton={true} />
+      <Header title="보관소 등록" showBackButton={true} onBack={handleBack} />
+
       <RegistrationContainer>
         <Container>
           {/* 프로그레스 바 */}
@@ -448,11 +493,11 @@ const Registration3: React.FC = () => {
             <ProgressText>3/3</ProgressText>
           </ProgressContainer>
 
-          {/* 확인 모달 */}
+          {/* 등록 완료 확인 모달 */}
           <Modal
             isOpen={isConfirmModalOpen}
             onClose={() => setIsConfirmModalOpen(false)}
-            content={confirmContent}
+            content={confirmModalContent}
             cancelText="홈으로 가기"
             confirmText="내 보관소로 이동"
             onCancel={handleConfirmCancel}
@@ -554,33 +599,9 @@ const Registration3: React.FC = () => {
           <CompleteButton onClick={handleSubmit}>완료</CompleteButton>
         </Container>
       </RegistrationContainer>
+
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="보관소" />
-
-      {/* 개발 테스트용 정보 표시 (실제 배포 시 제거) */}
-      {prevFormData && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '90px',
-            left: '13px',
-            background: 'rgba(0,0,0,0.6)',
-            color: 'white',
-            padding: '10px',
-            borderRadius: '5px',
-            fontSize: '10px',
-            opacity: 0.7,
-            maxWidth: '349px',
-            display: 'none', // 기본적으로는 숨김 처리
-          }}
-        >
-          <h4>이전 단계 데이터 (개발용)</h4>
-          <p>주소: {prevFormData.address}</p>
-          <p>설명: {prevFormData.description}</p>
-          <p>위치: {prevFormData.storageLocation}</p>
-          <p>물건 유형: {prevFormData.selectedItemTypes.join(', ')}</p>
-        </div>
-      )}
     </>
   );
 };

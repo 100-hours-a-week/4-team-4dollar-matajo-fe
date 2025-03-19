@@ -19,7 +19,7 @@ const Container = styled.div`
   height: calc(100vh - 50px);
   position: relative;
   background: white;
-  padding-top: 10px; /* 헤더 높이만큼 패딩 */
+  padding-top: 30px; /* 헤더 높이만큼 패딩 */
   padding-bottom: 0px;
 `;
 

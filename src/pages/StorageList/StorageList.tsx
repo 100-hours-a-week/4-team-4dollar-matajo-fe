@@ -22,15 +22,14 @@ const THEME = {
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 100%;
-  max-width: 375px;
-  height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
+  height: calc(100vh - 116px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
-  overflow-x: hidden;
-  margin: 0 auto;
-  margin-top: -36px;
-  margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
+  overflow-x: auto;
+  padding-bottom: 40px;
+  padding-top: 10px;
+  margin-top: -50px;
 `;
 
 // 검색창 컴포넌트

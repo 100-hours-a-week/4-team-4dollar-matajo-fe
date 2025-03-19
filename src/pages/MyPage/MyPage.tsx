@@ -26,12 +26,11 @@ const FooterContainer = styled.div`
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 90px;
+  bottom: 5px;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 0 20px;
-  margin-bottom: 10px;
 `;
 
 // 푸터 텍스트 스타일 수정
@@ -48,7 +47,7 @@ const FooterText = styled.div<{ left?: number }>`
 
 // 사업자 정보 컨테이너 추가
 const BusinessInfoContainer = styled.div`
-  margin-top: 30px;
+  margin-top: 10px;
   text-align: center;
   padding: 10px;
   width: 100%;
@@ -245,14 +244,14 @@ const ActionIcon = styled.div<{ left: number; color: string }>`
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 100%;
-  max-width: 375px;
-  height: calc(100vh - 76px); /* 네비게이션 바 높이 제외 */
+  height: calc(100vh - 100px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
-  overflow-x: hidden;
-  margin: 0 auto;
-  margin-bottom: 76px; /* 하단 네비게이션 높이만큼 마진 */
+  overflow-x: auto;
+  padding-bottom: 40px;
+  padding-top: 10px;
+  margin-top: -70px;
 `;
 
 // 메인 컴포넌트

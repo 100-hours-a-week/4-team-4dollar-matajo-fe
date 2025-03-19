@@ -166,9 +166,6 @@ const storageTypes = ['냉장보관', '냉동보관', '상온보관'];
 // 보관 기간 옵션
 const durationOptions = ['일주일 이내', '한달 이내', '3개월 이상'];
 
-// 귀중품 옵션
-const valuableOptions = ['귀중품'];
-
 // 이전 단계에서 전달받는 데이터 타입 정의
 interface Step1FormData {
   address: string;
@@ -192,6 +189,9 @@ const Registration2: React.FC = () => {
   const [selectedDurationOptions, setSelectedDurationOptions] = useState<string[]>([]);
   const [isValuableSelected, setIsValuableSelected] = useState(false);
 
+  // 첫 렌더링 체크 (useEffect 첫 실행시 저장 방지)
+  const [isInitialRender, setIsInitialRender] = useState(true);
+
   // 이전 단계 데이터 로드
   useEffect(() => {
     if (location.state) {
@@ -200,9 +200,58 @@ const Registration2: React.FC = () => {
     }
   }, [location.state]);
 
+  // 폼 데이터 불러오기 (로컬 스토리지)
+  useEffect(() => {
+    const savedData = localStorage.getItem('registration_step2');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setStorageLocation(parsedData.storageLocation || '');
+        setSelectedItemTypes(parsedData.selectedItemTypes || []);
+        setSelectedStorageTypes(parsedData.selectedStorageTypes || []);
+        setSelectedDurationOptions(parsedData.selectedDurationOptions || []);
+        setIsValuableSelected(parsedData.isValuableSelected || false);
+      } catch (error) {
+        console.error('Error parsing saved data:', error);
+      }
+    }
+
+    // 초기 렌더링 완료 표시
+    setIsInitialRender(false);
+  }, []);
+
+  // 상태 변경시 로컬 스토리지에 저장
+  useEffect(() => {
+    // 초기 렌더링 시에는 저장하지 않음
+    if (isInitialRender) return;
+
+    saveToLocalStorage();
+  }, [
+    storageLocation,
+    selectedItemTypes,
+    selectedStorageTypes,
+    selectedDurationOptions,
+    isValuableSelected,
+  ]);
+
+  // 로컬스토리지에 데이터 저장하는 함수
+  const saveToLocalStorage = () => {
+    const dataToSave = {
+      storageLocation,
+      selectedItemTypes,
+      selectedStorageTypes,
+      selectedDurationOptions,
+      isValuableSelected,
+    };
+
+    localStorage.setItem('registration_step2', JSON.stringify(dataToSave));
+  };
+
   // 위치 선택 핸들러
   const handleLocationSelect = (locationType: '실내' | '실외') => {
     setStorageLocation(locationType);
+    // useState는 비동기적으로 동작하므로 saveToLocalStorage를 여기서 호출하지 않음
+    // useEffect에서 처리됨
   };
 
   // 아이템 유형 토글 핸들러
@@ -210,6 +259,7 @@ const Registration2: React.FC = () => {
     setSelectedItemTypes(prev =>
       prev.includes(itemType) ? prev.filter(type => type !== itemType) : [...prev, itemType],
     );
+    // useEffect에서 처리됨
   };
 
   // 보관 방식 토글 핸들러
@@ -219,6 +269,7 @@ const Registration2: React.FC = () => {
         ? prev.filter(type => type !== storageType)
         : [...prev, storageType],
     );
+    // useEffect에서 처리됨
   };
 
   // 보관 기간 토글 핸들러
@@ -226,11 +277,19 @@ const Registration2: React.FC = () => {
     setSelectedDurationOptions(prev =>
       prev.includes(duration) ? prev.filter(d => d !== duration) : [...prev, duration],
     );
+    // useEffect에서 처리됨
   };
 
   // 귀중품 토글 핸들러
   const toggleValuable = () => {
-    setIsValuableSelected(!isValuableSelected);
+    setIsValuableSelected(prev => !prev);
+    // useEffect에서 처리됨
+  };
+
+  // 뒤로가기 핸들러
+  const handleBack = () => {
+    // 변경 사항은 로컬 스토리지에 자동 저장 상태이므로 바로 이전 페이지로 이동
+    navigate(-1);
   };
 
   // 폼 제출 핸들러
@@ -279,7 +338,8 @@ const Registration2: React.FC = () => {
   return (
     <>
       {/* 상단 헤더 */}
-      <Header title="보관소 등록" showBackButton={true} />
+      <Header title="보관소 등록" showBackButton={true} onBack={handleBack} />
+
       <RegistrationContainer>
         <Container>
           {/* 프로그레스 바 */}
@@ -367,6 +427,7 @@ const Registration2: React.FC = () => {
           <NextButton onClick={handleSubmit}>다음</NextButton>
         </Container>
       </RegistrationContainer>
+
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="보관소" />
 
