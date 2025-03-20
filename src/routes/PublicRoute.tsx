@@ -10,14 +10,20 @@ interface PublicRouteProps {
 /**
  * 비로그인 사용자를 위한 공개 라우트 컴포넌트
  * 이미 로그인한 사용자의 경우 redirectTo 경로로 리다이렉트 (기본값: 홈)
+ * 개발 모드에서는 리다이렉트를 하지 않고 항상 접근 허용
  */
 const PublicRoute: React.FC<PublicRouteProps> = ({ redirectTo = '/' }) => {
   const { isAuthenticated, loading } = useAuth();
 
+  // 개발 모드에서는 리다이렉트 우회
+  if (process.env.NODE_ENV === 'development') {
+    return <Outlet />;
+  }
+
   // 인증 정보 로딩 중일 때 로딩 표시
-  // if (loading) {
-  //   return <div>로딩 중...</div>;
-  // }
+  if (loading) {
+    return <div>로딩 중...</div>;
+  }
 
   // 이미 로그인한 사용자는 redirectTo 경로로 리다이렉트
   if (isAuthenticated && redirectTo) {

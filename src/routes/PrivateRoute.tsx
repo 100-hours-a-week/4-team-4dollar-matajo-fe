@@ -9,14 +9,20 @@ interface PrivateRouteProps {
 /**
  * 인증된 사용자만 접근할 수 있는 라우트를 위한 컴포넌트
  * requiredRole이 지정되면 해당 역할을 가진 사용자만 접근할 수 있음
+ * 개발 모드에서는 인증 체크를 건너뛰고 항상 접근 허용
  */
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
+  // 개발 모드에서는 인증 체크 우회
+  if (process.env.NODE_ENV === 'development') {
+    return <Outlet />;
+  }
+
   // 인증 정보 로딩 중일 때 로딩 표시
-  // if (loading) {
-  //   return <div>로딩 중...</div>;
-  // }
+  if (loading) {
+    return <div>로딩 중...</div>;
+  }
 
   // 로그인하지 않은 경우 로그인 페이지로 리다이렉트
   if (!isAuthenticated) {

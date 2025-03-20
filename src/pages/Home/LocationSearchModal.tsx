@@ -245,17 +245,53 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   onSelectLocation,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<string[]>([]);
+  const [searchResults, setSearchResults] = useState<DongDataType[]>([]);
   const [dongData, setDongData] = useState<DongDataType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 최근 검색한 지역 목록 (로컬 스토리지에서 가져오거나 기본값 사용)
-  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+  // 최근 검색한 지역 목록 (formatted_address 사용)
+  const [recentSearches, setRecentSearches] = useState<DongDataType[]>(() => {
     const saved = localStorage.getItem('recentLocationSearches');
-    return saved
-      ? JSON.parse(saved)
-      : ['영등포구 여의도동', '마포구 서교동', '강남구 역삼동', '성동구 성수동'];
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [
+          {
+            original_name: '영등포구 여의도동',
+            formatted_address: '서울특별시 영등포구 여의도동',
+            latitude: '37.5249',
+            longitude: '126.9214',
+            display_name: '여의도동, 영등포구, 서울특별시, 대한민국',
+          },
+          {
+            original_name: '마포구 서교동',
+            formatted_address: '서울특별시 마포구 서교동',
+            latitude: '37.5531',
+            longitude: '126.9194',
+            display_name: '서교동, 마포구, 서울특별시, 대한민국',
+          },
+        ];
+      }
+    } else {
+      return [
+        {
+          original_name: '영등포구 여의도동',
+          formatted_address: '서울특별시 영등포구 여의도동',
+          latitude: '37.5249',
+          longitude: '126.9214',
+          display_name: '여의도동, 영등포구, 서울특별시, 대한민국',
+        },
+        {
+          original_name: '마포구 서교동',
+          formatted_address: '서울특별시 마포구 서교동',
+          latitude: '37.5531',
+          longitude: '126.9194',
+          display_name: '서교동, 마포구, 서울특별시, 대한민국',
+        },
+      ];
+    }
   });
 
   // 동 데이터 로드
@@ -274,94 +310,109 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
             const mockDongData: DongDataType[] = [
               {
                 original_name: '영등포구 여의도동',
-                display_name: '여의도동, 영등포구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 영등포구 여의도동',
                 latitude: '37.5249',
                 longitude: '126.9214',
+                display_name: '여의도동, 영등포구, 서울특별시, 대한민국',
               },
               {
                 original_name: '마포구 서교동',
-                display_name: '서교동, 마포구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 마포구 서교동',
                 latitude: '37.5531',
                 longitude: '126.9194',
+                display_name: '서교동, 마포구, 서울특별시, 대한민국',
               },
               {
                 original_name: '강남구 역삼동',
-                display_name: '역삼동, 강남구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 강남구 역삼동',
                 latitude: '37.5025',
                 longitude: '127.0259',
+                display_name: '역삼동, 강남구, 서울특별시, 대한민국',
               },
               {
                 original_name: '성동구 성수동',
-                display_name: '성수동, 성동구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 성동구 성수동',
                 latitude: '37.5436',
                 longitude: '127.0558',
+                display_name: '성수동, 성동구, 서울특별시, 대한민국',
               },
               {
                 original_name: '송파구 잠실동',
-                display_name: '잠실동, 송파구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 송파구 잠실동',
                 latitude: '37.5089',
                 longitude: '127.0865',
+                display_name: '잠실동, 송파구, 서울특별시, 대한민국',
               },
               {
                 original_name: '강동구 천호동',
-                display_name: '천호동, 강동구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 강동구 천호동',
                 latitude: '37.5451',
                 longitude: '127.1272',
+                display_name: '천호동, 강동구, 서울특별시, 대한민국',
               },
               {
                 original_name: '관악구 신림동',
-                display_name: '신림동, 관악구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 관악구 신림동',
                 latitude: '37.4859',
                 longitude: '126.9289',
+                display_name: '신림동, 관악구, 서울특별시, 대한민국',
               },
               {
                 original_name: '종로구 종로1가',
-                display_name: '종로1가, 종로구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 종로구 종로1가',
                 latitude: '37.5704',
                 longitude: '126.9931',
+                display_name: '종로1가, 종로구, 서울특별시, 대한민국',
               },
               {
                 original_name: '중구 명동',
-                display_name: '명동, 중구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 중구 명동',
                 latitude: '37.5631',
                 longitude: '126.9847',
+                display_name: '명동, 중구, 서울특별시, 대한민국',
               },
               {
                 original_name: '용산구 이태원동',
-                display_name: '이태원동, 용산구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 용산구 이태원동',
                 latitude: '37.5345',
                 longitude: '126.9936',
+                display_name: '이태원동, 용산구, 서울특별시, 대한민국',
               },
               // 한글자 동 예시
               {
                 original_name: '종로구 교동',
-                display_name: '교동, 종로구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 종로구 교동',
                 latitude: '37.5764',
                 longitude: '126.9832',
+                display_name: '교동, 종로구, 서울특별시, 대한민국',
               },
               {
                 original_name: '중구 정동',
-                display_name: '정동, 중구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 중구 정동',
                 latitude: '37.5658',
                 longitude: '126.9727',
+                display_name: '정동, 중구, 서울특별시, 대한민국',
               },
               {
                 original_name: '종로구 명동',
-                display_name: '명동, 중구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 종로구 명동',
                 latitude: '37.5631',
                 longitude: '126.9847',
+                display_name: '명동, 중구, 서울특별시, 대한민국',
               },
               {
                 original_name: '서울시 중구',
-                display_name: '중구, 서울특별시, 대한민국',
+                formatted_address: '서울특별시 중구',
                 latitude: '37.5641',
                 longitude: '126.9979',
+                display_name: '중구, 서울특별시, 대한민국',
               },
               {
                 original_name: '경기도 수원시',
-                display_name: '수원시, 경기도, 대한민국',
+                formatted_address: '경기도 수원시',
                 latitude: '37.2636',
                 longitude: '127.0286',
+                display_name: '수원시, 경기도, 대한민국',
               },
             ];
             setDongData(mockDongData);
@@ -373,27 +424,31 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
           const mockDongData: DongDataType[] = [
             {
               original_name: '영등포구 여의도동',
-              display_name: '여의도동, 영등포구, 서울특별시, 대한민국',
+              formatted_address: '서울특별시 영등포구 여의도동',
               latitude: '37.5249',
               longitude: '126.9214',
+              display_name: '여의도동, 영등포구, 서울특별시, 대한민국',
             },
             {
               original_name: '마포구 서교동',
-              display_name: '서교동, 마포구, 서울특별시, 대한민국',
+              formatted_address: '서울특별시 마포구 서교동',
               latitude: '37.5531',
               longitude: '126.9194',
+              display_name: '서교동, 마포구, 서울특별시, 대한민국',
             },
             {
               original_name: '강남구 역삼동',
-              display_name: '역삼동, 강남구, 서울특별시, 대한민국',
+              formatted_address: '서울특별시 강남구 역삼동',
               latitude: '37.5025',
               longitude: '127.0259',
+              display_name: '역삼동, 강남구, 서울특별시, 대한민국',
             },
             {
               original_name: '성동구 성수동',
-              display_name: '성수동, 성동구, 서울특별시, 대한민국',
+              formatted_address: '서울특별시 성동구 성수동',
               latitude: '37.5436',
               longitude: '127.0558',
+              display_name: '성수동, 성동구, 서울특별시, 대한민국',
             },
           ];
           setDongData(mockDongData);
@@ -414,26 +469,39 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
       // 검색어 길이가 1자인 경우
       if (value.length === 1) {
         // 한글자 동 목록에서 시작하는 항목 필터링
-        const singleCharResults = SINGLE_CHAR_DONGS.filter(dong => dong.startsWith(value));
+        const singleCharResults = SINGLE_CHAR_DONGS.filter(dong => dong.startsWith(value)).map(
+          dong => {
+            // 한글자 동은 formatted_address 값이 없으므로 가상의 객체 생성
+            return {
+              original_name: `서울시 종로구 ${dong}`,
+              formatted_address: `서울특별시 종로구 ${dong}`,
+              latitude: '37.5764',
+              longitude: '126.9832',
+              display_name: `${dong}, 종로구, 서울특별시, 대한민국`,
+            };
+          },
+        );
 
-        // 동 데이터에서 시/도/구 등 필터링 (2자 이상 검색어)
-        const locationResults = dongData
-          .filter(
-            item =>
-              (item.original_name.includes('시') && item.original_name.includes(value)) ||
-              (item.original_name.includes('도') && item.original_name.includes(value)) ||
-              (item.original_name.includes('구') && item.original_name.includes(value)),
-          )
-          .map(item => item.original_name);
+        // 동 데이터에서 시/도/구 등 필터링
+        const locationResults = dongData.filter(
+          item =>
+            (item.formatted_address.includes('시') && item.formatted_address.includes(value)) ||
+            (item.formatted_address.includes('도') && item.formatted_address.includes(value)) ||
+            (item.formatted_address.includes('구') && item.formatted_address.includes(value)) ||
+            (item.formatted_address.includes('동') && item.formatted_address.includes(value)),
+        );
 
         // 결과 합치기
         setSearchResults([...singleCharResults, ...locationResults].slice(0, 100));
       } else {
         // 2자 이상인 경우 모든 데이터 대상으로 검색
         // 동 데이터에서 검색어를 포함하는 항목 필터링
-        const filteredResults = dongData
-          .filter(item => item.original_name.includes(value))
-          .map(item => item.original_name);
+        const filteredResults = dongData.filter(
+          item =>
+            item.formatted_address.includes(value) ||
+            item.display_name.includes(value) ||
+            item.original_name.includes(value),
+        );
 
         // 결과 수가 적을 경우 최대 100개만 표시
         setSearchResults(filteredResults.slice(0, 100));
@@ -445,11 +513,11 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   };
 
   // 검색 결과 아이템 클릭 핸들러
-  const handleResultClick = (location: string) => {
+  const handleResultClick = (location: DongDataType) => {
     // 최근 검색 목록 업데이트 (중복 제거 및 최대 5개 유지)
     const updatedRecentSearches = [
       location,
-      ...recentSearches.filter(item => item !== location),
+      ...recentSearches.filter(item => item.formatted_address !== location.formatted_address),
     ].slice(0, 5);
 
     setRecentSearches(updatedRecentSearches);
@@ -457,8 +525,8 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
     // 로컬 스토리지에 저장
     localStorage.setItem('recentLocationSearches', JSON.stringify(updatedRecentSearches));
 
-    // 선택한 위치 전달
-    onSelectLocation(location);
+    // 선택한 위치 전달 - formatted_address를 전달
+    onSelectLocation(location.formatted_address);
     onClose();
   };
 
@@ -533,7 +601,7 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
               {searchResults.length > 0 ? (
                 searchResults.map((result, index) => (
                   <SearchResultItem key={index} onClick={() => handleResultClick(result)}>
-                    {result}
+                    {result.formatted_address || result.original_name}
                   </SearchResultItem>
                 ))
               ) : (

@@ -171,23 +171,6 @@ interface ChatroomData {
   profileImage?: string;
 }
 
-// API 응답 타입 정의
-interface ChatroomResponse {
-  id: number;
-  nickname?: string;
-  lastMessage?: string;
-  isUnread?: boolean;
-  time?: string;
-  location?: string;
-  profileImage?: string;
-  // 서버에서 추가로 제공할 수 있는 필드들
-  roomId?: number;
-  userId?: number;
-  activeStatus?: boolean;
-  joinedAt?: string;
-  leftAt?: string | null;
-}
-
 const ChatroomList: React.FC = () => {
   // 네비게이션
   const navigate = useNavigate();
@@ -197,6 +180,13 @@ const ChatroomList: React.FC = () => {
 
   // 로딩 상태
   const [loading, setLoading] = useState(true);
+
+  // 시간 형식 변환 함수
+  const formatTimeFromApi = (timeString: string) => {
+    if (!timeString) return '';
+    const date = new Date(timeString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   // 채팅방 목록 불러오기
   useEffect(() => {
@@ -208,13 +198,13 @@ const ChatroomList: React.FC = () => {
 
         // 데이터 형식 맞추기
         const formattedData = response.map(
-          (room: ChatroomResponse): ChatroomData => ({
-            id: room.id,
-            nickname: room.nickname || '닉네임 최대',
-            lastMessage: room.lastMessage || '내용의최대글자수는얼마나될까...',
+          (room): ChatroomData => ({
+            id: room.id || room.room_id || 0,
+            nickname: room.nickname || '사용자',
+            lastMessage: room.lastMessage || '메시지가 없습니다',
             isUnread: room.isUnread || false,
-            time: room.time || '04:21',
-            location: room.location || '남양읍',
+            time: room.lastMessageTime ? formatTimeFromApi(room.lastMessageTime) : '',
+            location: room.location || '위치 정보 없음',
             profileImage: room.profileImage || 'https://placehold.co/69x66',
           }),
         );
@@ -284,8 +274,13 @@ const ChatroomList: React.FC = () => {
   // 채팅방 클릭 핸들러
   const handleChatroomClick = (id: number) => {
     if (!isLongPress) {
-      console.log(`채팅방 ${id} 클릭됨`);
-      navigate(`/chat`);
+      console.log(`채팅방 클릭됨:`, id);
+      if (!id) {
+        console.error('채팅방 ID가 없습니다');
+        alert('채팅방 정보를 가져오는데 문제가 발생했습니다');
+        return;
+      }
+      navigate(`/chat/${id}`); // 채팅방 ID 추가
     }
     // 롱 프레스 상태 초기화
     setIsLongPress(false);
@@ -348,12 +343,16 @@ const ChatroomList: React.FC = () => {
         // 모달 닫기 (진행 중 UI는 채팅방 리스트에 표시)
         setIsLeaveModalOpen(false);
 
-        // API 호출로 active_status를 false로 변경
-        await chatApiService.leaveChatroom(selectedChatroomId);
+        // API 호출로 채팅방 나가기
+        const success = await chatApiService.leaveChatroom(selectedChatroomId);
 
-        // 화면 상에서는 해당 채팅방을 제거
-        setChatrooms(prev => prev.filter(room => room.id !== selectedChatroomId));
-        console.log(`채팅방 ${selectedChatroomId} 나가기 처리됨`);
+        if (success) {
+          // 화면 상에서는 해당 채팅방을 제거
+          setChatrooms(prev => prev.filter(room => room.id !== selectedChatroomId));
+          console.log(`채팅방 ${selectedChatroomId} 나가기 처리됨`);
+        } else {
+          throw new Error('채팅방 나가기 실패');
+        }
       } catch (error) {
         console.error(`채팅방 나가기 실패:`, error);
         // 오류 처리 - 사용자에게 알림 등

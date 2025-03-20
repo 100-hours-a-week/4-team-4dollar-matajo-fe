@@ -43,9 +43,9 @@ const AuthContext = createContext<AuthContextType>({
 
 // 인증 컨텍스트 프로바이더 컴포넌트
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // 테스트를 위해 기본 인증 상태 설정
+  // 개발 편의를 위해 기본 인증 상태를 true로 설정 (자동 로그인 효과)
   const [user, setUser] = useState<User | null>({
-    id: '123456',
+    id: localStorage.getItem('user_id') || '123456',
     name: '테스트 사용자',
     role: UserRole.Client,
     email: 'test@example.com',
@@ -55,41 +55,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 로딩 상태 초기값을 false로 변경
   const [loading, setLoading] = useState(false);
 
-  // 컴포넌트 마운트 시 로컬 스토리지에서 사용자 정보 불러오기
+  // 컴포넌트 마운트 시 사용자 ID 저장
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        setLoading(true);
-        const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
-
-        if (storedUser && token) {
-          const userData = JSON.parse(storedUser);
-
-          // 토큰 유효성 검증
-          const response = await authApi.validateToken(token);
-          const isValid = response.data.valid;
-
-          if (isValid) {
-            setUser({ ...userData, token });
-          } else {
-            // 토큰이 유효하지 않으면 로그아웃 처리
-            localStorage.removeItem('user');
-            localStorage.removeItem('token');
-            setUser(null);
-          }
-        }
-      } catch (error) {
-        console.error('인증 초기화 오류:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // 테스트 위해 초기화 함수 주석 처리
-    // initAuth();
-  }, []);
+    // 사용자 ID가 없으면 임시 ID 설정
+    if (!localStorage.getItem('user_id') && user) {
+      localStorage.setItem('user_id', user.id);
+    }
+  }, [user]);
 
   // 로그인 함수
   const login = async (email: string, password: string) => {
@@ -103,6 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 사용자 정보와 토큰 저장
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', token);
+      localStorage.setItem('user_id', userData.id);
 
       setUser({ ...userData, token });
     } catch (error) {
@@ -115,9 +88,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // 로그아웃 함수
   const logout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    setUser(null);
+    // 개발 모드에서는 임시 ID 유지
+    if (process.env.NODE_ENV !== 'production') {
+      const tempId = localStorage.getItem('user_id') || '123456';
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+
+      // 임시 사용자 상태로 변경
+      setUser({
+        id: tempId,
+        name: '테스트 사용자',
+        role: UserRole.Client,
+        email: 'test@example.com',
+        token: 'dummy-token',
+      });
+    } else {
+      // 운영 환경에서는 완전히 로그아웃
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user_id');
+      setUser(null);
+    }
   };
 
   // 보관인 등록 함수
@@ -155,7 +146,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // 컨텍스트 값
   const value = {
-    isAuthenticated: !!user,
+    isAuthenticated: true, // 개발 편의를 위해 항상 true로 설정
     user,
     loading,
     login,

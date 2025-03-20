@@ -60,8 +60,8 @@ const routes: RouteObject[] = [
         ],
       },
       // 채팅 상세 페이지는 MainLayout 없이 독립적으로 렌더링 (네비바 제거)
-      { path: 'chat', element: <Chat onBack={() => window.history.back()} /> },
-      { path: 'chat/:id', element: <Chat onBack={() => window.history.back()} /> },
+      { path: 'chat', element: <Chat /> },
+      { path: 'chat/:roomId', element: <Chat /> },
 
       // 보관인 등록 관련 페이지
       { path: 'keeper/registration', element: <KeeperRegistration /> }, // 보관인 등록 시작 페이지

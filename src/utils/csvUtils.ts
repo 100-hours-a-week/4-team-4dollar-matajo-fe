@@ -1,76 +1,98 @@
 // src/utils/csvUtils.ts
-
 import Papa from 'papaparse';
 
-// 동 데이터 인터페이스
+// 동(Dong) 데이터 인터페이스 정의
 export interface DongData {
   original_name: string;
-  display_name: string;
+  formatted_address: string; // 추가된 필드
   latitude: string;
   longitude: string;
+  display_name: string;
+  class?: string;
+  type?: string;
 }
 
-// CSV 파일에서 동 데이터 로드
-export const loadDongDataFromCSV = async (filePath: string): Promise<DongData[]> => {
-  try {
-    const response = await fetch(filePath);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const csvText = await response.text();
-
-    return new Promise<DongData[]>((resolve, reject) => {
-      Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results: Papa.ParseResult<any>) => {
-          // 데이터 변환 및 필터링
-          const dongData = results.data.map((row: any) => ({
-            original_name: row.original_name || '',
-            display_name: row.display_name || '',
-            latitude: row.latitude || '',
-            longitude: row.longitude || '',
-          }));
-
-          resolve(dongData as DongData[]);
-        },
-        error: (error: Error) => {
-          reject(error);
-        },
+/**
+ * CSV 파일에서 동 데이터를 로드하는 함수
+ * @param filePath CSV 파일 경로
+ * @returns 프로미스로 반환되는 동 데이터 배열
+ */
+export const loadDongDataFromCSV = (filePath: string): Promise<DongData[]> => {
+  return new Promise((resolve, reject) => {
+    // HTTP 요청으로 CSV 파일 가져오기
+    fetch(filePath)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text();
+      })
+      .then(csvText => {
+        // PapaParse로 CSV 파싱
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: results => {
+            // 데이터 로드 및 형식화
+            const dongData = results.data as DongData[];
+            resolve(dongData);
+          },
+          error: error => {
+            reject(error.message);
+          },
+        });
+      })
+      .catch(error => {
+        reject(error);
       });
-    });
-  } catch (error) {
-    console.error('Error loading CSV file:', error);
-    // 오류 발생 시 빈 배열 반환
-    return [];
-  }
+  });
 };
 
-// 동 데이터에서 검색어를 포함하는 결과 반환
-export const searchDongData = (data: DongData[], searchTerm: string): DongData[] => {
-  const term = searchTerm.toLowerCase().trim();
+/**
+ * 동 데이터를 검색하는 함수
+ * @param dongData 동 데이터 배열
+ * @param searchTerm 검색어
+ * @returns 검색 결과 동 데이터 배열
+ */
+export const searchDongData = (dongData: DongData[], searchTerm: string): DongData[] => {
+  if (!searchTerm.trim()) return [];
 
-  return data.filter(
-    item =>
-      item.original_name.toLowerCase().includes(term) ||
-      item.display_name.toLowerCase().includes(term),
-  );
+  // 검색어를 소문자로 변환
+  const term = searchTerm.toLowerCase();
+
+  // 동 데이터 필터링
+  return dongData.filter(item => {
+    const originalName = item.original_name.toLowerCase();
+    const displayName = item.display_name.toLowerCase();
+    const formattedAddress = item.formatted_address.toLowerCase();
+
+    return (
+      originalName.includes(term) || displayName.includes(term) || formattedAddress.includes(term)
+    );
+  });
 };
 
-// 선택한 동의 좌표 찾기
+/**
+ * 선택한 위치(동)의 좌표를 찾는 함수
+ * @param dongData 동 데이터 배열
+ * @param locationName 위치명(동 이름)
+ * @returns 위도, 경도 객체 또는 undefined
+ */
 export const findDongCoordinates = (
-  data: DongData[],
-  location: string,
-): { lat: number; lng: number } | null => {
-  const dongData = data.find(item => item.original_name === location);
+  dongData: DongData[],
+  locationName: string,
+): { lat: number; lng: number } | undefined => {
+  // 위치명과 일치하는 동 데이터 찾기 (formatted_address 사용)
+  const matchedDong = dongData.find(
+    item => item.formatted_address === locationName || item.original_name === locationName,
+  );
 
-  if (dongData && dongData.latitude && dongData.longitude) {
+  if (matchedDong && matchedDong.latitude && matchedDong.longitude) {
     return {
-      lat: parseFloat(dongData.latitude),
-      lng: parseFloat(dongData.longitude),
+      lat: parseFloat(matchedDong.latitude),
+      lng: parseFloat(matchedDong.longitude),
     };
   }
 
-  return null;
+  return undefined;
 };

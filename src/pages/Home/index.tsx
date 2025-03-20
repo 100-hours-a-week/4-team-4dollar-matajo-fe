@@ -112,6 +112,7 @@ interface LocalDongData {
   display_name: string;
   latitude: string;
   longitude: string;
+  formatted_address: string; // 새로 추가된 필드
 }
 
 const HomePage: React.FC = () => {
@@ -119,7 +120,7 @@ const HomePage: React.FC = () => {
   const { user, isKeeper, isClient } = useAuth();
 
   const [loading, setLoading] = useState<boolean>(true);
-  const [location, setLocation] = useState<string>('영등포구 여의도동');
+  const [location, setLocation] = useState<string>('서울특별시 영등포구 여의도동');
   const [places, setPlaces] = useState<Place[]>([]);
   const [discountItems, setDiscountItems] = useState<DiscountItem[]>([]);
   const [recentItems, setRecentItems] = useState<StorageItem[]>([]);
@@ -140,7 +141,38 @@ const HomePage: React.FC = () => {
         setDongDataLoaded(true);
       } catch (error) {
         console.error('동 데이터 로드 실패:', error);
-        // 기본 더미 데이터 설정 (필요시)
+        // 기본 더미 데이터 설정
+        const mockDongData: LocalDongData[] = [
+          {
+            original_name: '영등포구 여의도동',
+            display_name: '여의도동, 영등포구, 서울특별시, 대한민국',
+            latitude: '37.5249',
+            longitude: '126.9214',
+            formatted_address: '서울특별시 영등포구 여의도동',
+          },
+          {
+            original_name: '마포구 서교동',
+            display_name: '서교동, 마포구, 서울특별시, 대한민국',
+            latitude: '37.5531',
+            longitude: '126.9194',
+            formatted_address: '서울특별시 마포구 서교동',
+          },
+          {
+            original_name: '강남구 역삼동',
+            display_name: '역삼동, 강남구, 서울특별시, 대한민국',
+            latitude: '37.5025',
+            longitude: '127.0259',
+            formatted_address: '서울특별시 강남구 역삼동',
+          },
+          {
+            original_name: '성동구 성수동',
+            display_name: '성수동, 성동구, 서울특별시, 대한민국',
+            latitude: '37.5436',
+            longitude: '127.0558',
+            formatted_address: '서울특별시 성동구 성수동',
+          },
+        ];
+        setDongData(mockDongData);
         setDongDataLoaded(true);
       }
     };
@@ -157,12 +189,14 @@ const HomePage: React.FC = () => {
     // 예: fetchNearbyData(lat, lng);
   };
 
-  // src/pages/Home/index.tsx의 handleSelectLocation 함수
-  const handleSelectLocation = (selectedLocation: string) => {
+  // 위치 선택 처리 함수
+  const handleSelectLocation = async (selectedLocation: string) => {
     setLocation(selectedLocation);
 
     // 동 데이터가 로드되었다면 선택한 위치의 좌표를 찾아 지도 중심 변경
     if (dongDataLoaded && dongData.length > 0) {
+      // findDongCoordinates 함수는 original_name 또는 formatted_address와
+      // 일치하는 동을 찾아 좌표를 반환합니다
       const coordinates = findDongCoordinates(dongData, selectedLocation);
 
       if (coordinates) {
@@ -171,11 +205,44 @@ const HomePage: React.FC = () => {
         fetchNearbyData(coordinates.lat, coordinates.lng);
       } else {
         console.log('선택한 위치의 좌표를 찾을 수 없습니다:', selectedLocation);
+
+        // 좌표를 찾지 못한 경우에도 위치 정보는 업데이트
+        // 구/동 정보 추출 시도
+        const locationParts = selectedLocation.split(' ');
+        let district = '';
+        let neighborhood = '';
+
+        // '서울특별시 영등포구 여의도동' 형식에서 구와 동을 추출
+        for (const part of locationParts) {
+          if (part.includes('구')) {
+            district = part;
+          } else if (part.includes('동') || part.includes('읍') || part.includes('면')) {
+            neighborhood = part;
+          }
+        }
+
+        // 구/동 정보가 없는 경우 기본값 사용
+        if (!district) district = '영등포구';
+        if (!neighborhood) neighborhood = '여의도동';
+
+        try {
+          // 데이터 로드
+          const discountResponse = await getDiscountItems(district, neighborhood);
+          setDiscountItems(discountResponse.data.items);
+
+          const recentResponse = await getRecentItems(district, neighborhood);
+          setRecentItems(recentResponse.data.items);
+        } catch (error) {
+          console.error('데이터 로드 오류:', error);
+          // 오류 시 기본 더미 데이터 사용
+          setPlaces(dummyStorageLocations);
+        }
       }
     } else {
       console.log('동 데이터가 로드되지 않았습니다.');
     }
   };
+
   // 현재 위치를 기반으로 데이터 로드
   const fetchNearbyData = async (lat: number, lng: number) => {
     try {
@@ -190,8 +257,21 @@ const HomePage: React.FC = () => {
 
       // 특가 아이템 로드 (구/동 정보 추출)
       const locationParts = location.split(' ');
-      const district = locationParts[0] || '영등포구';
-      const neighborhood = locationParts[1] || '여의도동';
+      let district = '';
+      let neighborhood = '';
+
+      // '서울특별시 영등포구 여의도동' 형식에서 구와 동을 추출
+      for (const part of locationParts) {
+        if (part.includes('구')) {
+          district = part;
+        } else if (part.includes('동') || part.includes('읍') || part.includes('면')) {
+          neighborhood = part;
+        }
+      }
+
+      // 구/동 정보가 없는 경우 기본값 사용
+      if (!district) district = '영등포구';
+      if (!neighborhood) neighborhood = '여의도동';
 
       const discountResponse = await getDiscountItems(district, neighborhood);
       setDiscountItems(discountResponse.data.items);
@@ -283,7 +363,7 @@ const HomePage: React.FC = () => {
         // 데이터 로드 후 로딩 상태 업데이트
         setTimeout(() => {
           setLoading(false);
-          console.log('로딩 상태 업데이트: false');
+          console.log('로딩 상태 업데이트: true');
         }, 500);
       }
     };
