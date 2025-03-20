@@ -182,12 +182,18 @@ const KeeperRegistration: React.FC = () => {
     }
   };
 
+  // 뒤로가기 핸들러
+  const handleBack = () => {
+    // 변경 사항은 로컬 스토리지에 자동 저장 상태이므로 바로 이전 페이지로 이동
+    navigate(-1);
+  };
+
   // 다음 버튼 활성화 여부
   const isNextButtonDisabled = !(termsAgreed.privacy && termsAgreed.terms);
 
   return (
     <>
-      <Header title="보관인 등록" showBackButton={true} />
+      <Header title="보관인 등록" showBackButton={true} onBack={handleBack} />
 
       <Container>
         <LogoText>MATAJO</LogoText>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
@@ -89,7 +89,7 @@ const RequiredMark = styled.span`
 `;
 
 // 입력 필드
-const InputField = styled.input<{ isError?: boolean; isFocused?: boolean }>`
+const InputField = styled.input<{ isError?: boolean; isFocused?: boolean; readOnly?: boolean }>`
   width: 321px;
   height: 40px;
   border-radius: 15px;
@@ -103,9 +103,29 @@ const InputField = styled.input<{ isError?: boolean; isFocused?: boolean }>`
   margin-bottom: 18px;
   font-size: 14px;
   font-family: 'Noto Sans KR';
+  background-color: ${props => (props.readOnly ? '#F5F5F5' : 'white')};
+  cursor: ${props => (props.readOnly ? 'pointer' : 'text')};
   &:focus {
     outline: none;
     border-color: ${props => (props.isError ? THEME.redText : THEME.primary)};
+  }
+`;
+
+// 주소 검색 버튼
+const AddressSearchButton = styled.div`
+  position: absolute;
+  right: 25px;
+  margin-top: -58px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+
+  &::before {
+    content: '🔍';
+    font-size: 20px;
   }
 `;
 
@@ -182,9 +202,19 @@ interface ErrorState {
   price: string;
 }
 
+// 주소 정보 타입 정의
+interface AddressInfo {
+  address: string;
+  roadAddress: string;
+  place?: string;
+  latitude: string;
+  longitude: string;
+}
+
 const Registration1: React.FC = () => {
-  // 라우터 네비게이션 훅
+  // 라우터 관련 훅
   const navigate = useNavigate();
+  const location = useLocation();
 
   // 폼 상태 관리
   const [formData, setFormData] = useState<FormData>({
@@ -217,13 +247,35 @@ const Registration1: React.FC = () => {
   const DESCRIPTION_MAX_LENGTH = 15;
   const DETAILS_MAX_LENGTH = 500;
 
-  // 폼 데이터 불러오기 (로컬 스토리지)
+  // 폼 데이터 불러오기 (로컬 스토리지) 및 주소 데이터 처리
   useEffect(() => {
+    // 로컬 스토리지에서 저장된 데이터 불러오기
     const savedData = localStorage.getItem('registration_step1');
     if (savedData) {
       setFormData(JSON.parse(savedData));
     }
-  }, []);
+
+    // location.state에서 주소 데이터 확인
+    if (location.state && location.state.selectedAddress) {
+      const selectedAddress = location.state.selectedAddress as AddressInfo;
+
+      // 폼 데이터에 주소 정보 업데이트
+      setFormData(prev => ({
+        ...prev,
+        address: selectedAddress.address,
+      }));
+
+      // 주소 필드의 에러 초기화
+      setErrors(prev => ({ ...prev, address: '' }));
+
+      // 로컬 스토리지에 업데이트된 데이터 저장
+      const updatedData = {
+        ...JSON.parse(savedData || '{}'),
+        address: selectedAddress.address,
+      };
+      localStorage.setItem('registration_step1', JSON.stringify(updatedData));
+    }
+  }, [location.state]);
 
   // 입력 변경 핸들러
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -253,9 +305,21 @@ const Registration1: React.FC = () => {
     );
   };
 
+  // 주소 필드 클릭 핸들러
+  const handleAddressClick = () => {
+    navigate('/search-address');
+  };
+
   // 포커스 핸들러
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name } = e.target;
+
+    // 주소 필드의 경우 포커스 대신 클릭 이벤트 처리
+    if (name === 'address') {
+      handleAddressClick();
+      return;
+    }
+
     setFocused(prev => ({ ...prev, [name]: true }));
   };
 
@@ -389,7 +453,7 @@ const Registration1: React.FC = () => {
 
         {/* 폼 컨테이너 */}
         <FormContainer>
-          {/* 주소 입력 */}
+          {/* 주소 입력 - 읽기 전용 및 클릭 시 주소 검색 페이지로 이동 */}
           <InputLabel>
             주소를 입력해 주세요 <RequiredMark>*</RequiredMark>
           </InputLabel>
@@ -406,7 +470,10 @@ const Registration1: React.FC = () => {
             placeholder="주소를 입력해주세요"
             isError={!!errors.address}
             isFocused={focused.address}
+            readOnly={true} // 읽기 전용으로 설정
+            onClick={handleAddressClick} // 클릭 시 주소 검색 페이지로 이동
           />
+          <AddressSearchButton onClick={handleAddressClick} />
 
           {/* 한줄 소개 */}
           <InputLabel>
