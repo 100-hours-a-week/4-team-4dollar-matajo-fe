@@ -373,6 +373,7 @@ interface MapBottomSheetProps {
   onDiscountItemClick?: (id: string) => void;
   discountItems?: DiscountItem[];
   recentItems?: StorageItem[];
+  onEditLocation?: () => void; // 동네 수정 버튼 클릭 핸들러 추가
 }
 
 const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
@@ -382,6 +383,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   onDiscountItemClick,
   discountItems = [],
   recentItems = [],
+  onEditLocation, // 동네 수정 버튼 클릭 핸들러
 }) => {
   // 네비게이션
   const navigate = useNavigate();
@@ -547,6 +549,13 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     }
   };
 
+  // 동네 수정 버튼 클릭 핸들러
+  const handleEditLocation = (): void => {
+    if (onEditLocation) {
+      onEditLocation();
+    }
+  };
+
   // 보관인 등록 모달 컨텐츠
   const keeperRegistrationContent = (
     <>
@@ -598,7 +607,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
               </svg>
             </LocationIcon>
             <LocationText>{location}</LocationText>
-            <EditLocationButton>동네 수정</EditLocationButton>
+            <EditLocationButton onClick={handleEditLocation}>동네 수정</EditLocationButton>
           </LocationContainer>
 
           <Divider />

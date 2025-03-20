@@ -8,6 +8,8 @@ import KakaoMap from '../../components/map/KakaoMap';
 import { useAuth } from '../../hooks/useAuth';
 import { getNearbyPlaces, getDiscountItems, getRecentItems } from '../../api/place';
 import { DiscountItem, StorageItem, Place } from '../../api/place';
+import LocationSearchModal from './LocationSearchModal';
+import { findDongCoordinates, loadDongDataFromCSV } from '../../utils/csvUtils';
 
 // 컨테이너 컴포넌트 - 전체 화면 크기로 설정
 const Container = styled.div`
@@ -104,6 +106,14 @@ const dummyStorageLocations = [
   },
 ];
 
+// 동 데이터 인터페이스 (충돌 방지용 로컬 타입)
+interface LocalDongData {
+  original_name: string;
+  display_name: string;
+  latitude: string;
+  longitude: string;
+}
+
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isKeeper, isClient } = useAuth();
@@ -113,10 +123,30 @@ const HomePage: React.FC = () => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [discountItems, setDiscountItems] = useState<DiscountItem[]>([]);
   const [recentItems, setRecentItems] = useState<StorageItem[]>([]);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
+  const [dongDataLoaded, setDongDataLoaded] = useState<boolean>(false);
+  const [dongData, setDongData] = useState<LocalDongData[]>([]);
 
   // 여의도동 좌표 (기본값)
   const [mapCenter, setMapCenter] = useState({ lat: 37.5244, lng: 126.9231 });
   const [mapLevel] = useState(4); // 초기 지도 레벨은 4로 설정
+
+  // 동 데이터 로드
+  useEffect(() => {
+    const loadDongData = async () => {
+      try {
+        const data = await loadDongDataFromCSV('/data/korea_dong_coordinates.csv');
+        setDongData(data);
+        setDongDataLoaded(true);
+      } catch (error) {
+        console.error('동 데이터 로드 실패:', error);
+        // 기본 더미 데이터 설정 (필요시)
+        setDongDataLoaded(true);
+      }
+    };
+
+    loadDongData();
+  }, []);
 
   // 지도 중심 변경 핸들러
   const handleCenterChanged = (lat: number, lng: number) => {
@@ -127,6 +157,25 @@ const HomePage: React.FC = () => {
     // 예: fetchNearbyData(lat, lng);
   };
 
+  // src/pages/Home/index.tsx의 handleSelectLocation 함수
+  const handleSelectLocation = (selectedLocation: string) => {
+    setLocation(selectedLocation);
+
+    // 동 데이터가 로드되었다면 선택한 위치의 좌표를 찾아 지도 중심 변경
+    if (dongDataLoaded && dongData.length > 0) {
+      const coordinates = findDongCoordinates(dongData, selectedLocation);
+
+      if (coordinates) {
+        setMapCenter(coordinates);
+        // 새 위치에 대한 데이터 가져오기
+        fetchNearbyData(coordinates.lat, coordinates.lng);
+      } else {
+        console.log('선택한 위치의 좌표를 찾을 수 없습니다:', selectedLocation);
+      }
+    } else {
+      console.log('동 데이터가 로드되지 않았습니다.');
+    }
+  };
   // 현재 위치를 기반으로 데이터 로드
   const fetchNearbyData = async (lat: number, lng: number) => {
     try {
@@ -137,15 +186,18 @@ const HomePage: React.FC = () => {
       // 더미 데이터 사용
       setPlaces(dummyStorageLocations);
 
-      // 위치 정보 업데이트 (실제로는 주소 변환 API 사용 필요)
-      setLocation('영등포구 여의도동');
+      // 위치 정보 업데이트는 이제 handleSelectLocation에서 처리
 
-      // 특가 아이템 로드
-      const discountResponse = await getDiscountItems('영등포구', '여의도동');
+      // 특가 아이템 로드 (구/동 정보 추출)
+      const locationParts = location.split(' ');
+      const district = locationParts[0] || '영등포구';
+      const neighborhood = locationParts[1] || '여의도동';
+
+      const discountResponse = await getDiscountItems(district, neighborhood);
       setDiscountItems(discountResponse.data.items);
 
       // 최근 거래 내역 로드
-      const recentResponse = await getRecentItems('영등포구', '여의도동');
+      const recentResponse = await getRecentItems(district, neighborhood);
       setRecentItems(recentResponse.data.items);
     } catch (error) {
       console.error('데이터 로드 오류:', error);
@@ -298,6 +350,7 @@ const HomePage: React.FC = () => {
           draggable={true} // 드래그 가능 반드시 true
           zoomable={true} // 줌 가능 반드시 true
           onCenterChanged={handleCenterChanged}
+          isLocationModalOpen={isLocationModalOpen}
         />
       </MapWrapper>
 
@@ -314,6 +367,14 @@ const HomePage: React.FC = () => {
         onDiscountItemClick={handleDiscountItemClick}
         discountItems={discountItems}
         recentItems={recentItems}
+        onEditLocation={() => setIsLocationModalOpen(true)} // 동네 수정 버튼 클릭 시 모달 열기
+      />
+
+      {/* 지역 검색 모달 */}
+      <LocationSearchModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        onSelectLocation={handleSelectLocation}
       />
 
       {/* 하단 네비게이션 */}
