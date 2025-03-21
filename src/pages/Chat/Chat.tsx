@@ -5,6 +5,7 @@ import Header from '../../components/layout/Header';
 import TradeConfirmModal, { TradeData } from './TradeConfirmModal';
 import ChatService, { ChatMessageResponseDto, MessageType } from '../../services/ChatService';
 import { API_BASE_URL } from '../../constants/api';
+import axios from 'axios';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -350,8 +351,18 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 채팅 서비스 인스턴스
   const chatService = ChatService.getInstance();
 
-  // 사용자 ID 상태 (실제로는 인증 컨텍스트나 전역 상태에서 가져와야 함)
-  const [currentUserId, setCurrentUserId] = useState<number>(1); // 기본값 1로 설정
+  // 사용자 ID 상태 - localStorage에서 가져오거나 설정
+  const [currentUserId, setCurrentUserId] = useState<number>(() => {
+    // localStorage에서 userId 확인
+    const savedUserId = localStorage.getItem('userId');
+    if (savedUserId) {
+      return parseInt(savedUserId);
+    }
+
+    // 없으면 기본값 1 설정 및 저장
+    localStorage.setItem('userId', '1');
+    return 1;
+  });
 
   // 메시지 상태 관리
   const [messages, setMessages] = useState<ChatMessageResponseDto[]>([]);
@@ -376,6 +387,28 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // 이미지 입력 참조
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // API 요청 헤더에 userId 추가
+  useEffect(() => {
+    // localStorage에서 userId 가져오기
+    const userId = localStorage.getItem('userId') || '1';
+
+    // axios 인터셉터 설정
+    const interceptor = axios.interceptors.request.use(
+      config => {
+        config.headers['userId'] = userId;
+        return config;
+      },
+      error => {
+        return Promise.reject(error);
+      },
+    );
+
+    // 컴포넌트 언마운트 시 인터셉터 제거
+    return () => {
+      axios.interceptors.request.eject(interceptor);
+    };
+  }, []);
 
   // 뒤로가기 처리 함수
   const handleBack = () => {

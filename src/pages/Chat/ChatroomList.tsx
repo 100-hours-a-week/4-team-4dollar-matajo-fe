@@ -5,6 +5,7 @@ import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import ChatService, { ChatRoomResponseDto } from '../../services/ChatService';
+import axios from 'axios';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -94,30 +95,6 @@ const ErrorContainer = styled.div`
   color: #ff5050;
   font-size: 14px;
 `;
-/* 
-// 플러스 아이콘 (새 채팅방 버튼)
-const FloatingButton = styled.button`
-  position: fixed;
-  right: 20px;
-  bottom: 80px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background-color: ${THEME.primary};
-  color: white;
-  border: none;
-  font-size: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  z-index: 100;
-
-  &:hover {
-    background-color: ${THEME.primaryLight};
-  }
-`; */
 
 // 데이터 없을 때 보여줄 컴포넌트
 const EmptyState = styled.div`
@@ -217,8 +194,18 @@ const ChatroomList: React.FC = () => {
   // 채팅 서비스 인스턴스
   const chatService = ChatService.getInstance();
 
-  // 현재 사용자 ID (로컬 스토리지 또는 전역 상태에서 가져오기)
-  const [currentUserId, setCurrentUserId] = useState<number>(1); // 기본값으로 1 설정 (테스트용)
+  // 현재 사용자 ID - localStorage에서 가져오거나 설정
+  const [currentUserId, setCurrentUserId] = useState<number>(() => {
+    // localStorage에서 userId 확인
+    const savedUserId = localStorage.getItem('userId');
+    if (savedUserId) {
+      return parseInt(savedUserId);
+    }
+
+    // 없으면 기본값 1 설정 및 저장
+    localStorage.setItem('userId', '1');
+    return 1;
+  });
 
   // 채팅방 데이터 상태
   const [chatrooms, setChatrooms] = useState<ChatRoomResponseDto[]>([]);
@@ -240,6 +227,27 @@ const ChatroomList: React.FC = () => {
 
   // 채팅방 나가기 진행 상태
   const [leavingChatroomId, setLeavingChatroomId] = useState<number | null>(null);
+
+  useEffect(() => {
+    // API 요청 시 사용할 userId 헤더 설정
+    const userId = localStorage.getItem('userId') || '1';
+
+    // axios 인터셉터 설정
+    const interceptor = axios.interceptors.request.use(
+      config => {
+        config.headers['userId'] = userId;
+        return config;
+      },
+      error => {
+        return Promise.reject(error);
+      },
+    );
+
+    // 컴포넌트 언마운트 시 인터셉터 제거
+    return () => {
+      axios.interceptors.request.eject(interceptor);
+    };
+  }, []);
 
   // 채팅방 목록 불러오기
   const loadChatrooms = async () => {
@@ -529,9 +537,6 @@ const ChatroomList: React.FC = () => {
           ))
         )}
       </Container>
-
-      {/* 새 채팅방 생성 버튼 */}
-      {/* <FloatingButton onClick={handleCreateNewChatRoom}>+</FloatingButton> */}
 
       {/* 채팅방 나가기 모달 */}
       <Modal

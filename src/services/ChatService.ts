@@ -68,13 +68,21 @@ const apiClient = axios.create({
   withCredentials: false,
 });
 
-// 인증 토큰 인터셉터 추가
+// 인증 토큰 및 userId 인터셉터 추가
 apiClient.interceptors.request.use(
   config => {
+    // JWT 토큰
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+
+    // userId 헤더 추가
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      config.headers['userId'] = userId;
+    }
+
     return config;
   },
   error => {
@@ -134,6 +142,9 @@ class ChatService {
           withCredentials: false,
         };
 
+        // userId 가져오기
+        const userId = localStorage.getItem('userId') || '1';
+
         // STOMP 클라이언트 생성
         this.stompClient = new Client({
           webSocketFactory: () => new SockJS(`${API_BASE_URL}/ws-chat`, null, sockJSOptions),
@@ -142,6 +153,7 @@ class ChatService {
           heartbeatOutgoing: 4000,
           connectHeaders: {
             'X-Requested-With': 'XMLHttpRequest',
+            userId: userId, // WebSocket 연결 시 userId 헤더 추가
           },
 
           debug: msg => {
@@ -364,11 +376,17 @@ class ChatService {
         message_type: message.messageType,
       };
 
-      // 메시지 전송
+      // userId 가져오기
+      const userId = localStorage.getItem('userId') || '1';
+
+      // 메시지 전송 - userId 헤더 추가
       this.stompClient.publish({
         destination: `/app/${roomId}/message`,
         body: JSON.stringify(backendMessage),
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          userId: userId,
+        },
       });
 
       console.log('메시지 전송 성공');
