@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
-import chatApiService from '../../api/chat';
+import ChatService, { ChatRoomResponseDto } from '../../services/ChatService';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -28,79 +28,6 @@ const Container = styled.div`
   overflow-x: auto;
   padding-bottom: 40px;
   padding-top: 10px;
-`;
-
-// 채팅방 아이템 컨테이너
-const ChatroomItem = styled.div<{ isPressed?: boolean }>`
-  width: 327px;
-  position: relative;
-  margin: 0 auto;
-  padding: 20px 0;
-  display: flex;
-  border-bottom: 1px solid ${THEME.borderColor};
-  cursor: pointer;
-  background-color: ${props => (props.isPressed ? 'rgba(94, 92, 253, 0.05)' : 'transparent')};
-  transition: background-color 0.2s ease;
-`;
-
-// 프로필 이미지
-const ProfileImage = styled.div`
-  width: 69px;
-  height: 66px;
-  border-radius: 2px;
-  background-color: #f0f0f0;
-  margin-right: 15px;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-`;
-
-// 채팅방 정보 컨테이너
-const ChatInfo = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 66px;
-`;
-
-// 상단 정보 (닉네임, 시간)
-const TopInfo = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-// 닉네임
-const Nickname = styled.div`
-  color: #616161;
-  font-size: 18px;
-  font-family: 'Noto Sans KR';
-  font-weight: 700;
-  letter-spacing: 0.02px;
-`;
-
-// 시간
-const Time = styled.div`
-  color: #616161;
-  font-size: 9px;
-  font-family: 'Noto Sans KR';
-  font-weight: 350;
-  letter-spacing: 0.01px;
-`;
-
-// 메시지 내용
-const MessageContent = styled.div<{ isUnread?: boolean }>`
-  color: ${props => (props.isUnread ? THEME.highlight : '#6F6F6F')};
-  font-size: 13px;
-  font-family: 'Noto Sans KR';
-  font-weight: ${props => (props.isUnread ? 500 : 400)};
-  letter-spacing: 0.01px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 230px; /* 적절한 너비로 조정 */
 `;
 
 // 위치 정보
@@ -160,117 +87,150 @@ const HighlightText = styled.span`
   word-wrap: break-word;
 `;
 
-// 채팅방 데이터 타입 정의
-interface ChatroomData {
-  id: number;
-  nickname: string;
-  lastMessage: string;
-  isUnread: boolean;
-  time: string;
-  location: string;
-  profileImage?: string;
-}
+// 에러 메시지 컨테이너
+const ErrorContainer = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: #ff5050;
+  font-size: 14px;
+`;
+/* 
+// 플러스 아이콘 (새 채팅방 버튼)
+const FloatingButton = styled.button`
+  position: fixed;
+  right: 20px;
+  bottom: 80px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: ${THEME.primary};
+  color: white;
+  border: none;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 100;
 
-// API 응답 타입 정의
-interface ChatroomResponse {
-  id: number;
-  nickname?: string;
-  lastMessage?: string;
-  isUnread?: boolean;
-  time?: string;
-  location?: string;
-  profileImage?: string;
-  // 서버에서 추가로 제공할 수 있는 필드들
-  roomId?: number;
-  userId?: number;
-  activeStatus?: boolean;
-  joinedAt?: string;
-  leftAt?: string | null;
-}
+  &:hover {
+    background-color: ${THEME.primaryLight};
+  }
+`; */
+
+// 데이터 없을 때 보여줄 컴포넌트
+const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+`;
+
+const EmptyStateText = styled.p`
+  color: ${THEME.grayText};
+  font-size: 16px;
+  margin-top: 10px;
+`;
+
+// 채팅방 아이템 컨테이너
+const ChatroomItem = styled.div<{ isPressed?: boolean }>`
+  width: 327px;
+  position: relative;
+  margin: 0 auto;
+  padding: 20px 0;
+  display: flex;
+  border-bottom: 1px solid ${THEME.borderColor};
+  cursor: pointer;
+  background-color: ${props => (props.isPressed ? 'rgba(94, 92, 253, 0.05)' : 'transparent')};
+  transition: background-color 0.2s ease;
+`;
+
+// 프로필 이미지
+const ProfileImage = styled.div<{ url?: string }>`
+  width: 69px;
+  height: 66px;
+  border-radius: 2px;
+  background-color: #f0f0f0;
+  background-image: ${props => (props.url ? `url(${props.url})` : 'none')};
+  background-size: cover;
+  background-position: center;
+  margin-right: 15px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+// 채팅방 정보 컨테이너
+const ChatInfo = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 66px;
+`;
+
+// 상단 정보 (닉네임, 시간)
+const TopInfo = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+// 닉네임
+const Nickname = styled.div`
+  color: #616161;
+  font-size: 18px;
+  font-family: 'Noto Sans KR';
+  font-weight: 700;
+  letter-spacing: 0.02px;
+`;
+
+// 시간
+const Time = styled.div`
+  color: #616161;
+  font-size: 9px;
+  font-family: 'Noto Sans KR';
+  font-weight: 350;
+  letter-spacing: 0.01px;
+`;
+
+// 메시지 내용
+const MessageContent = styled.div<{ isUnread?: boolean }>`
+  color: ${props => (props.isUnread ? THEME.highlight : '#6F6F6F')};
+  font-size: 13px;
+  font-family: 'Noto Sans KR';
+  font-weight: ${props => (props.isUnread ? 500 : 400)};
+  letter-spacing: 0.01px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 230px; /* 적절한 너비로 조정 */
+`;
 
 const ChatroomList: React.FC = () => {
-  // 네비게이션
   const navigate = useNavigate();
 
+  // 채팅 서비스 인스턴스
+  const chatService = ChatService.getInstance();
+
+  // 현재 사용자 ID (로컬 스토리지 또는 전역 상태에서 가져오기)
+  const [currentUserId, setCurrentUserId] = useState<number>(1); // 기본값으로 1 설정 (테스트용)
+
   // 채팅방 데이터 상태
-  const [chatrooms, setChatrooms] = useState<ChatroomData[]>([]);
+  const [chatrooms, setChatrooms] = useState<ChatRoomResponseDto[]>([]);
 
   // 로딩 상태
   const [loading, setLoading] = useState(true);
 
-  // 채팅방 목록 불러오기
-  useEffect(() => {
-    const fetchChatrooms = async () => {
-      try {
-        setLoading(true);
-        // API에서 채팅방 목록 불러오기
-        const response = await chatApiService.getChatrooms();
-
-        // 데이터 형식 맞추기
-        const formattedData = response.map(
-          (room: ChatroomResponse): ChatroomData => ({
-            id: room.id,
-            nickname: room.nickname || '닉네임 최대',
-            lastMessage: room.lastMessage || '내용의최대글자수는얼마나될까...',
-            isUnread: room.isUnread || false,
-            time: room.time || '04:21',
-            location: room.location || '남양읍',
-            profileImage: room.profileImage || 'https://placehold.co/69x66',
-          }),
-        );
-
-        setChatrooms(formattedData);
-      } catch (error) {
-        console.error('채팅방 목록 불러오기 실패:', error);
-        // 오류 발생 시 더미 데이터 사용
-        setChatrooms([
-          {
-            id: 1,
-            nickname: '닉네임 최대',
-            lastMessage: '내용의최대글자수는얼마나될까...',
-            isUnread: false,
-            time: '04:21',
-            location: '남양읍',
-            profileImage: 'https://placehold.co/69x66',
-          },
-          {
-            id: 2,
-            nickname: '닉네임 최대',
-            lastMessage: '내용의최대글자수는얼마나될까...',
-            isUnread: false,
-            time: '04:21',
-            location: '남양읍',
-            profileImage: 'https://placehold.co/69x66',
-          },
-          {
-            id: 3,
-            nickname: '닉네임 최대',
-            lastMessage: '내용의최대글자수는얼마나될까...',
-            isUnread: true,
-            time: '04:21',
-            location: '남양읍',
-            profileImage: 'https://placehold.co/69x66',
-          },
-          {
-            id: 4,
-            nickname: '닉네임 최대',
-            lastMessage: '내용의최대글자수는얼마나될까...',
-            isUnread: false,
-            time: '04:21',
-            location: '남양읍',
-            profileImage: 'https://placehold.co/69x66',
-          },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchChatrooms();
-  }, []);
+  // 에러 상태
+  const [error, setError] = useState<string | null>(null);
 
   // 모달 상태
-  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState<boolean>(false);
   const [selectedChatroomId, setSelectedChatroomId] = useState<number | null>(null);
   const [pressedChatroomId, setPressedChatroomId] = useState<number | null>(null);
 
@@ -281,22 +241,53 @@ const ChatroomList: React.FC = () => {
   // 채팅방 나가기 진행 상태
   const [leavingChatroomId, setLeavingChatroomId] = useState<number | null>(null);
 
+  // 채팅방 목록 불러오기
+  const loadChatrooms = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 채팅방 목록 불러오기
+      const chatRooms = await chatService.loadChatRooms();
+      console.log('로드된 채팅방 목록:', chatRooms);
+      setChatrooms(chatRooms);
+    } catch (err) {
+      console.error('채팅방 목록 로드 실패:', err);
+      setError('채팅방 목록을 불러오는 데 실패했습니다. 네트워크 연결을 확인해주세요.');
+      setChatrooms([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 채팅방 목록 로드
+  useEffect(() => {
+    loadChatrooms();
+
+    // 페이지 벗어날 때 정리
+    return () => {
+      if (longPressTimeoutRef.current) {
+        clearTimeout(longPressTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // 채팅방 클릭 핸들러
-  const handleChatroomClick = (id: number) => {
+  const handleChatroomClick = (roomId: number) => {
     if (!isLongPress) {
-      console.log(`채팅방 ${id} 클릭됨`);
-      navigate(`/chat`);
+      console.log(`채팅방 ${roomId} 클릭됨`);
+      navigate(`/chat/${roomId}`);
     }
     // 롱 프레스 상태 초기화
     setIsLongPress(false);
   };
 
   // 터치 시작 핸들러
-  const handleTouchStart = (id: number) => {
-    setPressedChatroomId(id);
+  const handleTouchStart = (roomId: number) => {
+    setPressedChatroomId(roomId);
     longPressTimeoutRef.current = setTimeout(() => {
       setIsLongPress(true);
-      setSelectedChatroomId(id);
+      setSelectedChatroomId(roomId);
       setIsLeaveModalOpen(true);
     }, 700); // 700ms 이상 누르면 롱 프레스로 인식
   };
@@ -311,11 +302,11 @@ const ChatroomList: React.FC = () => {
   };
 
   // 마우스 다운 핸들러 (데스크탑 지원)
-  const handleMouseDown = (id: number) => {
-    setPressedChatroomId(id);
+  const handleMouseDown = (roomId: number) => {
+    setPressedChatroomId(roomId);
     longPressTimeoutRef.current = setTimeout(() => {
       setIsLongPress(true);
-      setSelectedChatroomId(id);
+      setSelectedChatroomId(roomId);
       setIsLeaveModalOpen(true);
     }, 700);
   };
@@ -329,14 +320,10 @@ const ChatroomList: React.FC = () => {
     }
   };
 
-  // 컴포넌트 언마운트 시 타이머 클리어
-  useEffect(() => {
-    return () => {
-      if (longPressTimeoutRef.current) {
-        clearTimeout(longPressTimeoutRef.current);
-      }
-    };
-  }, []);
+  // 새로고침 핸들러
+  const handleRefresh = () => {
+    loadChatrooms();
+  };
 
   // 채팅방 나가기 확인 핸들러
   const handleLeaveChatroom = async () => {
@@ -348,16 +335,19 @@ const ChatroomList: React.FC = () => {
         // 모달 닫기 (진행 중 UI는 채팅방 리스트에 표시)
         setIsLeaveModalOpen(false);
 
-        // API 호출로 active_status를 false로 변경
-        await chatApiService.leaveChatroom(selectedChatroomId);
+        // API 호출로 채팅방 나가기
+        const success = await chatService.leaveChatRoom(selectedChatroomId);
 
-        // 화면 상에서는 해당 채팅방을 제거
-        setChatrooms(prev => prev.filter(room => room.id !== selectedChatroomId));
-        console.log(`채팅방 ${selectedChatroomId} 나가기 처리됨`);
+        if (success) {
+          // 화면에서 해당 채팅방 제거
+          setChatrooms(prev => prev.filter(room => room.chatRoomId !== selectedChatroomId));
+          console.log(`채팅방 ${selectedChatroomId} 나가기 처리됨`);
+        } else {
+          setError('채팅방 나가기에 실패했습니다. 다시 시도해주세요.');
+        }
       } catch (error) {
         console.error(`채팅방 나가기 실패:`, error);
-        // 오류 처리 - 사용자에게 알림 등
-        alert('채팅방 나가기에 실패했습니다. 다시 시도해주세요.');
+        setError('채팅방 나가기에 실패했습니다. 다시 시도해주세요.');
       } finally {
         // 나가기 진행 중 상태 초기화
         setLeavingChatroomId(null);
@@ -377,10 +367,55 @@ const ChatroomList: React.FC = () => {
 
   // 메시지 내용 가공 (14자 이상이면 ... 처리)
   const formatMessage = (message: string) => {
+    if (!message) return '';
     if (message.length > 14) {
       return `${message.substring(0, 14)}...`;
     }
     return message;
+  };
+
+  // 시간 포맷팅 (yyyy-MM-ddThh:mm:ss 형식의 ISO 문자열을 HH:mm 형식으로 변환)
+  const formatTime = (isoTime: string): string => {
+    if (!isoTime) return '';
+
+    try {
+      const date = new Date(isoTime);
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      // 날짜가 오늘인지 어제인지 확인
+      if (date.toDateString() === now.toDateString()) {
+        // 오늘이면 시간만 표시
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        // 어제면 '어제' 표시
+        return '어제';
+      } else {
+        // 그 외에는 MM/DD 형식
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+      }
+    } catch (e) {
+      console.error('시간 포맷팅 오류:', e);
+      return '';
+    }
+  };
+
+  // 새 채팅방 생성 핸들러
+  const handleCreateNewChatRoom = async () => {
+    try {
+      // 실제 구현에서는 보관소 선택 모달을 띄우거나 postId를 입력받는 로직이 필요합니다.
+      // 지금은 테스트용으로 postId를 1로 고정합니다.
+      const postId = 1;
+      const roomId = await chatService.createChatRoom(postId);
+      if (roomId) {
+        // 생성 후 채팅방으로 이동
+        navigate(`/chat/${roomId}`);
+      }
+    } catch (error) {
+      console.error('채팅방 생성 실패:', error);
+      setError('채팅방 생성에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   // 채팅방 나가기 모달 내용
@@ -403,40 +438,68 @@ const ChatroomList: React.FC = () => {
       <Header title="채팅 리스트" showBackButton={true} onBack={() => navigate('/')} />
 
       <Container>
+        {/* 에러 메시지 표시 */}
+        {error && (
+          <ErrorContainer>
+            {error}
+            <button onClick={handleRefresh} style={{ marginLeft: '10px', color: THEME.primary }}>
+              새로고침
+            </button>
+          </ErrorContainer>
+        )}
+
         {/* 로딩 상태 표시 */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}>채팅방 목록을 불러오는 중...</div>
-        ) : chatrooms.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '20px', color: THEME.grayText }}>
-            참여 중인 채팅방이 없습니다.
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '20px',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <LoadingSpinner />{' '}
+            <span style={{ marginLeft: '10px' }}>채팅방 목록을 불러오는 중...</span>
           </div>
+        ) : chatrooms.length === 0 ? (
+          <EmptyState>
+            <EmptyStateText>참여 중인 채팅방이 없습니다.</EmptyStateText>
+            <button
+              onClick={handleCreateNewChatRoom}
+              style={{
+                marginTop: '20px',
+                padding: '8px 15px',
+                backgroundColor: THEME.primary,
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+              }}
+            >
+              새 채팅방 만들기
+            </button>
+          </EmptyState>
         ) : (
           /* 채팅방 목록 */
           chatrooms.map(chatroom => (
             <ChatroomItem
-              key={chatroom.id}
-              isPressed={pressedChatroomId === chatroom.id}
-              onClick={() => handleChatroomClick(chatroom.id)}
-              onTouchStart={() => handleTouchStart(chatroom.id)}
+              key={chatroom.chatRoomId}
+              isPressed={pressedChatroomId === chatroom.chatRoomId}
+              onClick={() => handleChatroomClick(chatroom.chatRoomId)}
+              onTouchStart={() => handleTouchStart(chatroom.chatRoomId)}
               onTouchEnd={handleTouchEnd}
-              onMouseDown={() => handleMouseDown(chatroom.id)}
+              onMouseDown={() => handleMouseDown(chatroom.chatRoomId)}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
               style={{
-                opacity: leavingChatroomId === chatroom.id ? 0.6 : 1,
+                opacity: leavingChatroomId === chatroom.chatRoomId ? 0.6 : 1,
                 position: 'relative',
               }}
             >
-              <ProfileImage>
-                {chatroom.profileImage ? (
-                  <img
-                    src={chatroom.profileImage}
-                    alt="프로필 이미지"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <span>
-                    장소
+              <ProfileImage url={chatroom.postMainImage}>
+                {!chatroom.postMainImage && (
+                  <span style={{ textAlign: 'center', fontSize: '12px', color: '#999' }}>
+                    프로필
                     <br />
                     이미지
                   </span>
@@ -445,19 +508,19 @@ const ChatroomList: React.FC = () => {
 
               <ChatInfo>
                 <TopInfo>
-                  <Nickname>{chatroom.nickname}</Nickname>
-                  <Time>{chatroom.time}</Time>
+                  <Nickname>{chatroom.userNickname || '알 수 없음'}</Nickname>
+                  <Time>{formatTime(chatroom.lastMessageTime)}</Time>
                 </TopInfo>
 
-                <MessageContent isUnread={chatroom.isUnread}>
-                  {formatMessage(chatroom.lastMessage)}
+                <MessageContent isUnread={chatroom.hasUnreadMessages}>
+                  {formatMessage(chatroom.lastMessage || '(메시지 없음)')}
                 </MessageContent>
 
-                <Location>{chatroom.location}</Location>
+                <Location>{chatroom.postAddress || ''}</Location>
               </ChatInfo>
 
               {/* 나가기 진행 중 상태 표시 */}
-              {leavingChatroomId === chatroom.id && (
+              {leavingChatroomId === chatroom.chatRoomId && (
                 <LoadingOverlay>
                   <LoadingSpinner />
                 </LoadingOverlay>
@@ -466,6 +529,9 @@ const ChatroomList: React.FC = () => {
           ))
         )}
       </Container>
+
+      {/* 새 채팅방 생성 버튼 */}
+      {/* <FloatingButton onClick={handleCreateNewChatRoom}>+</FloatingButton> */}
 
       {/* 채팅방 나가기 모달 */}
       <Modal
