@@ -1,5 +1,5 @@
 // API 기본 URL 설정
-export const API_BASE_URL = 'https://api.matoajo.store';
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://15.164.251.118:8080';
 
 // API 경로 정의
 export const API_PATHS = {
@@ -14,8 +14,11 @@ export const API_PATHS = {
 
   // 채팅 관련
   CHAT: {
-    ROOMS: '/chat/rooms',
-    MESSAGES: '/chat/messages',
+    ROOMS: '/api/chat', // '/api/chat/rooms'에서 '/api/chat'으로 수정
+    MESSAGES: '/api/chat/:roomId/message', // 기존대로 유지
+    READ: '/api/chat/:roomId/read', // 기존대로 유지
+    LEAVE: '/api/chat/:roomId', // '/api/chat/:roomId/leave'에서 수정 (DELETE 메서드 사용)
+    UPLOAD_IMAGE: '/api/chat/images/upload', // 기존대로 유지
   },
 
   // 보관소 관련

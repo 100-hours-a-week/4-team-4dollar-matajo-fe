@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
+import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import TradeConfirmModal, { TradeData } from './TradeConfirmModal';
+import ChatService, { ChatMessageResponseDto, MessageType } from '../../services/ChatService';
+import { API_BASE_URL } from '../../constants/api';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -142,6 +145,13 @@ const MessageTime = styled.div`
   margin-top: 5px;
 `;
 
+// 닉네임 표시
+const MessageNickname = styled.div`
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 3px;
+`;
+
 // 확정하기 버튼 - 위치 수정
 const ConfirmButton = styled.button`
   width: 94px;
@@ -273,57 +283,78 @@ const SendIcon = styled.div`
   }
 `;
 
-// 메시지 타입 정의
-interface Message {
-  id: number;
-  content: string;
-  time: string;
-  type: 'sent' | 'received' | 'system';
-  isImage?: boolean;
-  imageUrl?: string;
-}
+// 업로드 상태 표시
+const UploadStatus = styled.div<{ visible: boolean }>`
+  display: ${props => (props.visible ? 'block' : 'none')};
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  position: fixed;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 101;
+`;
+
+// 연결 상태 표시
+const ConnectionStatus = styled.div<{ connected: boolean }>`
+  position: fixed;
+  top: 47px;
+  left: 0;
+  right: 0;
+  background-color: ${props => (props.connected ? 'green' : 'red')};
+  color: white;
+  text-align: center;
+  padding: 2px 0;
+  font-size: 12px;
+  z-index: 10;
+  opacity: 0.7;
+`;
+
+// 에러 메시지
+const ErrorMessage = styled.div`
+  background-color: rgba(255, 0, 0, 0.1);
+  color: red;
+  padding: 10px;
+  border-radius: 5px;
+  text-align: center;
+  margin: 10px 0;
+`;
+
+// 재시도 버튼
+const RetryButton = styled.button`
+  background-color: ${THEME.primary};
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 10px;
+  margin-top: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  &:hover {
+    background-color: #4a48d0;
+  }
+`;
 
 interface ChatProps {
   onBack?: () => void;
 }
 
 const Chat: React.FC<ChatProps> = ({ onBack }) => {
-  // 뒤로가기 처리 함수
-  const handleBack = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      // 채팅룸 목록으로 이동 (기본값)
-      window.location.href = '/chat/list';
-    }
-  };
+  const navigate = useNavigate();
+  const { id: roomIdParam } = useParams<{ id: string }>();
+  const roomId = roomIdParam ? parseInt(roomIdParam) : null;
+
+  // 채팅 서비스 인스턴스
+  const chatService = ChatService.getInstance();
+
+  // 사용자 ID 상태 (실제로는 인증 컨텍스트나 전역 상태에서 가져와야 함)
+  const [currentUserId, setCurrentUserId] = useState<number>(1); // 기본값 1로 설정
+
   // 메시지 상태 관리
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      content: '2025.02.27',
-      time: '',
-      type: 'system', // 날짜 표시는 시스템 메시지로 처리
-    },
-    {
-      id: 2,
-      content: '오리 인형 맡기고 싶어요 혹시 가격이 어떻게 될까요?',
-      time: '오후 9:15',
-      type: 'sent',
-    },
-    {
-      id: 3,
-      content: '안돼. 돌아가.',
-      time: '오후 9:15',
-      type: 'received',
-    },
-    {
-      id: 4,
-      content: '거래가 확정 되었습니다.\n거래 내역을 확인해주세요.',
-      time: '',
-      type: 'system',
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessageResponseDto[]>([]);
 
   // 현재 입력 메시지
   const [inputMessage, setInputMessage] = useState('');
@@ -331,11 +362,196 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 모달 상태 관리
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
+  // 이미지 업로드 상태
+  const [isUploading, setIsUploading] = useState(false);
+
+  // 연결 상태
+  const [isConnected, setIsConnected] = useState(false);
+
+  // 에러 상태
+  const [error, setError] = useState<string | null>(null);
+
   // 채팅 컨테이너 참조
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // 이미지 입력 참조
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 뒤로가기 처리 함수
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      // 채팅룸 목록으로 이동 (기본값)
+      navigate('/chat/list');
+    }
+  };
+
+  // 방 제목
+  const [roomTitle, setRoomTitle] = useState('채팅방');
+
+  // 채팅방 컴포넌트에서 연결 상태 관리 개선
+  useEffect(() => {
+    if (!roomId) {
+      console.error('roomId가 필요합니다');
+      handleBack();
+      return;
+    }
+
+    setError(null);
+    setRoomTitle(`채팅방 ${roomId}`);
+
+    let mounted = true;
+
+    // WebSocket 연결 함수
+    const connectAndSubscribe = async () => {
+      try {
+        console.log('채팅 서버에 연결 시도 중...');
+        await chatService.connect();
+
+        if (!mounted) return;
+
+        setIsConnected(true);
+        setError(null);
+        console.log('채팅 서버 연결됨');
+
+        // 메시지 읽음 상태 업데이트
+        try {
+          await chatService.markMessagesAsRead(roomId, currentUserId);
+          console.log('메시지 읽음 처리 완료');
+        } catch (error) {
+          console.error('메시지 읽음 처리 실패:', error);
+        }
+
+        // 메시지 구독
+        console.log('채팅방 구독 시도 중...');
+        await chatService.subscribeToChatRoom(roomId, message => {
+          if (!mounted) return;
+
+          console.log('새 메시지 수신:', message);
+          setMessages(prev => {
+            // 중복 메시지 방지
+            const messageId = message.messageId || message.messageId;
+            const isDuplicate = prev.some(
+              m =>
+                (m.messageId && m.messageId === messageId) ||
+                (m.messageId && m.messageId === messageId),
+            );
+
+            if (isDuplicate) {
+              console.log('중복 메시지 무시');
+              return prev;
+            }
+
+            return [...prev, message];
+          });
+        });
+
+        console.log('채팅방 구독 성공');
+      } catch (error) {
+        console.error('WebSocket 연결/구독 실패:', error);
+
+        if (!mounted) return;
+
+        setIsConnected(false);
+        setError('채팅 서버 연결에 실패했습니다. 아래 버튼을 눌러 재시도해주세요.');
+      }
+    };
+
+    // 연결 시도
+    connectAndSubscribe();
+
+    // 이전 메시지 로드
+    loadPreviousMessages();
+
+    // 이벤트 리스너 등록
+    const connectListener = () => {
+      if (!mounted) return;
+
+      setIsConnected(true);
+      setError(null);
+
+      // 연결이 복구되면 자동으로 다시 구독
+      chatService
+        .subscribeToChatRoom(roomId, message => {
+          if (!mounted) return;
+
+          setMessages(prev => {
+            const messageId = message.messageId || message.messageId;
+            const isDuplicate = prev.some(
+              m =>
+                (m.messageId && m.messageId === messageId) ||
+                (m.messageId && m.messageId === messageId),
+            );
+
+            if (isDuplicate) return prev;
+            return [...prev, message];
+          });
+        })
+        .catch(error => {
+          console.error('자동 재구독 실패:', error);
+        });
+    };
+
+    const errorListener = (errorMessage: string) => {
+      if (!mounted) return;
+
+      setError(`연결 오류: ${errorMessage}`);
+      setIsConnected(false);
+    };
+
+    chatService.onConnect(connectListener);
+    chatService.onError(errorListener);
+
+    // 정리 함수
+    return () => {
+      mounted = false;
+
+      if (roomId) {
+        chatService.unsubscribeFromChatRoom(roomId);
+      }
+
+      chatService.removeConnectListener(connectListener);
+      chatService.removeErrorListener(errorListener);
+    };
+  }, [roomId, currentUserId]);
+
+  // 이전 메시지 로드 함수
+  const loadPreviousMessages = async () => {
+    if (!roomId) return;
+
+    try {
+      const previousMessages = await chatService.loadMessages(roomId);
+
+      if (previousMessages.length > 0) {
+        console.log('이전 메시지 로드 성공:', previousMessages.length);
+        setMessages(previousMessages);
+      } else {
+        console.log('이전 메시지가 없습니다.');
+      }
+    } catch (error) {
+      console.error('이전 메시지 로드 실패:', error);
+      setError('메시지를 불러오는데 실패했습니다. 새로고침 후 다시 시도해주세요.');
+    }
+  };
+
+  // WebSocket 재연결 처리
+  const handleReconnect = async () => {
+    if (!roomId) return;
+
+    setError(null);
+
+    try {
+      await chatService.connect();
+      chatService.subscribeToChatRoom(roomId, message => {
+        setMessages(prev => [...prev, message]);
+      });
+      setIsConnected(true);
+    } catch (error) {
+      setError('재연결에 실패했습니다. 다시 시도해주세요.');
+      setIsConnected(false);
+    }
+  };
 
   // 채팅 스크롤을 항상 아래로 유지
   useEffect(() => {
@@ -345,18 +561,31 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   }, [messages]);
 
   // 메시지 전송 핸들러
-  const handleSendMessage = () => {
-    if (inputMessage.trim() === '') return;
+  const handleSendMessage = async () => {
+    if (!roomId || inputMessage.trim() === '') return;
 
-    const newMessage: Message = {
-      id: messages.length + 1,
-      content: inputMessage,
-      time: getCurrentTime(),
-      type: 'sent',
-    };
+    // 연결이 끊어진 경우 재연결 시도
+    if (!isConnected) {
+      try {
+        await handleReconnect();
+      } catch (error) {
+        setError('서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해주세요.');
+        return;
+      }
+    }
 
-    setMessages([...messages, newMessage]);
-    setInputMessage('');
+    try {
+      setError(null);
+
+      // WebSocket을 통해 메시지 전송
+      await chatService.sendTextMessage(roomId, currentUserId, inputMessage);
+
+      // 입력창 초기화
+      setInputMessage('');
+    } catch (error) {
+      console.error('메시지 전송 실패:', error);
+      setError('메시지 전송에 실패했습니다. 네트워크 연결을 확인해주세요.');
+    }
   };
 
   // 확정하기 버튼 핸들러
@@ -365,18 +594,24 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   };
 
   // 거래 정보 확정 핸들러
-  const handleTradeConfirm = (data: TradeData) => {
+  const handleTradeConfirm = async (data: TradeData) => {
+    if (!roomId) return;
+
     console.log('거래 정보:', data);
 
-    // 거래 확정 메시지 추가
-    const confirmMessage: Message = {
-      id: messages.length + 1,
-      content: `거래가 확정 되었습니다.\n거래 내역을 확인해주세요.`,
-      time: '',
-      type: 'system',
-    };
+    try {
+      setError(null);
 
-    setMessages([...messages, confirmMessage]);
+      // 거래 확정 메시지 내용 생성
+      const confirmMessage = `거래가 확정되었습니다.\n물건: ${data.itemName}\n가격: ${data.price}원\n기간: ${data.startDate} ~ ${data.endDate}`;
+
+      // API를 통해 거래 정보 저장 (백엔드 연동 필요)
+      // 거래 확정 메시지 전송 (시스템 메시지)
+      await chatService.sendTextMessage(roomId, currentUserId, confirmMessage);
+    } catch (error) {
+      console.error('거래 확정 오류:', error);
+      setError('거래 확정에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   // 이미지 추가 버튼 핸들러
@@ -387,25 +622,47 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   };
 
   // 이미지 선택 핸들러
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!roomId) return;
+
     const files = e.target.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      // 파일을 URL로 변환
-      const imageUrl = URL.createObjectURL(file);
+    if (!files || files.length === 0) return;
 
-      console.log('이미지 선택됨:', file.name);
+    const file = files[0];
 
-      const newMessage: Message = {
-        id: messages.length + 1,
-        content: '',
-        time: getCurrentTime(),
-        type: 'sent',
-        isImage: true,
-        imageUrl: imageUrl,
-      };
+    // 이미지 확장자 및 크기 검사
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const maxFileSize = 10 * 1024 * 1024; // 10MB 제한
 
-      setMessages([...messages, newMessage]);
+    if (!validImageTypes.includes(file.type)) {
+      setError('JPEG, PNG, GIF, WEBP 형식의 이미지만 업로드 가능합니다.');
+      return;
+    }
+
+    if (file.size > maxFileSize) {
+      setError('이미지 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+
+    try {
+      setError(null);
+      setIsUploading(true);
+
+      // 이미지 업로드 API 호출
+      const imageUrl = await chatService.uploadImage(file);
+
+      // 이미지 메시지 전송
+      await chatService.sendImageMessage(roomId, currentUserId, imageUrl);
+
+      console.log('이미지 메시지 전송 완료:', imageUrl);
+    } catch (error) {
+      console.error('이미지 업로드/전송 실패:', error);
+      setError('이미지 전송에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -416,21 +673,69 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     }
   };
 
-  // 현재 시간 포맷팅
-  const getCurrentTime = (): string => {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes().toString().padStart(2, '0');
+  // 시간 포맷팅 함수
+  const formatMessageTime = (timestamp?: string): string => {
+    if (!timestamp) return '';
+
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
+
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
     const period = hours >= 12 ? '오후' : '오전';
     const displayHours = hours > 12 ? hours - 12 : hours;
 
     return `${period} ${displayHours}:${minutes}`;
   };
 
+  // 날짜 포맷팅 함수
+  const formatDateHeader = (timestamp: string): string => {
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
+
+    // YYYY.MM.DD 형식으로 포맷팅
+    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+  };
+
+  // 메시지 그룹화 처리
+  const groupMessagesByDate = (messages: ChatMessageResponseDto[]) => {
+    const result: (ChatMessageResponseDto | { isDateHeader: true; date: string })[] = [];
+    let currentDate = '';
+
+    messages.forEach(message => {
+      if (!message.createdAt) return;
+
+      const messageDate = formatDateHeader(message.createdAt);
+
+      // 새로운 날짜인 경우 날짜 헤더 추가
+      if (messageDate !== currentDate) {
+        currentDate = messageDate;
+        result.push({ isDateHeader: true, date: messageDate });
+      }
+
+      result.push(message);
+    });
+
+    return result;
+  };
+
+  // 그룹화된 메시지
+  const groupedMessages = groupMessagesByDate(messages);
+
+  // 메시지가 현재 사용자가 보낸 것인지 확인
+  const isSentByCurrentUser = (message: ChatMessageResponseDto): boolean => {
+    return message.senderId === currentUserId;
+  };
+
   return (
     <Container>
       {/* 상단 헤더 */}
-      <Header title="공간한줄의최대글자는얼마일까요" showBackButton={true} onBack={handleBack} />
+      <Header title={roomTitle} showBackButton={true} onBack={handleBack} />
+
+      {/* 연결 상태 표시 */}
+      <ConnectionStatus connected={isConnected}>
+        {isConnected ? '연결됨' : '연결 끊김'}
+      </ConnectionStatus>
 
       {/* 확정하기 버튼 */}
       <ConfirmButton onClick={handleConfirm}>
@@ -439,50 +744,76 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
       {/* 채팅 영역 */}
       <ChatContainer ref={chatContainerRef}>
-        {messages.map(message => {
-          if (message.content === '2025.02.27') {
+        {error && (
+          <ErrorMessage>
+            {error}
+            {!isConnected && (
+              <div>
+                <RetryButton onClick={handleReconnect}>다시 연결</RetryButton>
+              </div>
+            )}
+          </ErrorMessage>
+        )}
+
+        {groupedMessages.map((item, index) => {
+          // 날짜 헤더 처리
+          if ('isDateHeader' in item) {
             return (
-              <DateDivider key={message.id}>
-                <DateText>{message.content}</DateText>
+              <DateDivider key={`date-${index}`}>
+                <DateText>{item.date}</DateText>
               </DateDivider>
             );
           }
 
-          if (message.type === 'received') {
-            return (
-              <ReceivedMessageGroup key={message.id}>
-                <ReceivedMessageBubble>
-                  <MessageContent>{message.content}</MessageContent>
-                </ReceivedMessageBubble>
-                {message.time && <MessageTime>{message.time}</MessageTime>}
-              </ReceivedMessageGroup>
-            );
-          }
+          const message = item as ChatMessageResponseDto;
 
-          if (message.type === 'system') {
+          // 현재 사용자가 보낸 메시지
+          if (isSentByCurrentUser(message)) {
             return (
-              <SentMessageGroup key={message.id}>
-                <SystemMessageBubble>
-                  <MessageContent>{message.content}</MessageContent>
-                </SystemMessageBubble>
+              <SentMessageGroup key={message.messageId || index}>
+                <SentMessageBubble>
+                  {message.messageType === MessageType.IMAGE ? (
+                    <ImageMessage
+                      src={`${message.content.startsWith('http') ? '' : API_BASE_URL}${message.content}`}
+                      alt="첨부된 이미지"
+                    />
+                  ) : (
+                    <MessageContent>{message.content}</MessageContent>
+                  )}
+                </SentMessageBubble>
+                {message.createdAt && (
+                  <MessageTime>{formatMessageTime(message.createdAt)}</MessageTime>
+                )}
               </SentMessageGroup>
             );
           }
 
+          // 다른 사용자가 보낸 메시지
           return (
-            <SentMessageGroup key={message.id}>
-              <SentMessageBubble>
-                {message.isImage && message.imageUrl ? (
-                  <ImageMessage src={message.imageUrl} alt="첨부된 이미지" />
+            <ReceivedMessageGroup key={message.messageId || index}>
+              <ReceivedMessageBubble>
+                {message.senderNickname && (
+                  <MessageNickname>{message.senderNickname}</MessageNickname>
+                )}
+                {message.messageType === MessageType.IMAGE ? (
+                  <ImageMessage
+                    src={`${message.content.startsWith('http') ? '' : API_BASE_URL}${message.content}`}
+                    alt="첨부된 이미지"
+                  />
                 ) : (
                   <MessageContent>{message.content}</MessageContent>
                 )}
-              </SentMessageBubble>
-              {message.time && <MessageTime>{message.time}</MessageTime>}
-            </SentMessageGroup>
+              </ReceivedMessageBubble>
+              {message.createdAt && (
+                <MessageTime>{formatMessageTime(message.createdAt)}</MessageTime>
+              )}
+            </ReceivedMessageGroup>
           );
         })}
       </ChatContainer>
+
+      {/* 이미지 업로드 상태 */}
+      <UploadStatus visible={isUploading}>이미지 업로드 중...</UploadStatus>
 
       {/* 메시지 입력 영역 */}
       <InputContainer>
