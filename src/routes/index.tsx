@@ -13,6 +13,7 @@ import KeeperRegistration from '../pages/Keeper/KeeperRegistration';
 import Registration1 from '../pages/Registration/Registration1';
 import Registration2 from '../pages/Registration/Registration2';
 import Registration3 from '../pages/Registration/Registration3';
+import SearchAddress from '../pages/Map/SearchAddress';
 import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
 import EditStorage from '../pages/EditStorage/EditStorage';
@@ -68,6 +69,7 @@ const routes: RouteObject[] = [
       { path: 'registration/step1', element: <Registration1 /> }, // 보관소 등록 1단계
       { path: 'registration/step2', element: <Registration2 /> }, // 보관소 등록 2단계
       { path: 'registration/step3', element: <Registration3 /> }, // 보관소 등록 3단계
+      { path: 'search-address', element: <SearchAddress /> }, // 보관소 장소 검색 페이지지
 
       // 보관소 수정 페이지
       { path: 'editstorage', element: <EditStorage /> }, // 보관소 등록/수정 페이지

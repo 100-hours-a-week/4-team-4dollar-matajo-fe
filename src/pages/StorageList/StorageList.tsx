@@ -84,7 +84,7 @@ const FilterContainer = styled.div`
   top: 108px;
   left: 0;
   width: 100%;
-  max-width: 375px;
+  max-width: 345px;
   height: 40px; // 약간 높이 증가
   overflow-x: auto;
   white-space: nowrap;
@@ -107,6 +107,7 @@ const ItemGridContainer = styled.div`
   top: 180px; // 필터 컨테이너 높이에 맞게 조정
   left: 0;
   width: 100%;
+  max-width: 345px;
   height: calc(100% - 180px - 76px); /* 헤더 + 필터 + 네비게이션 높이 제외 */
   overflow-y: auto;
   padding: 10px 15px 76px; // 상단 패딩과 하단 패딩 조정
