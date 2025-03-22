@@ -31,6 +31,7 @@ const THEME = {
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 375px;
+  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
@@ -121,7 +122,7 @@ const MainImageUploadArea = styled.div`
 `;
 
 // 이미지 업로드 영역 (추가 이미지)
-const SubImageUploadArea = styled.div`
+const DetailImageUploadArea = styled.div`
   width: 320px;
   height: 154px;
   background: ${THEME.lightGray};
@@ -196,7 +197,7 @@ const UploadedMainImage = styled.img`
 `;
 
 // 업로드된 서브 이미지 스크롤 컨테이너
-const SubImagesScrollContainer = styled.div`
+const DetailImagesScrollContainer = styled.div`
   width: 100%;
   height: 100%;
   display: flex;
@@ -211,7 +212,7 @@ const SubImagesScrollContainer = styled.div`
 `;
 
 // 업로드된 서브 이미지 아이템
-const SubImageItem = styled.div`
+const DetailImageItem = styled.div`
   min-width: 150px;
   height: 100%;
   position: relative;
@@ -220,7 +221,7 @@ const SubImageItem = styled.div`
 `;
 
 // 서브 이미지
-const SubImage = styled.img`
+const DetailImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -249,9 +250,9 @@ const DeleteImageButton = styled.button`
 const CompleteButton = styled.button`
   width: 349px;
   height: 47px;
-  position: absolute;
+  position: relative;
   left: 13px;
-  bottom: 30px;
+  margin-top: 30px;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;
@@ -266,10 +267,10 @@ const CompleteButton = styled.button`
 // 이전 단계에서 전달받는 데이터 타입
 interface CombinedFormData {
   // Registration1 데이터
-  address: string;
-  description: string;
-  details: string;
-  price: string;
+  postAddress: string;
+  postTitle: string;
+  postContent: string;
+  preferPrice: string;
 
   // Registration2 데이터
   storageLocation: '실내' | '실외';
@@ -289,11 +290,11 @@ const Registration3: React.FC = () => {
 
   // 파일 입력 참조
   const mainImageInputRef = useRef<HTMLInputElement>(null);
-  const subImagesInputRef = useRef<HTMLInputElement>(null);
+  const detailImagesInputRef = useRef<HTMLInputElement>(null);
 
   // 이미지 상태 관리
   const [mainImage, setMainImage] = useState<string | null>(null);
-  const [subImages, setSubImages] = useState<string[]>([]);
+  const [detailImages, setDetailImages] = useState<string[]>([]);
 
   // 모달 상태 관리
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -316,7 +317,7 @@ const Registration3: React.FC = () => {
       try {
         const parsedData = JSON.parse(savedData);
         if (parsedData.mainImage) setMainImage(parsedData.mainImage);
-        if (parsedData.subImages) setSubImages(parsedData.subImages);
+        if (parsedData.detailImages) setDetailImages(parsedData.detailImages);
       } catch (error) {
         console.error('Error parsing saved data:', error);
       }
@@ -332,13 +333,13 @@ const Registration3: React.FC = () => {
     if (isInitialRender) return;
 
     saveToLocalStorage();
-  }, [mainImage, subImages]);
+  }, [mainImage, detailImages]);
 
   // 로컬 스토리지에 데이터 저장
   const saveToLocalStorage = () => {
     const dataToSave = {
       mainImage,
-      subImages,
+      detailImages,
     };
 
     localStorage.setItem('registration_step3', JSON.stringify(dataToSave));
@@ -352,9 +353,9 @@ const Registration3: React.FC = () => {
   };
 
   // 서브 이미지 업로드 핸들러
-  const handleSubImagesUpload = () => {
-    if (subImagesInputRef.current) {
-      subImagesInputRef.current.click();
+  const handleDetailImagesUpload = () => {
+    if (detailImagesInputRef.current) {
+      detailImagesInputRef.current.click();
     }
   };
 
@@ -373,15 +374,15 @@ const Registration3: React.FC = () => {
   };
 
   // 서브 이미지 변경 핸들러
-  const handleSubImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDetailImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       // 최대 4개까지만 허용
-      const remainingSlots = 4 - subImages.length;
+      const remainingSlots = 4 - detailImages.length;
       const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
       if (filesToProcess.length > 0) {
-        const newImages = [...subImages];
+        const newImages = [...detailImages];
         let processed = 0;
 
         filesToProcess.forEach(file => {
@@ -391,7 +392,7 @@ const Registration3: React.FC = () => {
             processed++;
 
             if (processed === filesToProcess.length) {
-              setSubImages(newImages);
+              setDetailImages(newImages);
               // useEffect에서 로컬 스토리지 저장 처리됨
             }
           };
@@ -411,11 +412,11 @@ const Registration3: React.FC = () => {
   };
 
   // 서브 이미지 삭제 핸들러
-  const handleDeleteSubImage = (index: number) => {
-    setSubImages(prev => prev.filter((_, i) => i !== index));
+  const handleDeleteDetailImage = (index: number) => {
+    setDetailImages(prev => prev.filter((_, i) => i !== index));
 
-    if (subImagesInputRef.current) {
-      subImagesInputRef.current.value = '';
+    if (detailImagesInputRef.current) {
+      detailImagesInputRef.current.value = '';
     }
     // useEffect에서 로컬 스토리지 저장 처리됨
   };
@@ -443,7 +444,7 @@ const Registration3: React.FC = () => {
     const finalData = {
       ...prevFormData,
       mainImage,
-      subImages,
+      detailImages,
     };
 
     // 여기서 finalData를 백엔드로 전송하는 로직이 있어야할듯?
@@ -545,19 +546,19 @@ const Registration3: React.FC = () => {
               <RequiredMark>*</RequiredMark>
             </SectionLabel>
 
-            <SubImageUploadArea>
-              {subImages.length > 0 ? (
-                <SubImagesScrollContainer>
-                  {subImages.map((img, index) => (
-                    <SubImageItem key={index}>
-                      <SubImage src={img} alt={`추가 이미지 ${index + 1}`} />
-                      <DeleteImageButton onClick={() => handleDeleteSubImage(index)}>
+            <DetailImageUploadArea>
+              {detailImages.length > 0 ? (
+                <DetailImagesScrollContainer>
+                  {detailImages.map((img, index) => (
+                    <DetailImageItem key={index}>
+                      <DetailImage src={img} alt={`추가 이미지 ${index + 1}`} />
+                      <DeleteImageButton onClick={() => handleDeleteDetailImage(index)}>
                         ×
                       </DeleteImageButton>
-                    </SubImageItem>
+                    </DetailImageItem>
                   ))}
-                  {subImages.length < 4 && (
-                    <SubImageItem
+                  {detailImages.length < 4 && (
+                    <DetailImageItem
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -565,13 +566,13 @@ const Registration3: React.FC = () => {
                         alignItems: 'center',
                         background: THEME.lightGray,
                       }}
-                      onClick={handleSubImagesUpload}
+                      onClick={handleDetailImagesUpload}
                     >
                       <UploadGuideText>추가 이미지</UploadGuideText>
                       <div style={{ fontSize: '24px', marginTop: '10px' }}>+</div>
-                    </SubImageItem>
+                    </DetailImageItem>
                   )}
-                </SubImagesScrollContainer>
+                </DetailImagesScrollContainer>
               ) : (
                 <>
                   <UploadGuideText>
@@ -579,16 +580,16 @@ const Registration3: React.FC = () => {
                     <br />
                     (선택사항)
                   </UploadGuideText>
-                  <UploadButton onClick={handleSubImagesUpload}>파일 업로드</UploadButton>
+                  <UploadButton onClick={handleDetailImagesUpload}>파일 업로드</UploadButton>
                 </>
               )}
-            </SubImageUploadArea>
+            </DetailImageUploadArea>
 
             {/* 숨겨진 파일 업로드 입력 필드 (다중 선택) */}
             <input
               type="file"
-              ref={subImagesInputRef}
-              onChange={handleSubImagesChange}
+              ref={detailImagesInputRef}
+              onChange={handleDetailImagesChange}
               accept="image/*"
               multiple
               style={{ display: 'none' }}

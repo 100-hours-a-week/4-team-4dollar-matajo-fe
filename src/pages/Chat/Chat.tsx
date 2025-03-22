@@ -6,6 +6,10 @@ import TradeConfirmModal, { TradeData } from './TradeConfirmModal';
 import ChatService, { ChatMessageResponseDto, MessageType } from '../../services/ChatService';
 import { API_BASE_URL } from '../../constants/api';
 import axios from 'axios';
+import moment from 'moment-timezone';
+
+// moment 타임존 설정
+moment.tz.setDefault('Asia/Seoul');
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -710,24 +714,28 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   const formatMessageTime = (timestamp?: string): string => {
     if (!timestamp) return '';
 
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return '';
+    // 한국 시간대로 변환하여 시간 포맷팅
+    const koreanTime = moment.tz(timestamp, 'Asia/Seoul');
 
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
+    if (!koreanTime.isValid()) return '';
+
+    const hours = koreanTime.hours();
+    const minutes = koreanTime.format('mm');
     const period = hours >= 12 ? '오후' : '오전';
-    const displayHours = hours > 12 ? hours - 12 : hours;
+    const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
 
     return `${period} ${displayHours}:${minutes}`;
   };
 
   // 날짜 포맷팅 함수
   const formatDateHeader = (timestamp: string): string => {
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return '';
+    // 한국 시간대로 변환하여 날짜 포맷팅
+    const koreanDate = moment.tz(timestamp, 'Asia/Seoul');
+
+    if (!koreanDate.isValid()) return '';
 
     // YYYY.MM.DD 형식으로 포맷팅
-    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+    return koreanDate.format('YYYY.MM.DD');
   };
 
   // 메시지 그룹화 처리

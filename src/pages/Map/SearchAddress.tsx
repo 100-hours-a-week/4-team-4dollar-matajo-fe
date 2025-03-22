@@ -209,9 +209,9 @@ const SearchAddress: React.FC = () => {
       try {
         setIsLoading(true);
 
-        // 1. 첫 번째로 Kakao Maps SDK를 로드
+        /* // 1. 첫 번째로 Kakao Maps SDK를 로드
         const KAKAO_SDK_URL = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=402f887c60ea890e82149e2120a9ce6f&libraries=services&autoload=false`;
-        await loadScript(KAKAO_SDK_URL);
+        await loadScript(KAKAO_SDK_URL); */
 
         // 2. 카카오 SDK 로드 확인 및 사용 준비
         if (window.kakao) {

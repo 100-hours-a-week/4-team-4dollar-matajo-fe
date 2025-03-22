@@ -188,18 +188,18 @@ const NextButton = styled.button`
 
 // 폼 데이터 타입 정의
 interface FormData {
-  address: string;
-  description: string;
-  details: string;
-  price: string;
+  postAddress: string;
+  postTitle: string;
+  postContent: string;
+  preferPrice: string;
 }
 
 // 오류 상태 타입 정의
 interface ErrorState {
-  address: string;
-  description: string;
-  details: string;
-  price: string;
+  postAddress: string;
+  postTitle: string;
+  postContent: string;
+  preferPrice: string;
 }
 
 // 주소 정보 타입 정의
@@ -218,26 +218,26 @@ const Registration1: React.FC = () => {
 
   // 폼 상태 관리
   const [formData, setFormData] = useState<FormData>({
-    address: '',
-    description: '',
-    details: '',
-    price: '',
+    postAddress: '',
+    postTitle: '',
+    postContent: '',
+    preferPrice: '',
   });
 
   // 에러 상태 관리
   const [errors, setErrors] = useState<ErrorState>({
-    address: '',
-    description: '',
-    details: '',
-    price: '',
+    postAddress: '',
+    postTitle: '',
+    postContent: '',
+    preferPrice: '',
   });
 
   // 포커스 상태 관리
   const [focused, setFocused] = useState<Record<string, boolean>>({
-    address: false,
-    description: false,
-    details: false,
-    price: false,
+    postAddress: false,
+    postTitle: false,
+    postContent: false,
+    preferPrice: false,
   });
 
   // 백 버튼 모달 상태
@@ -262,16 +262,16 @@ const Registration1: React.FC = () => {
       // 폼 데이터에 주소 정보 업데이트
       setFormData(prev => ({
         ...prev,
-        address: selectedAddress.address,
+        postAddress: selectedAddress.address,
       }));
 
       // 주소 필드의 에러 초기화
-      setErrors(prev => ({ ...prev, address: '' }));
+      setErrors(prev => ({ ...prev, postAddress: '' }));
 
       // 로컬 스토리지에 업데이트된 데이터 저장
       const updatedData = {
         ...JSON.parse(savedData || '{}'),
-        address: selectedAddress.address,
+        postAddress: selectedAddress.address,
       };
       localStorage.setItem('registration_step1', JSON.stringify(updatedData));
     }
@@ -282,11 +282,11 @@ const Registration1: React.FC = () => {
     const { name, value } = e.target;
 
     // 글자수 제한 처리
-    if (name === 'description' && value.length > DESCRIPTION_MAX_LENGTH) {
+    if (name === 'postTitle' && value.length > DESCRIPTION_MAX_LENGTH) {
       return;
     }
 
-    if (name === 'details' && value.length > DETAILS_MAX_LENGTH) {
+    if (name === 'postContent' && value.length > DETAILS_MAX_LENGTH) {
       return;
     }
 
@@ -315,7 +315,7 @@ const Registration1: React.FC = () => {
     const { name } = e.target;
 
     // 주소 필드의 경우 포커스 대신 클릭 이벤트 처리
-    if (name === 'address') {
+    if (name === 'postAddress') {
       handleAddressClick();
       return;
     }
@@ -333,42 +333,42 @@ const Registration1: React.FC = () => {
   const validateForm = (): boolean => {
     let isValid = true;
     const newErrors = {
-      address: '',
-      description: '',
-      details: '',
-      price: '',
+      postAddress: '',
+      postTitle: '',
+      postContent: '',
+      preferPrice: '',
     };
 
     // 주소 검사
-    if (!formData.address.trim()) {
-      newErrors.address = '주소를 입력해주세요.';
+    if (!formData.postAddress.trim()) {
+      newErrors.postAddress = '주소를 입력해주세요.';
       isValid = false;
     }
 
     // 설명 검사
-    if (!formData.description.trim()) {
-      newErrors.description = '공간 한줄 소개를 입력해주세요.';
+    if (!formData.postTitle.trim()) {
+      newErrors.postTitle = '공간 한줄 소개를 입력해주세요.';
       isValid = false;
-    } else if (formData.description.length > DESCRIPTION_MAX_LENGTH) {
-      newErrors.description = `최대 ${DESCRIPTION_MAX_LENGTH}자까지 입력 가능합니다.`;
+    } else if (formData.postTitle.length > DESCRIPTION_MAX_LENGTH) {
+      newErrors.postTitle = `최대 ${DESCRIPTION_MAX_LENGTH}자까지 입력 가능합니다.`;
       isValid = false;
     }
 
     // 상세 내용 검사 (필수 항목)
-    if (!formData.details.trim()) {
-      newErrors.details = '내용을 입력해주세요.';
+    if (!formData.postContent.trim()) {
+      newErrors.postContent = '내용을 입력해주세요.';
       isValid = false;
-    } else if (formData.details.length > DETAILS_MAX_LENGTH) {
-      newErrors.details = `최대 ${DETAILS_MAX_LENGTH}자까지 입력 가능합니다.`;
+    } else if (formData.postContent.length > DETAILS_MAX_LENGTH) {
+      newErrors.postContent = `최대 ${DETAILS_MAX_LENGTH}자까지 입력 가능합니다.`;
       isValid = false;
     }
 
     // 가격 검사
-    if (!formData.price.trim()) {
-      newErrors.price = '가격을 입력해주세요.';
+    if (!formData.preferPrice.trim()) {
+      newErrors.preferPrice = '가격을 입력해주세요.';
       isValid = false;
-    } else if (isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-      newErrors.price = '유효한 가격을 입력해주세요.';
+    } else if (isNaN(Number(formData.preferPrice)) || Number(formData.preferPrice) <= 0) {
+      newErrors.preferPrice = '유효한 가격을 입력해주세요.';
       isValid = false;
     }
 
@@ -457,19 +457,19 @@ const Registration1: React.FC = () => {
           <InputLabel>
             주소를 입력해 주세요 <RequiredMark>*</RequiredMark>
           </InputLabel>
-          <HelperText visible={!!errors.address}>
-            {errors.address || '헬퍼 텍스트입니다.'}
+          <HelperText visible={!!errors.postAddress}>
+            {errors.postAddress || '헬퍼 텍스트입니다.'}
           </HelperText>
           <InputField
             type="text"
-            name="address"
-            value={formData.address}
+            name="postAddress"
+            value={formData.postAddress}
             onChange={handleInputChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder="주소를 입력해주세요"
-            isError={!!errors.address}
-            isFocused={focused.address}
+            isError={!!errors.postAddress}
+            isFocused={focused.postAddress}
             readOnly={true} // 읽기 전용으로 설정
             onClick={handleAddressClick} // 클릭 시 주소 검색 페이지로 이동
           />
@@ -479,32 +479,32 @@ const Registration1: React.FC = () => {
           <InputLabel>
             공간 한줄 소개 <RequiredMark>*</RequiredMark>
           </InputLabel>
-          <HelperText visible={!!errors.description}>
-            {errors.description || '헬퍼 텍스트입니다.'}
+          <HelperText visible={!!errors.postTitle}>
+            {errors.postTitle || '헬퍼 텍스트입니다.'}
           </HelperText>
           <InputField
             type="text"
-            name="description"
-            value={formData.description}
+            name="postTitle"
+            value={formData.postTitle}
             onChange={handleInputChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder="공간을 한줄로 작성해주세요 (최대 15글자)"
             maxLength={DESCRIPTION_MAX_LENGTH}
-            isError={!!errors.description}
-            isFocused={focused.description}
+            isError={!!errors.postTitle}
+            isFocused={focused.postTitle}
           />
 
           {/* 상세 내용 */}
           <InputLabel>
             내용을 입력해주세요 <RequiredMark>*</RequiredMark>
           </InputLabel>
-          <HelperText visible={!!errors.details}>
-            {errors.details || '헬퍼 텍스트입니다.'}
+          <HelperText visible={!!errors.postContent}>
+            {errors.postContent || '헬퍼 텍스트입니다.'}
           </HelperText>
           <TextArea
-            name="details"
-            value={formData.details}
+            name="postContent"
+            value={formData.postContent}
             onChange={handleInputChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
@@ -515,25 +515,27 @@ const Registration1: React.FC = () => {
           기타 (자율적으로 하고 싶은말)
           *최대 500글자까지 입력 가능합니다*"
             maxLength={DETAILS_MAX_LENGTH}
-            isError={!!errors.details}
-            isFocused={focused.details}
+            isError={!!errors.postContent}
+            isFocused={focused.postContent}
           />
 
           {/* 가격 입력 */}
           <InputLabel>
             희망 가격 입력 <RequiredMark>*</RequiredMark>
           </InputLabel>
-          <HelperText visible={!!errors.price}>{errors.price || '헬퍼 텍스트입니다.'}</HelperText>
+          <HelperText visible={!!errors.preferPrice}>
+            {errors.preferPrice || '헬퍼 텍스트입니다.'}
+          </HelperText>
           <InputField
             type="number"
-            name="price"
-            value={formData.price}
+            name="preferPrice"
+            value={formData.preferPrice}
             onChange={handleInputChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder="가격을 입력해주세요 (숫자만 입력해주세요)"
-            isError={!!errors.price}
-            isFocused={focused.price}
+            isError={!!errors.preferPrice}
+            isFocused={focused.preferPrice}
           />
         </FormContainer>
         {/* 다음 버튼 */}

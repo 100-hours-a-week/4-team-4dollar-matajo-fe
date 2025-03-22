@@ -30,11 +30,12 @@ const THEME = {
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 375px;
+  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 116px;
+  padding-bottom: 106px;
   padding-top: 47px; /* 헤더 높이만큼 패딩 */
 `;
 
@@ -144,9 +145,9 @@ const TagButton = styled.button<{ isSelected: boolean }>`
 const NextButton = styled.button`
   width: 349px;
   height: 47px;
-  position: absolute;
+  position: relative;
   left: 13px;
-  bottom: 30px;
+  margin-top: 30px;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;
@@ -168,10 +169,10 @@ const durationOptions = ['일주일 이내', '한달 이내', '3개월 이상'];
 
 // 이전 단계에서 전달받는 데이터 타입 정의
 interface Step1FormData {
-  address: string;
-  description: string;
-  details: string;
-  price: string;
+  postAddress: string;
+  postTitle: string;
+  postContent: string;
+  preferPrice: string;
 }
 
 const Registration2: React.FC = () => {
@@ -449,10 +450,10 @@ const Registration2: React.FC = () => {
           }}
         >
           <h4>이전 단계 데이터 (개발용)</h4>
-          <p>주소: {prevFormData.address}</p>
-          <p>설명: {prevFormData.description}</p>
-          <p>상세: {prevFormData.details?.substring(0, 20)}...</p>
-          <p>가격: {prevFormData.price}</p>
+          <p>주소: {prevFormData.postAddress}</p>
+          <p>설명: {prevFormData.postTitle}</p>
+          <p>상세: {prevFormData.postContent?.substring(0, 20)}...</p>
+          <p>가격: {prevFormData.preferPrice}</p>
         </div>
       )}
     </>

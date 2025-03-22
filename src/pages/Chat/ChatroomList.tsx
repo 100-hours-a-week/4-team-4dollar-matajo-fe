@@ -6,6 +6,10 @@ import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import ChatService, { ChatRoomResponseDto } from '../../services/ChatService';
 import axios from 'axios';
+import moment from 'moment-timezone';
+
+// moment 타임존 설정
+moment.tz.setDefault('Asia/Seoul');
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -382,26 +386,41 @@ const ChatroomList: React.FC = () => {
     return message;
   };
 
-  // 시간 포맷팅 (yyyy-MM-ddThh:mm:ss 형식의 ISO 문자열을 HH:mm 형식으로 변환)
+  // 시간 포맷팅 함수 - moment-timezone 사용하여 개선 (yyyy-MM-ddThh:mm:ss 형식의 ISO 문자열을 처리)
   const formatTime = (isoTime: string): string => {
     if (!isoTime) return '';
 
     try {
-      const date = new Date(isoTime);
-      const now = new Date();
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
+      // 한국 시간대로 변환
+      const koreanTime = moment.tz(isoTime, 'Asia/Seoul');
 
-      // 날짜가 오늘인지 어제인지 확인
-      if (date.toDateString() === now.toDateString()) {
-        // 오늘이면 시간만 표시
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-      } else if (date.toDateString() === yesterday.toDateString()) {
-        // 어제면 '어제' 표시
+      if (!koreanTime.isValid()) return '';
+
+      const now = moment().tz('Asia/Seoul');
+      const yesterday = moment().tz('Asia/Seoul').subtract(1, 'days');
+
+      // 오늘인 경우
+      if (koreanTime.isSame(now, 'day')) {
+        // 시간만 표시 (오전/오후 HH:MM)
+        const hours = koreanTime.hours();
+        const period = hours >= 12 ? '오후' : '오전';
+        const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+
+        return `${period} ${displayHours}:${koreanTime.format('mm')}`;
+      }
+      // 어제인 경우
+      else if (koreanTime.isSame(yesterday, 'day')) {
         return '어제';
-      } else {
-        // 그 외에는 MM/DD 형식
-        return `${date.getMonth() + 1}/${date.getDate()}`;
+      }
+      // 올해인 경우
+      else if (koreanTime.isSame(now, 'year')) {
+        // MM/DD 형식
+        return koreanTime.format('MM/DD');
+      }
+      // 작년 이전인 경우
+      else {
+        // YYYY/MM/DD 형식
+        return koreanTime.format('YYYY/MM/DD');
       }
     } catch (e) {
       console.error('시간 포맷팅 오류:', e);

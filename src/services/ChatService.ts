@@ -385,11 +385,10 @@ class ChatService {
         body: JSON.stringify(backendMessage),
         headers: {
           'content-type': 'application/json',
-          userId: userId,
         },
       });
 
-      console.log('메시지 전송 성공');
+      console.log('메시지 전송 성공', backendMessage);
       return true;
     } catch (error) {
       console.error('메시지 전송 에러:', error);
@@ -439,7 +438,7 @@ class ChatService {
             postAddress: item.postAddress || item.post_address,
             lastMessage: item.lastMessage || item.last_message,
             lastMessageTime: item.lastMessageTime || item.last_message_time,
-            hasUnreadMessages: item.hasUnreadMessages || item.has_unread_messages || false,
+            hasUnreadMessages: item.hasUnreadMessages || item.has_unread_messages,
           }));
         }
         console.error('Error loading chat rooms:', response.data.message);
