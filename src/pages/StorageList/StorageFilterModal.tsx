@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 
 // 테마 컬러 상수 정의
@@ -210,6 +210,9 @@ const ApplyButton = styled.button`
   cursor: pointer;
 `;
 
+// 필터 유형 정의
+type FilterType = '전체' | '보관위치' | '보관방식' | '물건유형' | '보관기간' | '귀중품';
+
 // 필터 옵션 타입 정의
 export interface FilterOptions {
   storageLocation: '실내' | '실외' | '';
@@ -224,6 +227,7 @@ interface StorageFilterModalProps {
   onClose: () => void;
   onApplyFilter: (options: FilterOptions) => void;
   initialFilters?: FilterOptions;
+  currentFilter?: FilterType; // 현재 선택된 필터 카테고리
 }
 
 const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
@@ -231,6 +235,7 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
   onClose,
   onApplyFilter,
   initialFilters,
+  currentFilter = '전체',
 }) => {
   // 초기 필터 상태 설정
   const [filters, setFilters] = useState<FilterOptions>(
@@ -243,11 +248,28 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
     },
   );
 
+  // initialFilters가 변경될 때 filters 상태 업데이트
+  useEffect(() => {
+    if (initialFilters) {
+      setFilters(initialFilters);
+    }
+  }, [initialFilters]);
+
+  // 모달이 열릴 때 currentFilter에 따라 해당 섹션으로 스크롤
+  useEffect(() => {
+    if (isOpen && currentFilter !== '전체') {
+      const sectionElement = document.getElementById(`section-${currentFilter}`);
+      if (sectionElement) {
+        sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [isOpen, currentFilter]);
+
   // 아이템 유형 옵션
   const itemTypes = ['식물', '전자기기', '가전', '스포츠', '식품', '의류', '서적', '취미', '가구'];
 
   // 보관 방식 옵션
-  const storageTypes = ['상온 보관', '냉장 보관', '냉동 보관'];
+  const storageTypes = ['상온보관', '냉장보관', '냉동보관'];
 
   // 보관 기간 옵션
   const durationOptions = ['일주일 이내', '한달 이내', '3개월 이상'];
@@ -315,13 +337,30 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
   // 필터 적용 핸들러
   const handleApplyFilter = () => {
     onApplyFilter(filters);
-    onClose();
   };
 
   // 모달 외부 클릭 핸들러
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
+    }
+  };
+
+  // 현재 선택된 필터에 맞는 모달 타이틀 생성
+  const getModalTitle = () => {
+    switch (currentFilter) {
+      case '보관위치':
+        return '보관 위치';
+      case '보관방식':
+        return '보관 방식';
+      case '물건유형':
+        return '물건 유형';
+      case '보관기간':
+        return '보관 기간';
+      case '귀중품':
+        return '귀중품';
+      default:
+        return '필터 선택';
     }
   };
 

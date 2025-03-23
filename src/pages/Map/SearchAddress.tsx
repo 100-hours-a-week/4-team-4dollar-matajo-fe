@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
+import { initializeKakaoMaps } from '../../services/KakaoMapService';
 
-// 스타일드 컴포넌트 정의
+// 스타일드 컴포넌트 정의 (기존 코드와 동일)
 const Container = styled.div`
   width: 100%;
   height: 100vh;
@@ -179,105 +180,42 @@ const SearchAddress: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [apiReady, setApiReady] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const initializingRef = useRef(false);
 
-  // 스크립트 로더 함수: 각 스크립트를 순차적으로 로드하는 함수
-  const loadScript = (src: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = true;
-
-      script.onload = () => {
-        console.log(`Script loaded: ${src}`);
-        resolve();
-      };
-
-      script.onerror = () => {
-        console.error(`Failed to load script: ${src}`);
-        reject(new Error(`Failed to load script: ${src}`));
-      };
-
-      document.head.appendChild(script);
-    });
-  };
-
-  // 카카오맵 API 초기화
+  // 카카오맵 API 초기화 - 이제 공통 서비스를 활용
   useEffect(() => {
-    let isInitializing = true;
+    // 중복 초기화 방지
+    if (initializingRef.current) return;
+    initializingRef.current = true;
 
-    const initializeKakaoMaps = async () => {
+    const initKakaoAPI = async () => {
       try {
         setIsLoading(true);
 
-        /* // 1. 첫 번째로 Kakao Maps SDK를 로드
-        const KAKAO_SDK_URL = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=402f887c60ea890e82149e2120a9ce6f&libraries=services&autoload=false`;
-        await loadScript(KAKAO_SDK_URL); */
+        // 새로운 서비스를 통해 카카오맵 초기화
+        await initializeKakaoMaps();
 
-        // 2. 카카오 SDK 로드 확인 및 사용 준비
-        if (window.kakao) {
-          // 3. 카카오 맵 초기화
-          window.kakao.maps.load(() => {
-            console.log('Kakao Maps loaded, loading additional scripts...');
-
-            // 4. 필요한 스크립트 직접 로드 (카카오 메인 JS 로드)
-            const mainScriptPromise = loadScript(
-              'https://t1.daumcdn.net/mapjsapi/js/main/4.4.19/kakao.js',
-            );
-
-            // 5. 서비스 JS 로드
-            const servicesScriptPromise = loadScript(
-              'https://t1.daumcdn.net/mapjsapi/js/libs/services/1.0.2/services.js',
-            );
-
-            // 모든 스크립트가 로드될 때까지 대기
-            Promise.all([mainScriptPromise, servicesScriptPromise])
-              .then(() => {
-                console.log('All Kakao scripts loaded successfully');
-
-                // 6. 서비스 초기화 완료 확인
-                if (
-                  window.kakao &&
-                  window.kakao.maps &&
-                  window.kakao.maps.services &&
-                  window.kakao.maps.services.Places &&
-                  window.kakao.maps.services.Geocoder
-                ) {
-                  console.log('Kakao Maps services ready');
-                  setApiReady(true);
-                } else {
-                  console.warn('Kakao services not fully initialized');
-                }
-
-                setIsLoading(false);
-              })
-              .catch(error => {
-                console.error('Error loading additional scripts:', error);
-                setIsLoading(false);
-                alert('카카오맵 API 초기화에 실패했습니다. 페이지를 새로고침해주세요.');
-              });
-          });
-        } else {
-          console.error('Kakao SDK not loaded properly');
-          setIsLoading(false);
-          alert('카카오맵 SDK 로드에 실패했습니다. 페이지를 새로고침해주세요.');
-        }
+        setApiReady(true);
+        setIsLoading(false);
       } catch (error) {
-        console.error('Error initializing Kakao Maps:', error);
+        console.error('카카오맵 초기화 실패:', error);
         setIsLoading(false);
         alert('카카오맵 API 초기화에 실패했습니다. 페이지를 새로고침해주세요.');
       }
     };
 
-    if (isInitializing) {
-      initializeKakaoMaps();
-    }
+    // 함수 호출
+    initKakaoAPI();
 
     return () => {
-      isInitializing = false;
+      initializingRef.current = false;
     };
   }, []);
 
-  // 주소 검색 함수
+  // 디바운스를 위한 타이머 ref
+  const searchTimerRef = useRef<number | null>(null);
+
+  // 디바운스 적용된 주소 검색 함수
   const searchAddress = () => {
     if (!searchTerm.trim()) return;
 
@@ -287,76 +225,84 @@ const SearchAddress: React.FC = () => {
       return;
     }
 
+    // 이전 타이머가 있다면 제거
+    if (searchTimerRef.current !== null) {
+      window.clearTimeout(searchTimerRef.current);
+    }
+
     setIsLoading(true);
     setIsSearched(true);
 
-    try {
-      console.log('Starting search with:', searchTerm);
+    // 디바운스 적용 (300ms)
+    searchTimerRef.current = window.setTimeout(() => {
+      try {
+        console.log('Starting search with:', searchTerm);
 
-      // Place 검색
-      const places = new window.kakao.maps.services.Places();
-      const geocoder = new window.kakao.maps.services.Geocoder();
+        // Place 검색
+        const places = new window.kakao.maps.services.Places();
+        const geocoder = new window.kakao.maps.services.Geocoder();
 
-      // 장소 검색 (키워드 검색)
-      places.keywordSearch(searchTerm, (placesResult: any, placesStatus: any) => {
-        console.log('Places search result:', placesStatus);
+        // 장소 검색 (키워드 검색)
+        places.keywordSearch(searchTerm, (placesResult: any, placesStatus: any) => {
+          console.log('Places search result:', placesStatus);
 
-        let formattedPlacesResults: SearchAddress[] = [];
+          let formattedPlacesResults: SearchAddress[] = [];
 
-        if (placesStatus === window.kakao.maps.services.Status.OK) {
-          formattedPlacesResults = placesResult.map((item: any) => ({
-            address_name: item.address_name,
-            road_address_name: item.road_address_name || '도로명 주소 없음',
-            place_name: item.place_name,
-            x: item.x,
-            y: item.y,
-          }));
-        }
-
-        // 주소 검색
-        geocoder.addressSearch(searchTerm, (addrResult: any, addrStatus: any) => {
-          console.log('Address search result:', addrStatus);
-
-          let formattedAddrResults: SearchAddress[] = [];
-
-          if (addrStatus === window.kakao.maps.services.Status.OK) {
-            formattedAddrResults = addrResult.map((item: any) => ({
-              address_name: item.address_name || '',
-              road_address_name: item.road_address
-                ? item.road_address.address_name
-                : '도로명 주소 없음',
+          if (placesStatus === window.kakao.maps.services.Status.OK) {
+            formattedPlacesResults = placesResult.map((item: any) => ({
+              address_name: item.address_name,
+              road_address_name: item.road_address_name || '도로명 주소 없음',
+              place_name: item.place_name,
               x: item.x,
               y: item.y,
             }));
           }
 
-          // 모든 결과 병합
-          const allResults = [...formattedPlacesResults, ...formattedAddrResults];
+          // 주소 검색
+          geocoder.addressSearch(searchTerm, (addrResult: any, addrStatus: any) => {
+            console.log('Address search result:', addrStatus);
 
-          // 중복 제거 (좌표 기준)
-          const uniqueResults: SearchAddress[] = [];
-          const seenCoords = new Set();
+            let formattedAddrResults: SearchAddress[] = [];
 
-          allResults.forEach(item => {
-            const coordKey = `${item.x},${item.y}`;
-            if (!seenCoords.has(coordKey)) {
-              seenCoords.add(coordKey);
-              uniqueResults.push(item);
+            if (addrStatus === window.kakao.maps.services.Status.OK) {
+              formattedAddrResults = addrResult.map((item: any) => ({
+                address_name: item.address_name || '',
+                road_address_name: item.road_address
+                  ? item.road_address.address_name
+                  : '도로명 주소 없음',
+                x: item.x,
+                y: item.y,
+              }));
             }
+
+            // 모든 결과 병합
+            const allResults = [...formattedPlacesResults, ...formattedAddrResults];
+
+            // 중복 제거 (좌표 기준)
+            const uniqueResults: SearchAddress[] = [];
+            const seenCoords = new Set();
+
+            allResults.forEach(item => {
+              const coordKey = `${item.x},${item.y}`;
+              if (!seenCoords.has(coordKey)) {
+                seenCoords.add(coordKey);
+                uniqueResults.push(item);
+              }
+            });
+
+            console.log('Final results count:', uniqueResults.length);
+
+            // 최종 결과 설정
+            setSearchResults(uniqueResults);
+            setIsLoading(false);
           });
-
-          console.log('Final results count:', uniqueResults.length);
-
-          // 최종 결과 설정
-          setSearchResults(uniqueResults);
-          setIsLoading(false);
         });
-      });
-    } catch (error) {
-      console.error('Error during search:', error);
-      setIsLoading(false);
-      alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
-    }
+      } catch (error) {
+        console.error('Error during search:', error);
+        setIsLoading(false);
+        alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    }, 300); // 300ms 디바운스
   };
 
   // 검색 결과 항목 클릭 핸들러
@@ -375,7 +321,7 @@ const SearchAddress: React.FC = () => {
     });
   };
 
-  // 키보드 엔터 검색 핸들러
+  // 키보드 엔터 검색 핸들러 (디바운스 적용)
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       searchAddress();
@@ -384,7 +330,7 @@ const SearchAddress: React.FC = () => {
 
   // 뒤로가기 핸들러
   const handleBack = () => {
-    navigate(-1);
+    navigate('/registration/step1');
   };
 
   return (
