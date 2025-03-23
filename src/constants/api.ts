@@ -1,44 +1,34 @@
-// API 기본 URL 설정
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://15.164.251.118:8080';
-
-// API 경로 정의
+// src/constants/api.ts
 export const API_PATHS = {
-  // 인증 관련
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    VALIDATE_TOKEN: '/auth/validate',
+    KAKAO: '/auth/kakao',
     REGISTER_AS_KEEPER: '/auth/register-keeper',
     KEEPER_STATUS: '/auth/keeper-status',
+    LOGOUT: '/auth/logout',
   },
-
-  // 채팅 관련
-  CHAT: {
-    ROOMS: '/api/chat', // '/api/chat/rooms'에서 '/api/chat'으로 수정
-    MESSAGES: '/api/chat/:roomId/message', // 기존대로 유지
-    READ: '/api/chat/:roomId/read', // 기존대로 유지
-    LEAVE: '/api/chat/:roomId', // '/api/chat/:roomId/leave'에서 수정 (DELETE 메서드 사용)
-    UPLOAD_IMAGE: '/api/chat/images/upload', // 기존대로 유지
-  },
-
-  // 보관소 관련
-  STORAGE: {
-    LIST: '/storage/list',
-    DETAIL: '/storage/detail',
-    CREATE: '/storage/create',
-    UPDATE: '/storage/update',
-    DELETE: '/storage/delete',
-  },
-
-  // 사용자 관련
-  USER: {
-    PROFILE: '/user/profile',
-    UPDATE: '/user/update',
-  },
-
-  // 장소 관련
   PLACE: {
-    SEARCH: '/place/search',
-    NEARBY: '/place/nearby',
+    GET_ALL: '/places',
+    GET_BY_ID: '/places',
+    CREATE: '/places',
+    UPDATE: '/places',
+    DELETE: '/places',
+  },
+  // 채팅 관련 API 경로
+  CHAT: {
+    ROOMS: '/chat/rooms',
+    MESSAGES: '/chat/rooms/:roomId/messages',
+  },
+};
+
+// API 기본 URL
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://15.164.251.118:8080';
+
+// 카카오 인증 관련 상수
+export const KAKAO_AUTH = {
+  REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY || '244abed4cb1b567f33d22e14fc58a2c5',
+  REDIRECT_URI: 'http://localhost:3000/auth/kakao/callback',
+
+  getLoginUrl: () => {
+    return `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_AUTH.REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
   },
 };

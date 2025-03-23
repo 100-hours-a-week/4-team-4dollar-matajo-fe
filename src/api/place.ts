@@ -1,4 +1,4 @@
-import { client } from './client';
+import client from './client'; // 기본 가져오기로 변경
 import { API_PATHS } from '../constants/api';
 
 // 장소 타입 정의

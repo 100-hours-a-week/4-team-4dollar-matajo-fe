@@ -1,9 +1,10 @@
+// routes/index.tsx
 import { RouteObject } from 'react-router-dom';
 import { UserRole } from '../contexts/AuthContext';
 
 // 페이지 컴포넌트 가져오기
 import HomePage from '../pages/Home';
-import LoginPage from '../pages/Login';
+import LoginPage from '../pages/Login/index';
 import MyPage from '../pages/MyPage/MyPage';
 import MyPlace from '../pages/MyPlace/MyPlace';
 import MyTrade from '../pages/MyTrade/MyTrade';
@@ -18,6 +19,7 @@ import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
 import EditStorage from '../pages/EditStorage/EditStorage';
 import NotFoundPage from '../pages/NotFound';
+import KakaoCallback from '../pages/Login/KakaoCallback';
 
 // 레이아웃 컴포넌트
 import MainLayout from '../components/layout/MainLayout';
@@ -37,9 +39,18 @@ const routes: RouteObject[] = [
         path: 'login',
         element: <LoginPage />,
       },
+      // 카카오 로그인 콜백 라우트 - 하나만 유지하고 이것만 사용합니다
+      {
+        path: 'auth/kakao/callback',
+        element: <KakaoCallback />,
+      },
+      // 기존 라우트는 일단 남겨두지만 사용하지 않을 예정
+      {
+        path: 'auth/kakao',
+        element: <KakaoCallback />,
+      },
     ],
   },
-
   // 인증된 사용자만 접근 가능한 라우트
   {
     path: '/',
@@ -55,25 +66,22 @@ const routes: RouteObject[] = [
           { path: 'myplace', element: <MyPlace /> },
           { path: 'storage', element: <StorageList /> },
           { path: 'storagedetail/:id', element: <StorageDetail /> },
-          // 채팅 리스트만 MainLayout에 포함
           { path: 'chat/list', element: <ChatroomList /> },
-          { path: '*', element: <NotFoundPage /> },
         ],
       },
-      // 채팅 상세 페이지는 MainLayout 없이 독립적으로 렌더링 (네비바 제거)
       { path: 'chat', element: <Chat onBack={() => window.history.back()} /> },
       { path: 'chat/:id', element: <Chat onBack={() => window.history.back()} /> },
-
-      // 보관인 등록 관련 페이지
-      { path: 'keeper/registration', element: <KeeperRegistration /> }, // 보관인 등록 시작 페이지
-      { path: 'registration/step1', element: <Registration1 /> }, // 보관소 등록 1단계
-      { path: 'registration/step2', element: <Registration2 /> }, // 보관소 등록 2단계
-      { path: 'registration/step3', element: <Registration3 /> }, // 보관소 등록 3단계
-      { path: 'search-address', element: <SearchAddress /> }, // 보관소 장소 검색 페이지지
-
-      // 보관소 수정 페이지
-      { path: 'editstorage', element: <EditStorage /> }, // 보관소 등록/수정 페이지
+      { path: 'keeper/registration', element: <KeeperRegistration /> },
+      { path: 'registration/step1', element: <Registration1 /> },
+      { path: 'registration/step2', element: <Registration2 /> },
+      { path: 'registration/step3', element: <Registration3 /> },
+      { path: 'search-address', element: <SearchAddress /> },
+      { path: 'editstorage', element: <EditStorage /> },
     ],
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ];
 
