@@ -1,9 +1,9 @@
 import axios, { AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { API_BASE_URL } from '../constants/api';
+import { API_BACKEND_URL } from '../constants/api';
 
 // 기본 axios 인스턴스 생성
 export const client = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },

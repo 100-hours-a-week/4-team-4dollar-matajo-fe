@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API 베이스 URL 설정
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL || 'http://localhost:8080/api';
 
 // 타입 정의
 interface ChatroomResponse {
@@ -38,7 +38,7 @@ interface LeaveChatroomResponse {
 
 // API 클라이언트 생성
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
