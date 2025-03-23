@@ -4,6 +4,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
+import { registerStorage, base64ToFile, StorageRegistrationRequest } from '../../api/storage';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -264,6 +266,38 @@ const CompleteButton = styled.button`
   cursor: pointer;
 `;
 
+// 로딩 오버레이
+const LoadingOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+`;
+
+const LoadingSpinner = styled.div`
+  width: 50px;
+  height: 50px;
+  border: 5px solid ${THEME.lightGray};
+  border-top: 5px solid ${THEME.primary};
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
 // 이전 단계에서 전달받는 데이터 타입
 interface CombinedFormData {
   // Registration1 데이터
@@ -278,6 +312,7 @@ interface CombinedFormData {
   selectedStorageTypes: string[];
   selectedDurationOptions: string[];
   isValuableSelected: boolean;
+  tags: number[]; // 태그 ID 배열
 }
 
 const Registration3: React.FC = () => {
@@ -296,8 +331,19 @@ const Registration3: React.FC = () => {
   const [mainImage, setMainImage] = useState<string | null>(null);
   const [detailImages, setDetailImages] = useState<string[]>([]);
 
+  // 원본 파일 객체
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [detailImageFiles, setDetailImageFiles] = useState<File[]>([]);
+
   // 모달 상태 관리
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  // 로딩 상태
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 토스트 상태
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   // 첫 렌더링 체크 (useEffect 첫 실행시 저장 방지)
   const [isInitialRender, setIsInitialRender] = useState(true);
@@ -345,6 +391,13 @@ const Registration3: React.FC = () => {
     localStorage.setItem('registration_step3', JSON.stringify(dataToSave));
   };
 
+  // 토스트 메시지 표시 함수
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 3000);
+  };
+
   // 메인 이미지 업로드 핸들러
   const handleMainImageUpload = () => {
     if (mainImageInputRef.current) {
@@ -363,6 +416,9 @@ const Registration3: React.FC = () => {
   const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // 원본 파일 저장
+      setMainImageFile(file);
+
       const reader = new FileReader();
       reader.onloadend = () => {
         const imageData = reader.result as string;
@@ -382,6 +438,9 @@ const Registration3: React.FC = () => {
       const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
       if (filesToProcess.length > 0) {
+        // 원본 파일 저장
+        setDetailImageFiles(prev => [...prev, ...filesToProcess]);
+
         const newImages = [...detailImages];
         let processed = 0;
 
@@ -405,6 +464,7 @@ const Registration3: React.FC = () => {
   // 메인 이미지 삭제 핸들러
   const handleDeleteMainImage = () => {
     setMainImage(null);
+    setMainImageFile(null);
     if (mainImageInputRef.current) {
       mainImageInputRef.current.value = '';
     }
@@ -414,6 +474,7 @@ const Registration3: React.FC = () => {
   // 서브 이미지 삭제 핸들러
   const handleDeleteDetailImage = (index: number) => {
     setDetailImages(prev => prev.filter((_, i) => i !== index));
+    setDetailImageFiles(prev => prev.filter((_, i) => i !== index));
 
     if (detailImagesInputRef.current) {
       detailImagesInputRef.current.value = '';
@@ -433,30 +494,81 @@ const Registration3: React.FC = () => {
   };
 
   // 폼 제출 핸들러
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // 필수 입력값 검증
     if (!mainImage) {
-      alert('대표 이미지를 업로드해주세요.');
+      showToast('대표 이미지를 업로드해주세요.');
       return;
     }
 
-    // 모든 단계 데이터와 이미지 데이터 통합
-    const finalData = {
-      ...prevFormData,
-      mainImage,
-      detailImages,
-    };
+    if (!prevFormData) {
+      showToast('이전 단계 데이터가 없습니다. 다시 시도해주세요.');
+      return;
+    }
 
-    // 여기서 finalData를 백엔드로 전송하는 로직이 있어야할듯?
-    console.log('등록 완료, 최종 데이터:', finalData);
+    try {
+      setIsLoading(true);
 
-    // 모든 단계의 로컬 스토리지 데이터 삭제
-    localStorage.removeItem('registration_step1');
-    localStorage.removeItem('registration_step2');
-    localStorage.removeItem('registration_step3');
+      // 이미지 파일 준비
+      // base64 이미지 데이터를 File 객체로 변환하거나 기존 File 객체 사용
+      let mainImageFileObj: File;
+      if (mainImageFile) {
+        mainImageFileObj = mainImageFile;
+      } else if (mainImage) {
+        mainImageFileObj = base64ToFile(mainImage, 'main-image.jpg');
+      } else {
+        throw new Error('대표 이미지가 없습니다.');
+      }
 
-    // 등록 확인 모달 열기
-    openConfirmModal();
+      // 상세 이미지 파일 배열 준비
+      const detailImageFilesArray: File[] = [];
+
+      // 기존 File 객체가 있으면 사용, 없으면 base64 데이터에서 변환
+      if (detailImageFiles.length === detailImages.length) {
+        detailImageFilesArray.push(...detailImageFiles);
+      } else {
+        detailImages.forEach((img, index) => {
+          if (detailImageFiles[index]) {
+            detailImageFilesArray.push(detailImageFiles[index]);
+          } else {
+            detailImageFilesArray.push(base64ToFile(img, `detail-image-${index}.jpg`));
+          }
+        });
+      }
+
+      // API 요청 데이터 준비
+      const requestData: StorageRegistrationRequest = {
+        postAddressData: prevFormData.postAddress,
+        postTitle: prevFormData.postTitle,
+        postContent: prevFormData.postContent,
+        preferPrice: prevFormData.preferPrice,
+        storageLocation: prevFormData.storageLocation,
+        tags: prevFormData.tags,
+      };
+
+      // API 호출
+      const response = await registerStorage(requestData, mainImageFileObj, detailImageFilesArray);
+
+      // 응답 처리
+      if (response.success) {
+        console.log('보관소 등록 성공:', response);
+
+        // 로컬 스토리지 데이터 삭제
+        localStorage.removeItem('registration_step1');
+        localStorage.removeItem('registration_step2');
+        localStorage.removeItem('registration_step3');
+
+        // 등록 확인 모달 표시
+        openConfirmModal();
+      } else {
+        showToast(response.message || '보관소 등록에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (error) {
+      console.error('보관소 등록 오류:', error);
+      showToast('보관소 등록 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 등록 확인 처리 (내 보관소로 이동)
@@ -483,6 +595,16 @@ const Registration3: React.FC = () => {
     <>
       {/* 상단 헤더 */}
       <Header title="보관소 등록" showBackButton={true} onBack={handleBack} />
+
+      {/* 로딩 오버레이 */}
+      {isLoading && (
+        <LoadingOverlay>
+          <LoadingSpinner />
+        </LoadingOverlay>
+      )}
+
+      {/* 토스트 메시지 */}
+      <Toast message={toastMessage} visible={toastVisible} />
 
       <RegistrationContainer>
         <Container>

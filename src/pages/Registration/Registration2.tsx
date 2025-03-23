@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import { convertTagsToIds } from '../../services/TagMappingService';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -316,6 +317,15 @@ const Registration2: React.FC = () => {
       return;
     }
 
+    // 태그 ID로 변환
+    const tagIds = convertTagsToIds(
+      storageLocation,
+      selectedItemTypes,
+      selectedStorageTypes,
+      selectedDurationOptions,
+      isValuableSelected,
+    );
+
     // 이전 단계 데이터와 현재 단계 데이터 병합
     const step2Data = {
       storageLocation,
@@ -323,6 +333,7 @@ const Registration2: React.FC = () => {
       selectedStorageTypes,
       selectedDurationOptions,
       isValuableSelected,
+      tags: tagIds, // 백엔드로 전송할 태그 ID 배열
     };
 
     // 모든 단계 데이터 통합
@@ -333,6 +344,7 @@ const Registration2: React.FC = () => {
 
     // 다음 단계로 이동
     console.log('다음 단계로 이동, 통합 데이터:', combinedData);
+    console.log('태그 ID 배열:', tagIds);
     navigate('/registration/step3', { state: combinedData });
   };
 
@@ -431,31 +443,6 @@ const Registration2: React.FC = () => {
 
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="보관소" />
-
-      {/* 개발 테스트용 정보 표시 (실제 배포 시 제거) */}
-      {prevFormData && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '90px',
-            left: '13px',
-            background: 'rgba(0,0,0,0.6)',
-            color: 'white',
-            padding: '10px',
-            borderRadius: '5px',
-            fontSize: '10px',
-            opacity: 0.7,
-            maxWidth: '349px',
-            display: 'none', // 기본적으로는 숨김 처리
-          }}
-        >
-          <h4>이전 단계 데이터 (개발용)</h4>
-          <p>주소: {prevFormData.postAddress}</p>
-          <p>설명: {prevFormData.postTitle}</p>
-          <p>상세: {prevFormData.postContent?.substring(0, 20)}...</p>
-          <p>가격: {prevFormData.preferPrice}</p>
-        </div>
-      )}
     </>
   );
 };

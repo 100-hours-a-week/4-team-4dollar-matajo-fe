@@ -23,11 +23,11 @@ export const API_PATHS = {
 
   // 보관소 관련
   STORAGE: {
-    LIST: '/storage/list',
-    DETAIL: '/storage/detail',
-    CREATE: '/storage/create',
-    UPDATE: '/storage/update',
-    DELETE: '/storage/delete',
+    LIST: '/api/posts',
+    CREATE: '/api/posts',
+    UPDATE: '/api/posts/:postId',
+    DETAIL: '/api/posts/:postId',
+    DELETE: '/api/posts/:postId',
   },
 
   // 사용자 관련
