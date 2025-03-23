@@ -1,5 +1,5 @@
 import { client } from './client';
-import { API_BASE_URL, API_PATHS } from '../constants/api';
+import { API_BACKEND_URL, API_PATHS } from '../constants/api';
 import axios from 'axios';
 import { DaumAddressData } from '../utils/KakaoToDaum';
 import { response } from 'express';

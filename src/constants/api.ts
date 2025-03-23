@@ -1,5 +1,6 @@
 // API 기본 URL 설정
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://15.164.251.118:8080';
+export const API_BACKEND_URL =
+  process.env.REACT_APP_API_BACKEND_URL || 'http://15.164.251.118:8080';
 
 // API 경로 정의
 export const API_PATHS = {

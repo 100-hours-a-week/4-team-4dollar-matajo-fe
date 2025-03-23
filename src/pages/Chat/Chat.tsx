@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import TradeConfirmModal, { TradeData } from './TradeConfirmModal';
 import ChatService, { ChatMessageResponseDto, MessageType } from '../../services/ChatService';
-import { API_BASE_URL } from '../../constants/api';
+import { API_BACKEND_URL } from '../../constants/api';
 import axios from 'axios';
 import moment from 'moment-timezone';
 
@@ -815,7 +815,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
                 <SentMessageBubble>
                   {message.messageType === MessageType.IMAGE ? (
                     <ImageMessage
-                      src={`${message.content.startsWith('http') ? '' : API_BASE_URL}${message.content}`}
+                      src={`${message.content.startsWith('http') ? '' : API_BACKEND_URL}${message.content}`}
                       alt="첨부된 이미지"
                     />
                   ) : (
@@ -838,7 +838,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
                 )}
                 {message.messageType === MessageType.IMAGE ? (
                   <ImageMessage
-                    src={`${message.content.startsWith('http') ? '' : API_BASE_URL}${message.content}`}
+                    src={`${message.content.startsWith('http') ? '' : API_BACKEND_URL}${message.content}`}
                     alt="첨부된 이미지"
                   />
                 ) : (
