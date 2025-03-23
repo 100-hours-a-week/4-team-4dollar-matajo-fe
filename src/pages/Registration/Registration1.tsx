@@ -5,7 +5,7 @@ import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
-import { DaumAddressData, generateDummyAddressData } from '../../utils/KakaoToDaum';
+import { DaumAddressData, autoConvertAddress } from '../../utils/KakaoToDaum';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -302,43 +302,51 @@ const Registration1: React.FC = () => {
       const selectedAddress = location.state.selectedAddress as AddressInfo;
       setIsLoading(true);
 
-      // 주소 데이터 처리 및 Daum 주소 데이터 생성
-      try {
-        // 실제 구현에서는 여기서 KakaoToDaum의 convertKakaoToDaumAddress 또는 autoConvertAddress 호출
-        // 테스트 환경에서는 더미 데이터로 대체
-        const daumAddressData = generateDummyAddressData(selectedAddress.address);
+      // 비동기 함수를 별도로 정의하고 즉시 호출
+      const processAddress = async () => {
+        try {
+          console.log('Daum 주소 API 호출 시작...');
 
-        // 폼 데이터에 주소 정보 및 Daum 주소 데이터 업데이트
-        setFormData(prev => ({
-          ...prev,
-          postAddress: selectedAddress.address,
-          postAddressData: daumAddressData,
-        }));
+          // 다음 주소 API 호출하여 상세 주소 데이터 가져오기
+          const daumAddressData = await autoConvertAddress(selectedAddress.address);
 
-        // 주소 필드의 에러 초기화
-        setErrors(prev => ({ ...prev, postAddress: '' }));
+          console.log('Daum 주소 API 응답 데이터:', daumAddressData);
 
-        // 로컬 스토리지에 업데이트된 데이터 저장
-        const updatedData = {
-          ...JSON.parse(savedData || '{}'),
-          postAddress: selectedAddress.address,
-          postAddressData: daumAddressData,
-        };
-        localStorage.setItem('registration_step1', JSON.stringify(updatedData));
+          // 폼 데이터에 주소 정보 및 Daum 주소 데이터 업데이트
+          setFormData(prev => ({
+            ...prev,
+            postAddress: selectedAddress.address,
+            postAddressData: daumAddressData,
+          }));
 
-        showToast('주소 데이터가 변환되었습니다.');
-      } catch (error) {
-        console.error('주소 데이터 변환 실패:', error);
-        showToast('주소 데이터 변환에 실패했습니다.');
+          // 주소 필드의 에러 초기화
+          setErrors(prev => ({ ...prev, postAddress: '' }));
 
-        // 주소만 업데이트
-        setFormData(prev => ({
-          ...prev,
-          postAddress: selectedAddress.address,
-        }));
-      } finally {
-        setIsLoading(false);
-      }
+          // 로컬 스토리지에 업데이트된 데이터 저장
+          const updatedData = {
+            ...JSON.parse(savedData || '{}'),
+            postAddress: selectedAddress.address,
+            postAddressData: daumAddressData,
+          };
+          localStorage.setItem('registration_step1', JSON.stringify(updatedData));
+
+          showToast('주소 데이터가 변환되었습니다.');
+        } catch (error) {
+          console.error('주소 데이터 변환 실패:', error);
+          showToast('주소 데이터 변환에 실패했습니다. 다시 시도해주세요.');
+
+          // 주소만 업데이트
+          setFormData(prev => ({
+            ...prev,
+            postAddress: selectedAddress.address,
+          }));
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      // 비동기 함수 호출
+      processAddress();
     }
   }, [location.state]);
 
@@ -460,7 +468,7 @@ const Registration1: React.FC = () => {
       setIsBackModalOpen(true);
     } else {
       // 데이터가 없으면 바로 이전 페이지로
-      navigate(-1);
+      navigate('/');
     }
   };
 
@@ -474,31 +482,45 @@ const Registration1: React.FC = () => {
   };
 
   // 폼 제출 핸들러
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // 유효성 검사
     if (!validateForm()) {
       showToast('필수 입력 항목을 확인해주세요.');
       return;
     }
 
-    // Daum 주소 데이터가 없는 경우 더미 데이터 생성
+    // Daum 주소 데이터가 없는 경우 API 호출하여 가져오기
     if (!formData.postAddressData) {
-      const dummyAddressData = generateDummyAddressData(formData.postAddress);
-      setFormData(prev => ({ ...prev, postAddressData: dummyAddressData }));
+      setIsLoading(true);
 
-      // 로컬 스토리지에 저장
-      localStorage.setItem(
-        'registration_step1',
-        JSON.stringify({
+      try {
+        console.log('주소 데이터 변환 시도...');
+        const addressData = await autoConvertAddress(formData.postAddress);
+
+        // 주소 데이터 업데이트
+        const updatedFormData = {
           ...formData,
-          postAddressData: dummyAddressData,
-        }),
-      );
-    }
+          postAddressData: addressData,
+        };
 
-    // 다음 단계로 이동 로직 - 입력 데이터를 state로 전달
-    console.log('다음 단계로 이동', formData);
-    navigate('/registration/step2', { state: formData });
+        // 상태 및 로컬 스토리지 업데이트
+        setFormData(updatedFormData);
+        localStorage.setItem('registration_step1', JSON.stringify(updatedFormData));
+
+        // 다음 단계로 이동
+        console.log('다음 단계로 이동', updatedFormData);
+        navigate('/registration/step2', { state: updatedFormData });
+      } catch (error) {
+        console.error('주소 데이터 변환 실패:', error);
+        showToast('주소 데이터 변환에 실패했습니다. 다시 시도해주세요.');
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // 이미 주소 데이터가 있으면 바로 다음 단계로 이동
+      console.log('다음 단계로 이동', formData);
+      navigate('/registration/step2', { state: formData });
+    }
   };
 
   // 모달 내용 컴포넌트

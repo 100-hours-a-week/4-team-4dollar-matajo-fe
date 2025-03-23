@@ -40,5 +40,7 @@ export const API_PATHS = {
   PLACE: {
     SEARCH: '/place/search',
     NEARBY: '/place/nearby',
+    DISCOUNT_ITEMS: '/place/discount',
+    RECENT_ITEMS: '/place/discount',
   },
 };

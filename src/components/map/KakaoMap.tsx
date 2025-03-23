@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
+import { initializeKakaoMaps } from '../../services/KakaoMapService';
 
 // 전역 window 객체에 kakao 타입 추가
 declare global {
@@ -84,49 +85,186 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 }) => {
   // 지도 상태 관리
   const mapRef = useRef<HTMLDivElement>(null);
-  const [kakaoMap, setKakaoMap] = useState<any>(null);
-  const [markers, setMarkers] = useState<any[]>([]);
+  const kakaoMapRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const eventsRegisteredRef = useRef<boolean>(false);
   const mapInitialized = useRef<boolean>(false);
+  const prevStorageMarkersRef = useRef<StoragePlace[]>(storageMarkers);
+  const initializingRef = useRef<boolean>(false);
   const navigate = useNavigate();
+
+  // 보이는 마커만 표시하는 함수 (메모이제이션)
+  const updateVisibleMarkers = useCallback(() => {
+    const kakaoMap = kakaoMapRef.current;
+    if (!kakaoMap) return;
+
+    const bounds = kakaoMap.getBounds();
+
+    markersRef.current.forEach(marker => {
+      const position = marker.getPosition();
+
+      if (bounds.contain(position)) {
+        marker.setMap(kakaoMap);
+      } else {
+        marker.setMap(null);
+      }
+    });
+  }, []);
+
+  // 현재 위치로 이동하는 함수 (메모이제이션)
+  const moveToCurrentLocation = useCallback(() => {
+    const kakaoMap = kakaoMapRef.current;
+    if (!navigator.geolocation || !kakaoMap) {
+      alert('이 브라우저에서는 위치 서비스를 지원하지 않습니다.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const currentPos = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        // 지도 중심 이동
+        const moveLatLng = new window.kakao.maps.LatLng(currentPos.lat, currentPos.lng);
+        kakaoMap.setCenter(moveLatLng);
+
+        // 콜백 호출
+        if (onCenterChanged) {
+          onCenterChanged(currentPos.lat, currentPos.lng);
+        }
+      },
+      error => {
+        console.error('현재 위치를 가져오는데 실패했습니다:', error);
+        alert('현재 위치를 가져오는데 실패했습니다. 위치 접근 권한을 확인해주세요.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  }, [onCenterChanged]);
 
   // 지도 초기화 (한 번만 실행)
   useEffect(() => {
     // 이미 초기화된 경우 중복 실행 방지
-    if (mapInitialized.current || !mapRef.current || !window.kakao || !window.kakao.maps) return;
+    if (mapInitialized.current || !mapRef.current || initializingRef.current) return;
 
+    initializingRef.current = true;
     console.log('카카오맵 초기화 시작');
 
-    const options = {
-      center: new window.kakao.maps.LatLng(center.lat, center.lng),
-      level: level,
-      draggable: draggable,
-      zoomable: zoomable,
+    const initMap = async () => {
+      try {
+        // 공통 서비스를 통해 카카오맵 API 초기화
+        await initializeKakaoMaps();
+
+        // 지도 객체 생성
+        const options = {
+          center: new window.kakao.maps.LatLng(center.lat, center.lng),
+          level: level,
+          draggable: draggable,
+          zoomable: zoomable,
+        };
+
+        const map = new window.kakao.maps.Map(mapRef.current, options);
+        kakaoMapRef.current = map;
+        mapInitialized.current = true;
+        initializingRef.current = false;
+
+        console.log('카카오맵 초기화 완료');
+      } catch (error) {
+        console.error('카카오맵 초기화 오류:', error);
+        initializingRef.current = false;
+      }
     };
 
-    try {
-      // 지도 객체 생성
-      const map = new window.kakao.maps.Map(mapRef.current, options);
-      setKakaoMap(map);
-      mapInitialized.current = true;
+    initMap();
+  }, []); // 초기화는 한 번만 실행되어야 함
 
-      console.log('카카오맵 초기화 완료');
-
-      // 초기 마커 설정은 다른 useEffect에서 처리
-    } catch (error) {
-      console.error('카카오맵 초기화 오류:', error);
-    }
-  }, []);
-
-  // 마커 처리 (지도 생성 후 실행)
+  // 지도 설정 업데이트 (center, level, draggable, zoomable)
   useEffect(() => {
+    const kakaoMap = kakaoMapRef.current;
     if (!kakaoMap) return;
+
+    // 지도 중심 위치 변경
+    const newCenter = new window.kakao.maps.LatLng(center.lat, center.lng);
+    kakaoMap.setCenter(newCenter);
+
+    // 지도 레벨 변경
+    kakaoMap.setLevel(level);
+
+    // 드래그 가능 여부 업데이트
+    kakaoMap.setDraggable(draggable);
+
+    // 줌 가능 여부 업데이트
+    kakaoMap.setZoomable(zoomable);
+  }, [center.lat, center.lng, level, draggable, zoomable]);
+
+  // 모달 상태 변경 시 지도 다시 그리기
+  useEffect(() => {
+    const kakaoMap = kakaoMapRef.current;
+    if (!kakaoMap) return;
+
+    console.log('모달 상태 변경됨, 지도 relayout 호출');
+
+    // 지도 컨테이너 요소가 보이는지 확인
+    const isVisible =
+      mapRef.current &&
+      mapRef.current.offsetParent !== null &&
+      window.getComputedStyle(mapRef.current).display !== 'none';
+
+    if (isVisible) {
+      // setTimeout 사용 줄이기 - 렌더링 사이클에 맞추기
+      requestAnimationFrame(() => {
+        kakaoMap.relayout();
+
+        // 중심점 다시 설정
+        const newCenter = new window.kakao.maps.LatLng(center.lat, center.lng);
+        kakaoMap.setCenter(newCenter);
+      });
+    }
+  }, [isLocationModalOpen, center.lat, center.lng]);
+
+  // 이벤트 리스너 등록 (한 번만)
+  useEffect(() => {
+    const kakaoMap = kakaoMapRef.current;
+    if (!kakaoMap || eventsRegisteredRef.current) return;
+
+    // 지도 영역 변경 이벤트 (한 번만 등록)
+    window.kakao.maps.event.addListener(kakaoMap, 'dragend', function () {
+      updateVisibleMarkers();
+
+      // 중심 좌표 변경 콜백
+      if (onCenterChanged) {
+        const mapCenter = kakaoMap.getCenter();
+        onCenterChanged(mapCenter.getLat(), mapCenter.getLng());
+      }
+    });
+
+    window.kakao.maps.event.addListener(kakaoMap, 'zoom_changed', function () {
+      updateVisibleMarkers();
+    });
+
+    eventsRegisteredRef.current = true;
+  }, [updateVisibleMarkers, onCenterChanged]);
+
+  // 마커 처리 (storageMarkers, detailMode, onMarkerClick이 변경될 때만 실행)
+  useEffect(() => {
+    const kakaoMap = kakaoMapRef.current;
+    if (!kakaoMap) return;
+
+    // 마커 데이터 변경이 없으면 실행하지 않음
+    const markersEqual =
+      prevStorageMarkersRef.current.length === storageMarkers.length &&
+      prevStorageMarkersRef.current.every((marker, i) => marker.id === storageMarkers[i]?.id);
+
+    if (markersEqual && markersRef.current.length > 0) {
+      return;
+    }
 
     console.log('마커 설정 중...');
 
     // 기존 마커 제거
-    markers.forEach(marker => marker.setMap(null));
-
-    const newMarkers: any[] = [];
+    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current = [];
 
     // 마커 데이터 준비
     const markersData =
@@ -169,7 +307,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
         map: kakaoMap,
       });
 
-      newMarkers.push(marker);
+      markersRef.current.push(marker);
 
       // 정보창 표시
       const infoContent = `
@@ -202,7 +340,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           image: markerImage,
         });
 
-        newMarkers.push(marker);
+        markersRef.current.push(marker);
 
         // 인포윈도우 생성
         const infowindow = new window.kakao.maps.InfoWindow({
@@ -227,122 +365,22 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           infowindow.close();
         });
       });
-
-      // 지도 영역 변경 이벤트
-      window.kakao.maps.event.addListener(kakaoMap, 'dragend', function () {
-        // 마커 업데이트 (필요시)
-        updateVisibleMarkers();
-
-        // 중심 좌표 변경 콜백
-        if (onCenterChanged) {
-          const mapCenter = kakaoMap.getCenter();
-          onCenterChanged(mapCenter.getLat(), mapCenter.getLng());
-        }
-      });
-
-      window.kakao.maps.event.addListener(kakaoMap, 'zoom_changed', function () {
-        updateVisibleMarkers();
-      });
     }
 
-    setMarkers(newMarkers);
-  }, [kakaoMap, storageMarkers, detailMode, onMarkerClick, navigate, onCenterChanged]);
+    // 현재 storageMarkers 저장
+    prevStorageMarkersRef.current = [...storageMarkers];
 
-  // 지도 설정 업데이트 (center, level, draggable, zoomable)
-  useEffect(() => {
-    if (!kakaoMap) return;
-
-    // 지도 중심 위치 변경
-    const newCenter = new window.kakao.maps.LatLng(center.lat, center.lng);
-    kakaoMap.setCenter(newCenter);
-
-    // 지도 레벨 변경
-    kakaoMap.setLevel(level);
-
-    // 드래그 가능 여부 업데이트
-    kakaoMap.setDraggable(draggable);
-
-    // 줌 가능 여부 업데이트
-    kakaoMap.setZoomable(zoomable);
-  }, [kakaoMap, center.lat, center.lng, level, draggable, zoomable]);
-
-  // 모달 상태 변경 시 지도 다시 그리기
-  useEffect(() => {
-    if (!kakaoMap) return;
-
-    console.log('모달 상태 변경됨, 지도 relayout 호출');
-
-    // 지도 컨테이너 요소가 보이는지 확인
-    const isVisible =
-      mapRef.current &&
-      mapRef.current.offsetParent !== null &&
-      window.getComputedStyle(mapRef.current).display !== 'none';
-
-    if (isVisible) {
-      setTimeout(() => {
-        kakaoMap.relayout();
-
-        // 중심점 다시 설정
-        const newCenter = new window.kakao.maps.LatLng(center.lat, center.lng);
-        kakaoMap.setCenter(newCenter);
-      }, 300);
-    }
-  }, [kakaoMap, isLocationModalOpen, center.lat, center.lng]);
-
-  // 보이는 마커만 표시하는 함수
-  const updateVisibleMarkers = () => {
-    if (!kakaoMap) return;
-
-    const bounds = kakaoMap.getBounds();
-
-    markers.forEach(marker => {
-      const position = marker.getPosition();
-
-      if (bounds.contain(position)) {
-        marker.setMap(kakaoMap);
-      } else {
-        marker.setMap(null);
-      }
-    });
-  };
-
-  // 현재 위치로 이동하는 함수
-  const moveToCurrentLocation = () => {
-    if (!navigator.geolocation || !kakaoMap) {
-      alert('이 브라우저에서는 위치 서비스를 지원하지 않습니다.');
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const currentPos = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-
-        // 지도 중심 이동
-        const moveLatLng = new window.kakao.maps.LatLng(currentPos.lat, currentPos.lng);
-        kakaoMap.setCenter(moveLatLng);
-
-        // 콜백 호출
-        if (onCenterChanged) {
-          onCenterChanged(currentPos.lat, currentPos.lng);
-        }
-      },
-      error => {
-        console.error('현재 위치를 가져오는데 실패했습니다:', error);
-        alert('현재 위치를 가져오는데 실패했습니다. 위치 접근 권한을 확인해주세요.');
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-    );
-  };
+    // 처음 마커 업데이트
+    updateVisibleMarkers();
+  }, [storageMarkers, detailMode, onMarkerClick, navigate, updateVisibleMarkers]);
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
-      markers.forEach(marker => marker.setMap(null));
+      markersRef.current.forEach(marker => marker.setMap(null));
+      markersRef.current = [];
     };
-  }, [markers]);
+  }, []);
 
   return (
     <MapContainer id="kakaoMap" ref={mapRef} width={width} height={height}>

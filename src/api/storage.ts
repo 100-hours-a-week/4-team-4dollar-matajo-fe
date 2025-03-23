@@ -1,15 +1,16 @@
 import { client } from './client';
 import { API_BASE_URL, API_PATHS } from '../constants/api';
 import axios from 'axios';
+import { DaumAddressData } from '../utils/KakaoToDaum';
+import { response } from 'express';
 
 // 보관소 등록 요청 인터페이스
 export interface StorageRegistrationRequest {
-  postAddressData: string;
   postTitle: string;
   postContent: string;
+  postAddressData?: DaumAddressData; // Daum 주소 API 데이터
   preferPrice: string;
-  storageLocation: '실내' | '실외';
-  tags: number[]; // 태그 ID 배열
+  postTags: string[]; // 태그 ID 배열
 }
 
 // 보관소 등록 응답 인터페이스
@@ -36,28 +37,32 @@ export const registerStorage = async (
     // FormData 객체 생성
     const formData = new FormData();
 
-    // 텍스트 정보 추가
-    formData.append('postAddressData', postData.postAddressData);
-    formData.append('postTitle', postData.postTitle);
-    formData.append('postContent', postData.postContent);
-    formData.append('preferPrice', postData.preferPrice);
+    // postData 객체를 문자열로 직렬화하여 추가
+    // 이때 postAddressData도 이미 객체 내부에 포함되어 있음
+    const postDataStr = JSON.stringify({
+      post_title: postData.postTitle,
+      post_content: postData.postContent,
+      post_address_data: postData.postAddressData,
+      prefer_price: postData.preferPrice,
+      post_tags: postData.postTags,
+    });
 
-    // 태그 ID 배열 추가
-    if (postData.tags && postData.tags.length > 0) {
-      // 백엔드에서 배열 형태로 받을 수 있도록 처리
-      postData.tags.forEach((tagId, index) => {
-        formData.append(`tags[${index}]`, tagId.toString());
-      });
-      // 또는 JSON 문자열로 변환하여 전송 (백엔드 API 구현에 따라 조정)
-      // formData.append('tags', JSON.stringify(data.tags));
-    }
+    // 서버가 처리할 수 있는 방식으로 postData 추가
+    // 일반 텍스트 필드로 전송
+    formData.append('postData', new Blob([postDataStr], { type: 'application/json' }));
 
     // 이미지 파일 추가
     formData.append('mainImage', mainImage);
 
     // 상세 이미지 추가
-    detailImages.forEach((file, index) => {
-      formData.append(`detailImages`, file);
+    detailImages.forEach(file => {
+      formData.append('detailImages', file);
+    });
+
+    console.log('전송하는 데이터 구조:', {
+      postData: JSON.parse(postDataStr),
+      mainImage: mainImage.name,
+      detailImages: detailImages.map(f => f.name),
     });
 
     // API 호출
@@ -69,8 +74,9 @@ export const registerStorage = async (
     });
 
     return {
-      id: response.data.id,
-      success: true,
+      id: response.data.data.post_id,
+      success: response.data.success,
+      message: response.data.message,
     };
   } catch (error) {
     console.error('보관소 등록 실패:', error);
@@ -78,7 +84,7 @@ export const registerStorage = async (
     if (axios.isAxiosError(error) && error.response) {
       return {
         id: '',
-        success: false,
+        success: error.response.data.success,
         message: error.response.data.message || '보관소 등록에 실패했습니다.',
       };
     }
@@ -135,34 +141,26 @@ export const updateStorage = async (
     // FormData 객체 생성
     const formData = new FormData();
 
-    // 기본 정보 추가
-    formData.append('id', id);
-    formData.append('postAddressData', data.postAddressData);
-    formData.append('postTitle', data.postTitle);
-    formData.append('postContent', data.postContent);
-    formData.append('preferPrice', data.preferPrice);
-
-    // 태그 ID 배열 추가
-    if (data.tags && data.tags.length > 0) {
-      data.tags.forEach((tagId, index) => {
-        formData.append(`tags[${index}]`, tagId.toString());
-      });
-    }
+    // id를 포함한 모든 데이터를 단일 JSON 객체로 추가
+    const fullData = {
+      id,
+      ...data,
+    };
+    formData.append('postData', JSON.stringify(fullData));
 
     // 이미지 파일 추가
     formData.append('mainImage', mainImage);
 
     // 상세 이미지 추가
-    detailImages.forEach((file, index) => {
-      formData.append(`detailImages`, file);
+    detailImages.forEach(file => {
+      formData.append('detailImages', file);
     });
 
     // API 호출
-    const response = await client.put(API_PATHS.STORAGE.UPDATE, formData, {
+    const response = await client.put('/storage/update', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      withCredentials: false,
     });
 
     return {

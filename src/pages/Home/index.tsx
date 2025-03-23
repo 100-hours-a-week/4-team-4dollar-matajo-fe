@@ -193,12 +193,12 @@ const HomePage: React.FC = () => {
       const district = locationParts[0] || '영등포구';
       const neighborhood = locationParts[1] || '여의도동';
 
-      const discountResponse = await getDiscountItems(district, neighborhood);
+      /* const discountResponse = await getDiscountItems(district, neighborhood);
       setDiscountItems(discountResponse.data.items);
 
       // 최근 거래 내역 로드
       const recentResponse = await getRecentItems(district, neighborhood);
-      setRecentItems(recentResponse.data.items);
+      setRecentItems(recentResponse.data.items); */
     } catch (error) {
       console.error('데이터 로드 오류:', error);
 
@@ -231,7 +231,7 @@ const HomePage: React.FC = () => {
           id: '1',
           name: '플레이스테이션',
           price: 12000,
-          tags: ['전자기기', '일주일 이내'],
+          post_tags: ['전자기기', '일주일 이내'],
           imageUrl: 'https://placehold.co/64x64',
           location: '여의도동',
           keeperId: 'keeper1',
@@ -241,7 +241,7 @@ const HomePage: React.FC = () => {
           id: '2',
           name: '캐리어',
           price: 8000,
-          tags: ['여행', '장기'],
+          post_tags: ['여행', '장기'],
           imageUrl: 'https://placehold.co/64x64',
           location: '여의도동',
           keeperId: 'keeper2',

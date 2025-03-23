@@ -89,3 +89,49 @@ export const convertTagsToIds = (
 
   return tagIds;
 };
+
+/**
+ * Converts selected tag names to string array
+ * @param locationTag Location tag ('실내'|'실외')
+ * @param itemTypes Array of item type tags
+ * @param storageTypes Array of storage type tags
+ * @param durationOptions Array of duration option tags
+ * @param isValuableSelected Whether valuable option is selected
+ * @returns Array of tag strings
+ */
+export const convertTagsToStrings = (
+  locationTag: '실내' | '실외' | '',
+  itemTypes: string[],
+  storageTypes: string[],
+  durationOptions: string[],
+  isValuableSelected: boolean,
+): string[] => {
+  const tagStrings: string[] = [];
+
+  // Add location tag if selected
+  if (locationTag) {
+    tagStrings.push(locationTag);
+  }
+
+  // Add item types
+  itemTypes.forEach(type => {
+    tagStrings.push(type);
+  });
+
+  // Add storage types
+  storageTypes.forEach(type => {
+    tagStrings.push(type);
+  });
+
+  // Add duration options
+  durationOptions.forEach(duration => {
+    tagStrings.push(duration);
+  });
+
+  // Add valuable tag if selected
+  if (isValuableSelected) {
+    tagStrings.push('귀중품');
+  }
+
+  return tagStrings;
+};

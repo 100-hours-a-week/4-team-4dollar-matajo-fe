@@ -6,6 +6,7 @@ import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
 import { registerStorage, base64ToFile, StorageRegistrationRequest } from '../../api/storage';
+import { DaumAddressData } from '../../utils/KakaoToDaum';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -301,10 +302,10 @@ const LoadingSpinner = styled.div`
 // 이전 단계에서 전달받는 데이터 타입
 interface CombinedFormData {
   // Registration1 데이터
-  postAddress: string;
   postTitle: string;
   postContent: string;
   preferPrice: string;
+  postAddressData?: DaumAddressData;
 
   // Registration2 데이터
   storageLocation: '실내' | '실외';
@@ -312,7 +313,7 @@ interface CombinedFormData {
   selectedStorageTypes: string[];
   selectedDurationOptions: string[];
   isValuableSelected: boolean;
-  tags: number[]; // 태그 ID 배열
+  postTags: string[]; // 태그 문자열 배열로 변경
 }
 
 const Registration3: React.FC = () => {
@@ -485,7 +486,7 @@ const Registration3: React.FC = () => {
   // 뒤로가기 핸들러
   const handleBack = () => {
     // 변경 사항은 로컬 스토리지에 자동 저장됨
-    navigate(-1);
+    navigate('/registration/step2');
   };
 
   // 등록 확인 모달 열기
@@ -536,14 +537,13 @@ const Registration3: React.FC = () => {
         });
       }
 
-      // API 요청 데이터 준비
+      // API 요청 데이터 준비 - postTags를 문자열 배열로 전달
       const requestData: StorageRegistrationRequest = {
-        postAddressData: prevFormData.postAddress,
         postTitle: prevFormData.postTitle,
         postContent: prevFormData.postContent,
         preferPrice: prevFormData.preferPrice,
-        storageLocation: prevFormData.storageLocation,
-        tags: prevFormData.tags,
+        postAddressData: prevFormData.postAddressData,
+        postTags: prevFormData.postTags, // 문자열 태그 배열 사용
       };
 
       // API 호출

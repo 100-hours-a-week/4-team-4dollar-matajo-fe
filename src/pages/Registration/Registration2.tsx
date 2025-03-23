@@ -3,7 +3,8 @@ import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
-import { convertTagsToIds } from '../../services/TagMappingService';
+import { convertTagsToStrings } from '../../services/TagMappingService';
+import { DaumAddressData } from '../../utils/KakaoToDaum';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -170,9 +171,9 @@ const durationOptions = ['일주일 이내', '한달 이내', '3개월 이상'];
 
 // 이전 단계에서 전달받는 데이터 타입 정의
 interface Step1FormData {
-  postAddress: string;
   postTitle: string;
   postContent: string;
+  postAddressData?: DaumAddressData; // DaumAddressData 타입 추가
   preferPrice: string;
 }
 
@@ -291,7 +292,7 @@ const Registration2: React.FC = () => {
   // 뒤로가기 핸들러
   const handleBack = () => {
     // 변경 사항은 로컬 스토리지에 자동 저장 상태이므로 바로 이전 페이지로 이동
-    navigate(-1);
+    navigate('/registration/step1');
   };
 
   // 폼 제출 핸들러
@@ -317,8 +318,8 @@ const Registration2: React.FC = () => {
       return;
     }
 
-    // 태그 ID로 변환
-    const tagIds = convertTagsToIds(
+    // 태그 문자열 리스트로 변환
+    const tagStrings = convertTagsToStrings(
       storageLocation,
       selectedItemTypes,
       selectedStorageTypes,
@@ -333,7 +334,7 @@ const Registration2: React.FC = () => {
       selectedStorageTypes,
       selectedDurationOptions,
       isValuableSelected,
-      tags: tagIds, // 백엔드로 전송할 태그 ID 배열
+      postTags: tagStrings, // 문자열 태그 배열로 저장
     };
 
     // 모든 단계 데이터 통합
@@ -344,7 +345,7 @@ const Registration2: React.FC = () => {
 
     // 다음 단계로 이동
     console.log('다음 단계로 이동, 통합 데이터:', combinedData);
-    console.log('태그 ID 배열:', tagIds);
+    console.log('태그 문자열 배열:', tagStrings);
     navigate('/registration/step3', { state: combinedData });
   };
 
