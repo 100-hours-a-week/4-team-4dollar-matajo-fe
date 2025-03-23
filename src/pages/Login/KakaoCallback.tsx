@@ -1,5 +1,5 @@
 // src/pages/Login/KakaoCallback.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { kakaoLogin } from '../../api/auth';
@@ -60,8 +60,12 @@ const KakaoCallback: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const requestSentRef = useRef(false); // 요청 전송 여부를 추적하는 ref
 
   useEffect(() => {
+    // 이미 요청을 보냈다면 중복 실행 방지
+    if (requestSentRef.current) return;
+
     // 인가 코드 추출
     const code = new URLSearchParams(window.location.search).get('code');
     console.log('인가 코드:', code);
@@ -73,14 +77,26 @@ const KakaoCallback: React.FC = () => {
       return;
     }
 
-    console.log('인가 코드 받음, 백엔드로 전송 중...');
+    // 이미 처리된 코드인지 확인
+    const processedCode = sessionStorage.getItem('processed_kakao_code');
+    if (processedCode === code) {
+      console.log('이미 처리된 코드입니다. 홈으로 리다이렉트합니다.');
+      navigate('/', { replace: true });
+      return;
+    }
 
-    // 직접 백엔드의 /auth/kakao 엔드포인트로 요청 (리다이렉트 URI 없이)
+    console.log('인가 코드 받음, 백엔드로 전송 중...');
+    requestSentRef.current = true; // 요청 전송 표시
+
+    // 직접 백엔드의 /auth/kakao 엔드포인트로 요청
     kakaoLogin(code)
       .then(response => {
         console.log('로그인 응답:', response);
 
         if (response.success) {
+          // 처리 성공 시 코드 저장
+          sessionStorage.setItem('processed_kakao_code', code);
+
           // 토큰 및 사용자 정보 저장
           const { accessToken, refreshToken, userId, nickname, role } = response.data;
 
@@ -112,12 +128,17 @@ const KakaoCallback: React.FC = () => {
           console.error('응답 데이터:', err.response.data);
           console.error('응답 헤더:', err.response.headers);
 
-          // 백엔드에서 보내는 오류 메시지가 있다면 그것을 표시
-          const errorMessage =
-            err.response.data?.message ||
-            err.response.data?.error ||
-            '로그인 처리 중 오류가 발생했습니다.';
-          setError(errorMessage);
+          // 카카오 인증 코드 오류인 경우 명확한 메시지 표시
+          if (err.response.data?.error_code === 'KOE320') {
+            setError('인증 코드가 만료되었거나 이미 사용되었습니다. 다시 로그인해 주세요.');
+          } else {
+            // 백엔드에서 보내는 오류 메시지가 있다면 그것을 표시
+            const errorMessage =
+              err.response.data?.message ||
+              err.response.data?.error ||
+              '로그인 처리 중 오류가 발생했습니다.';
+            setError(errorMessage);
+          }
         } else {
           setError(err.message || '로그인 처리 중 오류가 발생했습니다.');
         }
@@ -127,7 +148,7 @@ const KakaoCallback: React.FC = () => {
       .finally(() => {
         setLoading(false);
       });
-  }, [navigate]);
+  }, [navigate]); // 의존성 배열에는 navigate만 포함
 
   return (
     <LoadingContainer>

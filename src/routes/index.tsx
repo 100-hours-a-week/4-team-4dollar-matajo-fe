@@ -41,11 +41,6 @@ const routes: RouteObject[] = [
       },
       // 카카오 로그인 콜백 라우트 - 하나만 유지하고 이것만 사용합니다
       {
-        path: 'auth/kakao/callback',
-        element: <KakaoCallback />,
-      },
-      // 기존 라우트는 일단 남겨두지만 사용하지 않을 예정
-      {
         path: 'auth/kakao',
         element: <KakaoCallback />,
       },

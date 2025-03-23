@@ -19,9 +19,9 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
   // }
 
   // 로그인하지 않은 경우 로그인 페이지로 리다이렉트
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  // if (!isAuthenticated) {
+  //   return <Navigate to="/login" replace />;
+  // }
 
   // 특정 역할이 요구되는 경우 역할 확인
   if (requiredRole && user?.role !== requiredRole) {

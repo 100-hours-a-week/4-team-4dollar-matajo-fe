@@ -111,7 +111,7 @@ const LoginPage: React.FC = () => {
       process.env.REACT_APP_KAKAO_REST_API_KEY || '244abed4cb1b567f33d22e14fc58a2c5';
 
     // 백엔드가 기대하는 리다이렉트 URI로 변경
-    const KAKAO_REDIRECT_URI = 'http://15.164.251.118:8080/auth/kakao/callback';
+    const KAKAO_REDIRECT_URI = 'http://localhost:3000/auth/kakao';
 
     const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code&prompt=login`;
 
