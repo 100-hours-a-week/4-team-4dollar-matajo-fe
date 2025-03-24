@@ -5,6 +5,9 @@ import { loadDongDataFromCSV, searchDongData } from '../../utils/csvUtils';
 // CSV 유틸에서 가져온 타입과 충돌을 피하기 위한 별칭 사용
 import type { DongData as DongDataType } from '../../utils/csvUtils';
 
+// 백엔드 API 호출 함수 (주석처리 상태)
+// import { searchLocations } from '../../api/location';
+
 // 모달 오버레이 - 화면 전체를 덮는 반투명 배경
 const ModalOverlay = styled.div`
   position: fixed;
@@ -66,12 +69,14 @@ const CloseButton = styled.button`
 // 스타일 컴포넌트
 const SearchContainer = styled.div`
   padding: 12px 16px 16px;
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 const SearchInputWrapper = styled.div`
   position: relative;
-  width: 100%;
-  margin-bottom: 20px;
+  width: 85%; /* 모달의 85%로 수정 */
+  margin: 0 auto 20px auto; /* 상하 여백 0, 좌우 auto로 중앙 정렬 */
 `;
 
 const SearchInput = styled.input`
@@ -112,7 +117,7 @@ const SearchResultList = styled.div`
 `;
 
 const SearchResultItem = styled.div`
-  padding: 10px 0;
+  padding: 10px 16px; /* 패딩 좌우 추가 */
   border-bottom: 0.5px solid #b6b6b6;
   font-size: 12px;
   font-family: 'Noto Sans KR', sans-serif;
@@ -120,7 +125,8 @@ const SearchResultItem = styled.div`
   line-height: 14.09px;
   color: #6f6f6f;
   cursor: pointer;
-  text-align: center;
+  /* 텍스트는 왼쪽 정렬 */
+  text-align: left;
 
   &:hover {
     background-color: #f5f5f5;
@@ -131,7 +137,15 @@ const SearchResultItem = styled.div`
 interface LocationSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectLocation: (location: string) => void;
+  onSelectLocation: (location: string, latitude?: string, longitude?: string) => void;
+}
+
+// 위치 정보 인터페이스
+interface LocationItem {
+  formatted_address: string;
+  display_name: string;
+  latitude: string;
+  longitude: string;
 }
 
 // "동"으로 끝나는 한글자 동 목록
@@ -245,17 +259,42 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   onSelectLocation,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<string[]>([]);
+  const [searchResults, setSearchResults] = useState<LocationItem[]>([]);
   const [dongData, setDongData] = useState<DongDataType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // 최근 검색한 지역 목록 (로컬 스토리지에서 가져오거나 기본값 사용)
-  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+  const [recentSearches, setRecentSearches] = useState<LocationItem[]>(() => {
     const saved = localStorage.getItem('recentLocationSearches');
     return saved
       ? JSON.parse(saved)
-      : ['영등포구 여의도동', '마포구 서교동', '강남구 역삼동', '성동구 성수동'];
+      : [
+          {
+            formatted_address: '영등포구 여의도동',
+            display_name: '여의도동, 영등포구, 서울특별시, 대한민국',
+            latitude: '37.5249',
+            longitude: '126.9214',
+          },
+          {
+            formatted_address: '마포구 서교동',
+            display_name: '서교동, 마포구, 서울특별시, 대한민국',
+            latitude: '37.5531',
+            longitude: '126.9194',
+          },
+          {
+            formatted_address: '강남구 역삼동',
+            display_name: '역삼동, 강남구, 서울특별시, 대한민국',
+            latitude: '37.5025',
+            longitude: '127.0259',
+          },
+          {
+            formatted_address: '성동구 성수동',
+            display_name: '성수동, 성동구, 서울특별시, 대한민국',
+            latitude: '37.5436',
+            longitude: '127.0558',
+          },
+        ];
   });
 
   // 동 데이터 로드
@@ -264,8 +303,21 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
     if (isOpen && dongData.length === 0) {
       setLoading(true);
 
-      // CSV 파일에서 동 데이터 로드
-      loadDongDataFromCSV('/data/korea_dong_coordinates.csv')
+      // 백엔드 API 호출 (주석 처리)
+      /* 
+      searchLocations('')
+        .then(data => {
+          setDongData(data);
+          setLoading(false);
+        })
+        .catch(error => {
+          console.error('위치 데이터 로드 오류:', error);
+          setLoading(false);
+        });
+      */
+
+      // CSV 파일에서 동 데이터 로드 (임시 방식)
+      loadDongDataFromCSV('public/data/korea_dong_coordinates.csv')
         .then(data => {
           if (data.length > 0) {
             setDongData(data);
@@ -409,14 +461,43 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
     const value = e.target.value;
     setSearchTerm(value);
 
-    // 검색어가 있을 경우 결과 필터링
+    // 백엔드 API 호출 코드 (주석 처리)
+    /*
+    if (value.trim()) {
+      setLoading(true);
+      searchLocations(value)
+        .then(data => {
+          setSearchResults(data);
+          setLoading(false);
+        })
+        .catch(error => {
+          console.error('검색 오류:', error);
+          setLoading(false);
+        });
+    } else {
+      setSearchResults(recentSearches);
+    }
+    */
+
+    // CSV 기반 검색 (임시 방식)
     if (value.trim()) {
       // 검색어 길이가 1자인 경우
       if (value.length === 1) {
         // 한글자 동 목록에서 시작하는 항목 필터링
-        const singleCharResults = SINGLE_CHAR_DONGS.filter(dong => dong.startsWith(value));
+        const singleCharResults = SINGLE_CHAR_DONGS.filter(dong => dong.startsWith(value)).map(
+          dong => {
+            // 한글자 동의 경우 원래 형식을 맞춤
+            const formattedAddress = `서울특별시 중구 ${dong}`;
+            return {
+              formatted_address: formattedAddress,
+              display_name: `${dong}, 중구, 서울특별시, 대한민국`,
+              latitude: '37.5631',
+              longitude: '126.9847',
+            };
+          },
+        );
 
-        // 동 데이터에서 시/도/구 등 필터링 (2자 이상 검색어)
+        // 동 데이터에서 시/도/구 등 필터링 (1자 검색어)
         const locationResults = dongData
           .filter(
             item =>
@@ -424,16 +505,25 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
               (item.original_name.includes('도') && item.original_name.includes(value)) ||
               (item.original_name.includes('구') && item.original_name.includes(value)),
           )
-          .map(item => item.original_name);
+          .map(item => ({
+            formatted_address: item.original_name, // original_name을 formatted_address로 사용
+            display_name: item.display_name,
+            latitude: item.latitude,
+            longitude: item.longitude,
+          }));
 
         // 결과 합치기
         setSearchResults([...singleCharResults, ...locationResults].slice(0, 100));
       } else {
-        // 2자 이상인 경우 모든 데이터 대상으로 검색
-        // 동 데이터에서 검색어를 포함하는 항목 필터링
+        // 2자 이상인 경우 display_name을 기준으로 검색
         const filteredResults = dongData
-          .filter(item => item.original_name.includes(value))
-          .map(item => item.original_name);
+          .filter(item => item.display_name.includes(value))
+          .map(item => ({
+            formatted_address: item.original_name, // original_name을 formatted_address로 사용
+            display_name: item.display_name,
+            latitude: item.latitude,
+            longitude: item.longitude,
+          }));
 
         // 결과 수가 적을 경우 최대 100개만 표시
         setSearchResults(filteredResults.slice(0, 100));
@@ -445,11 +535,11 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   };
 
   // 검색 결과 아이템 클릭 핸들러
-  const handleResultClick = (location: string) => {
+  const handleResultClick = (location: LocationItem) => {
     // 최근 검색 목록 업데이트 (중복 제거 및 최대 5개 유지)
     const updatedRecentSearches = [
       location,
-      ...recentSearches.filter(item => item !== location),
+      ...recentSearches.filter(item => item.formatted_address !== location.formatted_address),
     ].slice(0, 5);
 
     setRecentSearches(updatedRecentSearches);
@@ -457,8 +547,8 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
     // 로컬 스토리지에 저장
     localStorage.setItem('recentLocationSearches', JSON.stringify(updatedRecentSearches));
 
-    // 선택한 위치 전달
-    onSelectLocation(location);
+    // 선택한 위치 전달 (formatted_address, latitude, longitude)
+    onSelectLocation(location.formatted_address, location.latitude, location.longitude);
     onClose();
   };
 
@@ -533,7 +623,7 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
               {searchResults.length > 0 ? (
                 searchResults.map((result, index) => (
                   <SearchResultItem key={index} onClick={() => handleResultClick(result)}>
-                    {result}
+                    {result.formatted_address}
                   </SearchResultItem>
                 ))
               ) : (
