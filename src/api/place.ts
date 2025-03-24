@@ -1,5 +1,6 @@
 import client from './client'; // 기본 가져오기로 변경
 import { API_PATHS } from '../constants/api';
+import axios from 'axios';
 
 // 장소 타입 정의
 export interface Place {
@@ -24,53 +25,39 @@ export interface DiscountItem {
   imageUrl?: string;
 }
 
-// 보관소 아이템 타입 정의
+// 보관소 아이템 타입 정의 (API 응답값에 맞게 수정)
 export interface StorageItem {
-  id: string;
+  id: string | number;
   name: string;
-  price: number;
-  tags: string[];
-  imageUrl?: string;
   location: string;
-  keeperId: string;
+  price: number;
+  imageUrl?: string;
+  post_tags?: string[]; // API 응답의 post_tags 필드
+  itemTypes?: string[]; // 기존 코드와 호환성을 위해 유지
+  storageTypes?: string[];
+  durationOptions?: string[];
+  isValuableItem?: boolean;
+  keeperId?: string;
   rating?: number;
+  post_address?: string;
+  post_title?: string;
+  post_main_image?: string;
+  prefer_price?: number;
 }
+
+// 태그를 필터 카테고리별로 매핑하는 도우미 함수
+const mapTags = (tags: string[] | undefined, categoryTags: string[]): string[] => {
+  if (!tags) return [];
+  return tags.filter(tag => categoryTags.includes(tag));
+};
 
 // 주변 장소 검색 함수
 export const getNearbyPlaces = async (latitude: number, longitude: number, radius: number = 5) => {
   try {
-    // 실제 API 호출 (현재는 주석 처리)
-    // return await client.get(`${API_PATHS.PLACE.NEARBY}`, {
-    //   params: { latitude, longitude, radius },
-    // });
-
-    // 테스트용 더미 데이터
-    return {
-      data: {
-        places: [
-          {
-            id: '1',
-            name: '여의도 보관함',
-            address: '서울특별시 영등포구 여의도동 국제금융로 10',
-            latitude: 37.52508,
-            longitude: 126.92671,
-            district: '영등포구',
-            neighborhood: '여의도동',
-            isPopular: true,
-          },
-          {
-            id: '2',
-            name: '당산 보관함',
-            address: '서울특별시 영등포구 당산동 당산로 214',
-            latitude: 37.53361,
-            longitude: 126.90292,
-            district: '영등포구',
-            neighborhood: '당산동',
-            isPopular: false,
-          },
-        ],
-      },
-    };
+    // 실제 API 호출
+    return await client.get(`${API_PATHS.PLACE.NEARBY}`, {
+      params: { latitude, longitude, radius },
+    });
   } catch (error) {
     console.error('주변 장소 검색 오류:', error);
     throw error;
@@ -80,28 +67,10 @@ export const getNearbyPlaces = async (latitude: number, longitude: number, radiu
 // 장소 검색 함수
 export const searchPlaces = async (keyword: string) => {
   try {
-    // 실제 API 호출 (현재는 주석 처리)
-    // return await client.get(`${API_PATHS.PLACE.SEARCH}`, {
-    //   params: { keyword },
-    // });
-
-    // 테스트용 더미 데이터
-    return {
-      data: {
-        places: [
-          {
-            id: '1',
-            name: '여의도 보관함',
-            address: '서울특별시 영등포구 여의도동 국제금융로 10',
-            latitude: 37.52508,
-            longitude: 126.92671,
-            district: '영등포구',
-            neighborhood: '여의도동',
-            isPopular: true,
-          },
-        ],
-      },
-    };
+    // 실제 API 호출
+    return await client.get(`${API_PATHS.PLACE.SEARCH}`, {
+      params: { keyword },
+    });
   } catch (error) {
     console.error('장소 검색 오류:', error);
     throw error;
@@ -111,35 +80,8 @@ export const searchPlaces = async (keyword: string) => {
 // 지역 특가 아이템 조회 함수
 export const getDiscountItems = async (district: string, neighborhood?: string) => {
   try {
-    // 실제 API 호출 (현재는 주석 처리)
-    // const params = neighborhood ? { district, neighborhood } : { district };
-    // return await client.get(`${API_PATHS.PLACE.DISCOUNT_ITEMS}`, { params });
-
-    // 테스트용 더미 데이터
-    return {
-      data: {
-        items: [
-          {
-            id: '1',
-            placeId: '1',
-            title: '여의도 보관소 특가',
-            originalPrice: 15000,
-            discountPrice: 8250,
-            discountRate: 45,
-            imageUrl: 'https://placehold.co/300x200',
-          },
-          {
-            id: '2',
-            placeId: '1',
-            title: '당산 보관소 특가',
-            originalPrice: 12000,
-            discountPrice: 7800,
-            discountRate: 35,
-            imageUrl: 'https://placehold.co/300x200',
-          },
-        ],
-      },
-    };
+    const params = neighborhood ? { district, neighborhood } : { district };
+    return await client.get(`${API_PATHS.PLACE.DISCOUNT_ITEMS}`, { params });
   } catch (error) {
     console.error('특가 아이템 조회 오류:', error);
     throw error;
@@ -153,77 +95,82 @@ export const getRecentItems = async (
   limit: number = 10,
 ) => {
   try {
-    // 실제 API 호출 (현재는 주석 처리)
-    // const params = neighborhood ? { district, neighborhood, limit } : { district, limit };
-    // return await client.get(`${API_PATHS.PLACE.RECENT_ITEMS}`, { params });
-
-    // 테스트용 더미 데이터
-    return {
-      data: {
-        items: [
-          {
-            id: '1',
-            name: '플레이스테이션',
-            price: 12000,
-            tags: ['전자기기', '일주일 이내'],
-            imageUrl: 'https://placehold.co/64x64',
-            location: '여의도동',
-            keeperId: 'keeper1',
-            rating: 4.5,
-          },
-          {
-            id: '2',
-            name: '산세베리아',
-            price: 12000,
-            tags: ['식물', '장기'],
-            imageUrl: 'https://placehold.co/64x64',
-            location: '여의도동',
-            keeperId: 'keeper2',
-            rating: 4.8,
-          },
-        ],
-      },
-    };
+    const params = neighborhood ? { district, neighborhood, limit } : { district, limit };
+    return await client.get(`${API_PATHS.PLACE.RECENT_ITEMS}`, { params });
   } catch (error) {
     console.error('최근 거래 내역 조회 오류:', error);
     throw error;
   }
 };
 
-// 보관소 목록 조회 함수
-export const getStorageList = async (district?: string, neighborhood?: string, filter?: string) => {
+// 보관소 목록 조회 함수 (API 응답값에 맞게 수정)
+export const getStorageList = async (
+  page: number = 0,
+  size: number = 12,
+  district?: string,
+  neighborhood?: string,
+  filter?: string,
+) => {
   try {
-    // 실제 API 호출 (현재는 주석 처리)
-    // const params = { district, neighborhood, filter };
-    // return await client.get(`${API_PATHS.PLACE.STORAGE_LIST}`, { params });
+    // API 호출을 위한 파라미터 설정
+    const params: Record<string, any> = {};
 
-    // 테스트용 더미 데이터
-    return {
+    // 필터 파라미터 추가 (백엔드의 실제 API 파라미터 이름에 맞게 조정)
+    if (district) params.district = district;
+    if (neighborhood) params.neighborhood = neighborhood;
+
+    // 태그 기반 필터링
+    if (filter && filter !== '전체') {
+      params.filter = filter;
+    }
+
+    // 태그 필터링 추가 (선택된 태그를 쿼리 파라미터로 전달)
+    if (params.tags) {
+      params.tags = params.tags; // 이미 getFilterParams에서 처리됨
+    }
+
+    console.log('API 호출 파라미터:', params);
+
+    // API_PATHS.STORAGE.LIST 엔드포인트 사용
+    const response = await client.get(API_PATHS.STORAGE.LIST, { params });
+
+    // API 응답 데이터 변환
+    console.log('API 응답 데이터:', response.data);
+
+    // 실제 API 응답 구조에 맞게 데이터 추출
+    const items = response.data.success && response.data.data ? response.data.data : [];
+
+    const transformedData = {
       data: {
-        items: [
-          {
-            id: '1',
-            name: '여의도 보관소',
-            price: 10000,
-            tags: ['24시간', '대형물품', '보안'],
-            imageUrl: 'https://placehold.co/64x64',
-            location: '여의도동',
-            keeperId: 'keeper1',
-            rating: 4.5,
-          },
-          {
-            id: '2',
-            name: '당산 보관소',
-            price: 8000,
-            tags: ['냉장', '소형물품'],
-            imageUrl: 'https://placehold.co/64x64',
-            location: '당산동',
-            keeperId: 'keeper2',
-            rating: 4.2,
-          },
-        ],
+        items: items.map((item: any) => ({
+          id: item.post_id,
+          name: item.post_title,
+          location: item.post_address || '',
+          price: item.prefer_price || 0,
+          imageUrl: item.post_main_image,
+          post_tags: item.post_tags || [],
+          // StorageList 컴포넌트가 기대하는 필드 매핑
+          itemTypes: item.post_tags || [], // 필터링을 위해 post_tags를 itemTypes에도 매핑
+          storageLocation: item.post_tags?.includes('실내')
+            ? '실내'
+            : item.post_tags?.includes('실외')
+              ? '실외'
+              : '',
+          storageTypes: mapTags(item.post_tags, ['상온 보관', '냉장 보관', '냉동 보관']),
+          durationOptions: mapTags(item.post_tags, ['일주일 이내', '한달 이내', '3개월 이상']),
+          isValuableItem: item.post_tags?.includes('귀중품') || false,
+          keeperId: item.keeper_id || '',
+          rating: item.rating || 0,
+        })),
+        // 페이지네이션 관련 데이터 (API에 없으면 기본값 사용)
+        totalPages: 1,
+        totalElements: items.length,
+        size: items.length,
+        number: 0,
       },
     };
+
+    return transformedData;
   } catch (error) {
     console.error('보관소 목록 조회 오류:', error);
     throw error;
@@ -233,43 +180,9 @@ export const getStorageList = async (district?: string, neighborhood?: string, f
 // 보관소 상세 정보 조회 함수
 export const getStorageDetail = async (id: string) => {
   try {
-    // 실제 API 호출 (현재는 주석 처리)
-    // return await client.get(`${API_PATHS.PLACE.STORAGE_DETAIL}/${id}`);
-
-    // 테스트용 더미 데이터
-    return {
-      data: {
-        id: '1',
-        name: '여의도 보관소',
-        description: '안전하고 깨끗한 여의도 보관소입니다. 24시간 보안 시스템을 운영하고 있습니다.',
-        address: '서울특별시 영등포구 여의도동 국제금융로 10',
-        price: 10000,
-        tags: ['24시간', '대형물품', '보안'],
-        imageUrls: ['https://placehold.co/300x200', 'https://placehold.co/300x200'],
-        location: '여의도동',
-        keeperId: 'keeper1',
-        keeperName: '홍길동',
-        keeperRating: 4.5,
-        reviews: [
-          {
-            id: '1',
-            userId: 'user1',
-            userName: '김철수',
-            rating: 5,
-            content: '매우 깨끗하고 안전한 보관소입니다. 추천합니다!',
-            createdAt: '2023-12-01',
-          },
-          {
-            id: '2',
-            userId: 'user2',
-            userName: '이영희',
-            rating: 4,
-            content: '위치가 좋고 서비스가 친절해요.',
-            createdAt: '2023-11-25',
-          },
-        ],
-      },
-    };
+    // API_PATHS.STORAGE.DETAIL 엔드포인트 사용
+    const endpoint = API_PATHS.STORAGE.DETAIL.replace(':postId', id);
+    return await client.get(endpoint);
   } catch (error) {
     console.error('보관소 상세 정보 조회 오류:', error);
     throw error;

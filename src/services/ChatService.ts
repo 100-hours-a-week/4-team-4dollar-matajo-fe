@@ -1,7 +1,7 @@
 import SockJS from 'sockjs-client';
 import { Client, IFrame, IMessage, StompSubscription } from '@stomp/stompjs';
 import axios from 'axios';
-import { API_BASE_URL, API_PATHS } from '../constants/api';
+import { API_BACKEND_URL, API_PATHS } from '../constants/api';
 
 // 메시지 타입 정의 - 백엔드와 일치
 export enum MessageType {
@@ -61,7 +61,7 @@ interface CommonResponse<T> {
 
 // API 클라이언트 설정
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -147,7 +147,7 @@ class ChatService {
 
         // STOMP 클라이언트 생성
         this.stompClient = new Client({
-          webSocketFactory: () => new SockJS(`${API_BASE_URL}/ws-chat`, null, sockJSOptions),
+          webSocketFactory: () => new SockJS(`${API_BACKEND_URL}/ws-chat`, null, sockJSOptions),
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,

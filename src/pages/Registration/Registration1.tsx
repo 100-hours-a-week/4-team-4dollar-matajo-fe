@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
+import { DaumAddressData, autoConvertAddress } from '../../utils/KakaoToDaum';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -186,12 +188,45 @@ const NextButton = styled.button`
   cursor: pointer;
 `;
 
+// 로딩 오버레이
+const LoadingOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+`;
+
+const LoadingSpinner = styled.div`
+  width: 50px;
+  height: 50px;
+  border: 5px solid ${THEME.lightGray};
+  border-top: 5px solid ${THEME.primary};
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
 // 폼 데이터 타입 정의
 interface FormData {
   postAddress: string;
   postTitle: string;
   postContent: string;
   preferPrice: string;
+  postAddressData?: DaumAddressData; // Daum 주소 데이터 추가
 }
 
 // 오류 상태 타입 정의
@@ -243,6 +278,13 @@ const Registration1: React.FC = () => {
   // 백 버튼 모달 상태
   const [isBackModalOpen, setIsBackModalOpen] = useState(false);
 
+  // 로딩 상태
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 토스트 상태
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
   // 글자수 제한
   const DESCRIPTION_MAX_LENGTH = 15;
   const DETAILS_MAX_LENGTH = 500;
@@ -258,24 +300,62 @@ const Registration1: React.FC = () => {
     // location.state에서 주소 데이터 확인
     if (location.state && location.state.selectedAddress) {
       const selectedAddress = location.state.selectedAddress as AddressInfo;
+      setIsLoading(true);
 
-      // 폼 데이터에 주소 정보 업데이트
-      setFormData(prev => ({
-        ...prev,
-        postAddress: selectedAddress.address,
-      }));
+      // 비동기 함수를 별도로 정의하고 즉시 호출
+      const processAddress = async () => {
+        try {
+          console.log('Daum 주소 API 호출 시작...');
 
-      // 주소 필드의 에러 초기화
-      setErrors(prev => ({ ...prev, postAddress: '' }));
+          // 다음 주소 API 호출하여 상세 주소 데이터 가져오기
+          const daumAddressData = await autoConvertAddress(selectedAddress.address);
 
-      // 로컬 스토리지에 업데이트된 데이터 저장
-      const updatedData = {
-        ...JSON.parse(savedData || '{}'),
-        postAddress: selectedAddress.address,
+          console.log('Daum 주소 API 응답 데이터:', daumAddressData);
+
+          // 폼 데이터에 주소 정보 및 Daum 주소 데이터 업데이트
+          setFormData(prev => ({
+            ...prev,
+            postAddress: selectedAddress.address,
+            postAddressData: daumAddressData,
+          }));
+
+          // 주소 필드의 에러 초기화
+          setErrors(prev => ({ ...prev, postAddress: '' }));
+
+          // 로컬 스토리지에 업데이트된 데이터 저장
+          const updatedData = {
+            ...JSON.parse(savedData || '{}'),
+            postAddress: selectedAddress.address,
+            postAddressData: daumAddressData,
+          };
+          localStorage.setItem('registration_step1', JSON.stringify(updatedData));
+
+          showToast('주소 데이터가 변환되었습니다.');
+        } catch (error) {
+          console.error('주소 데이터 변환 실패:', error);
+          showToast('주소 데이터 변환에 실패했습니다. 다시 시도해주세요.');
+
+          // 주소만 업데이트
+          setFormData(prev => ({
+            ...prev,
+            postAddress: selectedAddress.address,
+          }));
+        } finally {
+          setIsLoading(false);
+        }
       };
-      localStorage.setItem('registration_step1', JSON.stringify(updatedData));
+
+      // 비동기 함수 호출
+      processAddress();
     }
   }, [location.state]);
+
+  // 토스트 메시지 표시 함수
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 3000);
+  };
 
   // 입력 변경 핸들러
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -379,14 +459,16 @@ const Registration1: React.FC = () => {
   // 뒤로가기 핸들러
   const handleBack = () => {
     // 입력 데이터가 있는지 확인
-    const hasData = Object.values(formData).some(value => value.trim() !== '');
+    const hasData = Object.values(formData).some(value =>
+      typeof value === 'string' ? value.trim() !== '' : true,
+    );
 
     if (hasData) {
       // 데이터가 있으면 모달 표시
       setIsBackModalOpen(true);
     } else {
       // 데이터가 없으면 바로 이전 페이지로
-      navigate(-1);
+      navigate('/');
     }
   };
 
@@ -400,15 +482,45 @@ const Registration1: React.FC = () => {
   };
 
   // 폼 제출 핸들러
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // 유효성 검사
     if (!validateForm()) {
+      showToast('필수 입력 항목을 확인해주세요.');
       return;
     }
 
-    // 다음 단계로 이동 로직 - 입력 데이터를 state로 전달
-    console.log('다음 단계로 이동', formData);
-    navigate('/registration/step2', { state: formData });
+    // Daum 주소 데이터가 없는 경우 API 호출하여 가져오기
+    if (!formData.postAddressData) {
+      setIsLoading(true);
+
+      try {
+        console.log('주소 데이터 변환 시도...');
+        const addressData = await autoConvertAddress(formData.postAddress);
+
+        // 주소 데이터 업데이트
+        const updatedFormData = {
+          ...formData,
+          postAddressData: addressData,
+        };
+
+        // 상태 및 로컬 스토리지 업데이트
+        setFormData(updatedFormData);
+        localStorage.setItem('registration_step1', JSON.stringify(updatedFormData));
+
+        // 다음 단계로 이동
+        console.log('다음 단계로 이동', updatedFormData);
+        navigate('/registration/step2', { state: updatedFormData });
+      } catch (error) {
+        console.error('주소 데이터 변환 실패:', error);
+        showToast('주소 데이터 변환에 실패했습니다. 다시 시도해주세요.');
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // 이미 주소 데이터가 있으면 바로 다음 단계로 이동
+      console.log('다음 단계로 이동', formData);
+      navigate('/registration/step2', { state: formData });
+    }
   };
 
   // 모달 내용 컴포넌트

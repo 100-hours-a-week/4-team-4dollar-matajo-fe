@@ -666,7 +666,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
                       <PriceText>{item.price.toLocaleString()}원</PriceText>
                       <PriceUnit> /일</PriceUnit>
                     </ItemPrice>
-                    <ItemTags>{item.tags.join(' | ')}</ItemTags>
+                    <ItemTags>{item.post_tags}</ItemTags>
                   </ItemInfo>
                 </ItemCard>
               ))
