@@ -6,8 +6,7 @@
 
 // 로컬 스토리지 키
 export const AUTH_KEYS = {
-  TOKEN: 'token',
-  REFRESH_TOKEN: 'refreshToken', // 리프레시 토큰 추가
+  TOKEN: 'accessToken', // accessToken으로 키 이름 수정
   USER_ID: 'userId',
   USER_NICKNAME: 'userNickname',
   USER_ROLE: 'userRole', // 사용자 역할 추가
@@ -25,9 +24,8 @@ export const saveUserId = (userId: string | number): void => {
  * 로컬 스토리지에서 사용자 ID 가져오기
  * @returns 사용자 ID 또는 null
  */
-export const getUserId = (): number | null => {
-  const userId = localStorage.getItem(AUTH_KEYS.USER_ID);
-  return userId ? parseInt(userId, 10) : null;
+export const getUserId = (): string | null => {
+  return localStorage.getItem(AUTH_KEYS.USER_ID);
 };
 
 /**
@@ -44,22 +42,6 @@ export const saveToken = (token: string): void => {
  */
 export const getToken = (): string | null => {
   return localStorage.getItem(AUTH_KEYS.TOKEN);
-};
-
-/**
- * 리프레시 토큰을 로컬 스토리지에 저장
- * @param refreshToken 리프레시 토큰
- */
-export const saveRefreshToken = (refreshToken: string): void => {
-  localStorage.setItem(AUTH_KEYS.REFRESH_TOKEN, refreshToken);
-};
-
-/**
- * 로컬 스토리지에서 리프레시 토큰 가져오기
- * @returns 리프레시 토큰 또는 null
- */
-export const getRefreshToken = (): string | null => {
-  return localStorage.getItem(AUTH_KEYS.REFRESH_TOKEN);
 };
 
 /**
@@ -98,8 +80,8 @@ export const getUserRole = (): string | null => {
  * 로그아웃 - 모든 인증 관련 데이터 삭제
  */
 export const logout = (): void => {
+  // RefreshToken은 쿠키에 있으므로 백엔드에서 처리해야 함
   localStorage.removeItem(AUTH_KEYS.TOKEN);
-  localStorage.removeItem(AUTH_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(AUTH_KEYS.USER_ID);
   localStorage.removeItem(AUTH_KEYS.USER_NICKNAME);
   localStorage.removeItem(AUTH_KEYS.USER_ROLE);
@@ -138,16 +120,11 @@ export const getAuthHeaders = (): Record<string, string> => {
  */
 export const saveKakaoLoginData = (data: {
   accessToken: string;
-  refreshToken?: string;
   userId?: string | number;
   nickname?: string;
   role?: string;
 }): void => {
   saveToken(data.accessToken);
-
-  if (data.refreshToken) {
-    saveRefreshToken(data.refreshToken);
-  }
 
   if (data.userId) {
     saveUserId(data.userId);
