@@ -639,12 +639,15 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     try {
       setError(null);
 
-      // 거래 확정 메시지 내용 생성
-      const confirmMessage = `거래가 확정되었습니다.\n물건: ${data.itemName}\n가격: ${data.price}원\n기간: ${data.startDate} ~ ${data.endDate}`;
+      // 백엔드에 거래 정보 전송
+      const tradeId = await chatService.confirmTrade(roomId, data);
+      console.log('거래 ID:', tradeId);
 
-      // API를 통해 거래 정보 저장 (백엔드 연동 필요)
-      // 거래 확정 메시지 전송 (시스템 메시지)
-      await chatService.sendTextMessage(roomId, currentUserId, confirmMessage);
+      // 거래 확정 메시지 내용 생성
+      const confirmMessage = `거래가 확정되었습니다.\n물건: ${data.itemName}\n가격: ${data.price}원\n기간: ${data.startDate} ~ ${data.endDate}\n거래 ID: ${tradeId}`;
+
+      // 시스템 메시지로 거래 확정 메시지 전송
+      await chatService.sendSystemMessage(roomId, confirmMessage);
     } catch (error) {
       console.error('거래 확정 오류:', error);
       setError('거래 확정에 실패했습니다. 다시 시도해주세요.');
@@ -807,6 +810,20 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           }
 
           const message = item as ChatMessageResponseDto;
+
+          // 시스템 메시지 처리
+          if (message.messageType === MessageType.SYSTEM) {
+            return (
+              <SentMessageGroup key={message.messageId || index}>
+                <SystemMessageBubble>
+                  <MessageContent>{message.content}</MessageContent>
+                </SystemMessageBubble>
+                {message.createdAt && (
+                  <MessageTime>{formatMessageTime(message.createdAt)}</MessageTime>
+                )}
+              </SentMessageGroup>
+            );
+          }
 
           // 현재 사용자가 보낸 메시지
           if (isSentByCurrentUser(message)) {

@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { ko } from 'date-fns/locale';
+import { format, differenceInDays } from 'date-fns';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -121,7 +125,7 @@ const TagContainer = styled.div`
   margin: 10px 0;
 `;
 
-// 태그 버튼
+// 태그 버튼 - 수정: 선택 로직을 단일 선택으로 변경
 const TagButton = styled.button<{ isSelected: boolean }>`
   height: 24.85px;
   padding: 0 10px;
@@ -142,38 +146,57 @@ const DateInputContainer = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 10px 0;
+  margin: 10px 30px;
 `;
 
-// 날짜 입력 필드
-const DateInput = styled.input`
+// 스타일된 DatePicker 컨테이너
+const StyledDatePickerContainer = styled.div`
   width: 116px;
   height: 24px;
-  border-radius: 15px;
-  border: 0.5px solid ${THEME.primary};
-  padding: 0 10px;
-  font-size: 10px;
-  color: ${THEME.textDark};
-  font-family: 'Noto Sans KR';
+  position: relative;
 
-  &:focus {
-    outline: none;
-    border-color: ${THEME.primary};
+  .react-datepicker-wrapper {
+    width: 100%;
+  }
+
+  .react-datepicker__input-container {
+    width: 100%;
+  }
+
+  input {
+    width: 100%;
+    height: 24px;
+    border-radius: 15px;
+    border: 0.5px solid ${THEME.primary};
+    padding: 0 10px;
+    font-size: 10px;
+    color: ${THEME.textDark};
+    font-family: 'Noto Sans KR';
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: ${THEME.primary};
+    }
+  }
+
+  .react-datepicker {
+    font-family: 'Noto Sans KR';
+    font-size: 0.8rem;
+  }
+
+  .react-datepicker__day--selected {
+    background-color: ${THEME.primary};
   }
 `;
 
-// 텍스트가 있는 날짜 컨테이너
-const DateWithText = styled.div`
-  width: 116px;
-  height: 24px;
-  border-radius: 15px;
-  border: 0.5px solid ${THEME.primary};
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 10px;
+// 스토리지 기간 표시
+const StoragePeriodDisplay = styled.div`
+  margin: 5px 0 10px;
   color: ${THEME.textDark};
+  font-size: 12px;
   font-family: 'Noto Sans KR';
+  text-align: right;
 `;
 
 // 가격 입력 컨테이너
@@ -238,23 +261,32 @@ interface TradeConfirmModalProps {
 export interface TradeData {
   itemName: string;
   itemTypes: string[];
+  category: string;
   startDate: string;
   endDate: string;
+  storagePeriod: number;
   price: number;
 }
 
 const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, onConfirm }) => {
+  // 기본 날짜 설정 (오늘부터 30일 후)
+  const today = new Date();
+  const defaultEndDate = new Date();
+  defaultEndDate.setDate(today.getDate() + 30);
+
   // 폼 상태 관리
   const [itemName, setItemName] = useState('');
-  const [selectedItemTypes, setSelectedItemTypes] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState('2025.00.00');
-  const [endDate, setEndDate] = useState('2025.00.00');
+  // 수정: 단일 아이템 유형 선택을 위해 string[]에서 string으로 변경
+  const [selectedItemType, setSelectedItemType] = useState<string>('');
+  const [startDateObj, setStartDateObj] = useState<Date>(today);
+  const [endDateObj, setEndDateObj] = useState<Date>(defaultEndDate);
   const [price, setPrice] = useState('10000');
+  const [storagePeriod, setStoragePeriod] = useState(30);
 
   // 유효성 검사 상태
   const [errors, setErrors] = useState({
     itemName: false,
-    itemTypes: false,
+    itemType: false,
     dates: false,
     price: false,
   });
@@ -262,14 +294,43 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, 
   // 모달이 닫혀있으면 아무것도 렌더링하지 않음
   if (!isOpen) return null;
 
-  // 태그 토글 핸들러
-  const toggleItemType = (itemType: string) => {
-    setSelectedItemTypes(prev =>
-      prev.includes(itemType) ? prev.filter(type => type !== itemType) : [...prev, itemType],
-    );
+  // 날짜가 변경될 때마다 보관 기간 계산
+  const calculateStoragePeriod = (start: Date, end: Date) => {
+    const days = differenceInDays(end, start);
+    return Math.max(1, days); // 최소 1일
+  };
+
+  // 시작 날짜 변경 핸들러
+  const handleStartDateChange = (date: Date | null) => {
+    if (!date) return;
+
+    setStartDateObj(date);
+    // 종료일이 시작일보다 빠르면 종료일을 시작일로 설정
+    if (date > endDateObj) {
+      setEndDateObj(date);
+    }
+    // 보관 기간 업데이트
+    setStoragePeriod(calculateStoragePeriod(date, endDateObj));
+  };
+
+  // 종료 날짜 변경 핸들러
+  const handleEndDateChange = (date: Date | null) => {
+    if (!date) return;
+
+    // 시작일보다 빠른 날짜 선택 방지
+    if (date < startDateObj) return;
+
+    setEndDateObj(date);
+    // 보관 기간 업데이트
+    setStoragePeriod(calculateStoragePeriod(startDateObj, date));
+  };
+
+  // 태그 선택 핸들러 - 수정: 단일 선택으로 변경
+  const selectItemType = (itemType: string) => {
+    setSelectedItemType(itemType);
     // 에러 상태 업데이트
-    if (errors.itemTypes) {
-      setErrors(prev => ({ ...prev, itemTypes: false }));
+    if (errors.itemType) {
+      setErrors(prev => ({ ...prev, itemType: false }));
     }
   };
 
@@ -278,8 +339,8 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, 
     // 유효성 검사
     const newErrors = {
       itemName: !itemName.trim(),
-      itemTypes: selectedItemTypes.length === 0,
-      dates: !startDate || !endDate,
+      itemType: !selectedItemType,
+      dates: !startDateObj || !endDateObj,
       price: !price || isNaN(Number(price)) || Number(price) <= 0,
     };
 
@@ -290,12 +351,18 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, 
       return;
     }
 
-    // 데이터 전송
+    // 날짜 형식 변환 (YYYY-MM-DD)
+    const formattedStartDate = format(startDateObj, 'yyyy-MM-dd');
+    const formattedEndDate = format(endDateObj, 'yyyy-MM-dd');
+
+    // 데이터 전송 - 단일 선택이지만 API 호환성을 위해 배열로 변환
     onConfirm({
       itemName,
-      itemTypes: selectedItemTypes,
-      startDate,
-      endDate,
+      itemTypes: [selectedItemType], // 배열로 변환하여 전달
+      category: selectedItemType,
+      startDate: formattedStartDate,
+      endDate: formattedEndDate,
+      storagePeriod: storagePeriod,
       price: Number(price),
     });
 
@@ -312,7 +379,7 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, 
 
         {/* 물건 이름 입력 */}
         <Label>물건의 이름을 작성해주세요</Label>
-        {errors.itemName && <HelperText>헬퍼텍스트입니다</HelperText>}
+        {errors.itemName && <HelperText>물건 이름을 입력해주세요</HelperText>}
         <Input
           type="text"
           value={itemName}
@@ -320,15 +387,15 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, 
           placeholder="물건 이름을 입력해주세요"
         />
 
-        {/* 물건 유형 선택 */}
+        {/* 물건 유형 선택 - 수정: 단일 선택으로 변경 */}
         <Label>물건의 유형을 선택해주세요</Label>
-        {errors.itemTypes && <HelperText>헬퍼텍스트입니다</HelperText>}
+        {errors.itemType && <HelperText>물건 유형을 선택해주세요</HelperText>}
         <TagContainer>
           {itemTypes.map(type => (
             <TagButton
               key={type}
-              isSelected={selectedItemTypes.includes(type)}
-              onClick={() => toggleItemType(type)}
+              isSelected={selectedItemType === type}
+              onClick={() => selectItemType(type)}
             >
               {type}
             </TagButton>
@@ -337,25 +404,36 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, 
 
         {/* 보관 기간 설정 */}
         <Label>보관 기간을 설정해주세요</Label>
-        {errors.dates && <HelperText>헬퍼텍스트입니다</HelperText>}
+        {errors.dates && <HelperText>시작일과 종료일을 선택해주세요</HelperText>}
         <DateInputContainer>
-          <DateInput
-            type="text"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-            placeholder="YYYY.MM.DD"
-          />
-          <DateInput
-            type="text"
-            value={endDate}
-            onChange={e => setEndDate(e.target.value)}
-            placeholder="YYYY.MM.DD"
-          />
+          <StyledDatePickerContainer>
+            <DatePicker
+              selected={startDateObj}
+              onChange={handleStartDateChange}
+              dateFormat="yyyy-MM-dd"
+              locale={ko}
+              minDate={today}
+              placeholderText="시작일"
+            />
+          </StyledDatePickerContainer>
+          <StyledDatePickerContainer>
+            <DatePicker
+              selected={endDateObj}
+              onChange={handleEndDateChange}
+              dateFormat="yyyy-MM-dd"
+              locale={ko}
+              minDate={startDateObj}
+              placeholderText="종료일"
+            />
+          </StyledDatePickerContainer>
         </DateInputContainer>
+
+        {/* 보관 기간 표시 */}
+        <StoragePeriodDisplay>총 보관 기간: {storagePeriod}일</StoragePeriodDisplay>
 
         {/* 거래 가격 설정 */}
         <Label>최종 가격을 작성해주세요</Label>
-        {errors.price && <HelperText>헬퍼텍스트입니다</HelperText>}
+        {errors.price && <HelperText>유효한 가격을 입력해주세요</HelperText>}
         <PriceContainer>
           <PriceInput
             type="text"
