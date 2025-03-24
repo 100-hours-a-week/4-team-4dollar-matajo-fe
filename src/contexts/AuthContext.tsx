@@ -22,7 +22,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   registerAsKeeper: () => Promise<boolean>;
   isKeeper: () => boolean;
@@ -34,7 +33,6 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
   loading: false,
-  login: async () => {},
   logout: () => {},
   registerAsKeeper: async () => false,
   isKeeper: () => false,
@@ -43,41 +41,33 @@ const AuthContext = createContext<AuthContextType>({
 
 // 인증 컨텍스트 프로바이더 컴포넌트
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // 테스트를 위해 기본 인증 상태 설정
-  const [user, setUser] = useState<User | null>({
-    id: '123456',
-    name: '테스트 사용자',
-    role: UserRole.Client,
-    email: 'test@example.com',
-    token: 'dummy-token',
-  });
+  // 기본값을 null로 설정
+  const [user, setUser] = useState<User | null>(null);
 
-  // 로딩 상태 초기값을 false로 변경
-  const [loading, setLoading] = useState(false);
+  // 로딩 상태
+  const [loading, setLoading] = useState(true);
 
   // 컴포넌트 마운트 시 로컬 스토리지에서 사용자 정보 불러오기
   useEffect(() => {
     const initAuth = async () => {
       try {
         setLoading(true);
-        const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId');
+        const accessToken = localStorage.getItem('accessToken');
+        const refreshToken = localStorage.getItem('refreshToken');
+        const nickname = localStorage.getItem('userNickname');
+        const role = localStorage.getItem('userRole');
 
-        if (storedUser && token) {
-          const userData = JSON.parse(storedUser);
-
-          // 토큰 유효성 검증
-          const response = await authApi.validateToken(token);
-          const isValid = response.data.valid;
-
-          if (isValid) {
-            setUser({ ...userData, token });
-          } else {
-            // 토큰이 유효하지 않으면 로그아웃 처리
-            localStorage.removeItem('user');
-            localStorage.removeItem('token');
-            setUser(null);
-          }
+        if (userId && accessToken) {
+          // 기본적인 유저 데이터 설정
+          setUser({
+            id: userId,
+            name: nickname || 'User',
+            role: (role as UserRole) || UserRole.Client,
+            token: accessToken,
+          });
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('인증 초기화 오류:', error);
@@ -87,37 +77,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
-    // 테스트 위해 초기화 함수 주석 처리
-    // initAuth();
+    initAuth();
   }, []);
-
-  // 로그인 함수
-  const login = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-
-      // API 호출로 로그인
-      const response = await authApi.login(email, password);
-      const { user: userData, token } = response.data;
-
-      // 사용자 정보와 토큰 저장
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('token', token);
-
-      setUser({ ...userData, token });
-    } catch (error) {
-      console.error('로그인 오류:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // 로그아웃 함수
   const logout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    setUser(null);
+    try {
+      // API 호출은 제거하고 로컬 스토리지만 정리
+      localStorage.removeItem('userId');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userNickname');
+      localStorage.removeItem('userRole');
+      setUser(null);
+    } catch (error) {
+      console.error('로그아웃 오류:', error);
+    }
   };
 
   // 보관인 등록 함수
@@ -127,16 +102,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return false;
       }
 
-      // API 호출로 보관인 등록 (API 호출은 useAuth.ts에서 처리)
-      // 여기서는 상태만 업데이트
-      const updatedUser = {
-        ...user,
-        role: UserRole.Keeper,
-      };
+      // 여기서 authApi.registerAsKeeper API 호출 (이 함수는 남겨뒀으므로 그대로 사용 가능)
+      const response = await authApi.registerAsKeeper(user.id);
 
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      return true;
+      if (response.data && response.data.success) {
+        const updatedUser = {
+          ...user,
+          role: UserRole.Keeper,
+        };
+
+        localStorage.setItem('userRole', UserRole.Keeper);
+        setUser(updatedUser);
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('보관인 등록 오류:', error);
       return false;
@@ -158,7 +137,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthenticated: !!user,
     user,
     loading,
-    login,
     logout,
     registerAsKeeper,
     isKeeper,
@@ -170,3 +148,5 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 // 인증 컨텍스트 사용 훅
 export const useAuth = () => useContext(AuthContext);
+
+export default AuthContext;

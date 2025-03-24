@@ -1,40 +1,46 @@
-import axios, { AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { API_BACKEND_URL } from '../constants/api';
+// <<<<<<< feat/teddy_0324 
+// src/api/client.ts
+import axios from 'axios';
 
-// 기본 axios 인스턴스 생성
-export const client = axios.create({
-  baseURL: API_BACKEND_URL,
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://15.164.251.118:8080';
+
+const client = axios.create({
+  baseURL: API_BASE_URL,
+// =======
+// import axios, { AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
+// import { API_BACKEND_URL } from '../constants/api';
+
+// // 기본 axios 인스턴스 생성
+// export const client = axios.create({
+//   baseURL: API_BACKEND_URL,
+// >>>>>>> main
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: false, // 쿠키, 인증 헤더 등 자격 증명 정보 포함
 });
 
-// 요청 인터셉터 - 인증 토큰 추가
+// 인터셉터 설정 - 요청에 JWT 토큰 포함
 client.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  config => {
     const token = localStorage.getItem('token');
-    if (token && config.headers) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  },
+  error => Promise.reject(error),
 );
 
-// 응답 인터셉터 - 에러 처리 및 토큰 만료 처리
+// 응답 인터셉터 - 오류 처리
 client.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response;
-  },
-  (error: AxiosError) => {
-    // 401 에러(인증 실패)인 경우 로그아웃 처리
+  response => response,
+  error => {
+    // 401 Unauthorized 오류 처리 (토큰 만료 등)
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('user');
+      // 로컬 스토리지에서 토큰 제거
       localStorage.removeItem('token');
-      // 로그인 페이지로 리다이렉트 (SPA에서는 history push로 처리)
-      window.location.href = '/login';
+      localStorage.removeItem('refreshToken');
     }
     return Promise.reject(error);
   },

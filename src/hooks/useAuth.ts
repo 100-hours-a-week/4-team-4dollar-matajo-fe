@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { useAuth as useAuthContext, UserRole } from '../contexts/AuthContext';
 import * as authApi from '../api/auth';
 
@@ -14,29 +14,7 @@ export const useAuth = () => {
     pendingRegistration: false,
   });
 
-  // 회원가입 함수
-  const register = async (userData: { email: string; password: string; name: string }) => {
-    try {
-      setError(null);
-      const response = await authApi.register(userData);
-
-      if (response.data.success) {
-        const { user, token } = response.data;
-
-        // 로컬 스토리지에 저장
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('token', token);
-
-        // 로그인 처리는 따로 하지 않음 (이미 토큰과 사용자 정보가 있으므로)
-        return true;
-      }
-
-      return false;
-    } catch (err) {
-      setError('회원가입 중 오류가 발생했습니다.');
-      return false;
-    }
-  };
+  // 일반 회원가입 함수는 제거 (카카오 로그인만 사용)
 
   // 보관인 등록 요청
   const registerAsKeeper = async (): Promise<boolean> => {
@@ -51,7 +29,7 @@ export const useAuth = () => {
 
       const response = await authApi.registerAsKeeper(auth.user.id);
 
-      if (response.data.success) {
+      if (response.data && response.data.success) {
         // AuthContext의 registerAsKeeper 함수 호출하여 상태 업데이트
         return await auth.registerAsKeeper();
       }
@@ -87,7 +65,7 @@ export const useAuth = () => {
 
   return {
     ...auth,
-    register,
+    // register 함수 제거
     registerAsKeeper,
     checkKeeperStatus,
     canRegisterAsKeeper,

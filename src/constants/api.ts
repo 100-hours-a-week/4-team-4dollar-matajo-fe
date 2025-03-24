@@ -6,11 +6,10 @@ export const API_BACKEND_URL =
 export const API_PATHS = {
   // 인증 관련
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    VALIDATE_TOKEN: '/auth/validate',
+    KAKAO: '/auth/kakao',
     REGISTER_AS_KEEPER: '/auth/register-keeper',
     KEEPER_STATUS: '/auth/keeper-status',
+    LOGOUT: '/auth/logout',
   },
 
   // 채팅 관련
@@ -46,9 +45,27 @@ export const API_PATHS = {
 
   // 장소 관련
   PLACE: {
+    GET_ALL: '/places',
+    GET_BY_ID: '/places',
+    CREATE: '/places',
+    UPDATE: '/places',
+    DELETE: '/places',
+    // 장소 관련
     SEARCH: '/place/search',
     NEARBY: '/place/nearby',
     DISCOUNT_ITEMS: '/place/discount',
     RECENT_ITEMS: '/place/discount',
+  },
+};
+
+// API 기본 URL
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://15.164.251.118:8080';
+
+// 카카오 인증 관련 상수
+export const KAKAO_AUTH = {
+  REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY || '244abed4cb1b567f33d22e14fc58a2c5',
+  REDIRECT_URI: 'http://localhost:3000/auth/kakao/callback',
+  getLoginUrl: () => {
+    return `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_AUTH.REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
   },
 };
