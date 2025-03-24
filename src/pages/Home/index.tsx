@@ -6,64 +6,11 @@ import BottomNavigation from '../../components/layout/BottomNavigation';
 import MapBottomSheet from './MapBottomSheet';
 import KakaoMap from '../../components/map/KakaoMap';
 import { useAuth } from '../../hooks/useAuth';
+import { getNearbyPlaces, getDiscountItems, getRecentItems } from '../../api/place';
 import { DiscountItem, StorageItem, Place } from '../../api/place';
 import LocationSearchModal from './LocationSearchModal';
 import { findDongCoordinates, loadDongDataFromCSV } from '../../utils/csvUtils';
-import type { DongData as DongDataType } from '../../utils/csvUtils';
-
-// 여의도 주변 더미 보관소 데이터
-const dummyStorageLocations = [
-  {
-    id: '1',
-    name: '여의도 IFC 보관소',
-    latitude: 37.5254,
-    longitude: 126.9267,
-    address: '서울특별시 영등포구 여의도동 국제금융로 10',
-    district: '영등포구',
-    neighborhood: '여의도동',
-    isPopular: true,
-  },
-  {
-    id: '2',
-    name: '여의도공원 보관소',
-    latitude: 37.5268,
-    longitude: 126.9255,
-    address: '서울특별시 영등포구 여의도동 여의공원로',
-    district: '영등포구',
-    neighborhood: '여의도동',
-    isPopular: false,
-  },
-  {
-    id: '3',
-    name: '국회의사당 보관소',
-    latitude: 37.5279,
-    longitude: 126.9177,
-    address: '서울특별시 영등포구 여의도동 의사당대로',
-    district: '영등포구',
-    neighborhood: '여의도동',
-    isPopular: true,
-  },
-  {
-    id: '4',
-    name: '63빌딩 보관소',
-    latitude: 37.5198,
-    longitude: 126.9402,
-    address: '서울특별시 영등포구 여의도동 63로',
-    district: '영등포구',
-    neighborhood: '여의도동',
-    isPopular: true,
-  },
-  {
-    id: '5',
-    name: '샛강 보관소',
-    latitude: 37.5178,
-    longitude: 126.9287,
-    address: '서울특별시 영등포구 여의도동 여의동로',
-    district: '영등포구',
-    neighborhood: '여의도동',
-    isPopular: false,
-  },
-];
+import type { DongData } from '../../utils/csvUtils';
 
 // 컨테이너 컴포넌트 - 전체 화면 크기로 설정
 const Container = styled.div`
@@ -86,6 +33,37 @@ const LoadingIndicator = styled.div`
   color: #666;
 `;
 
+// 에러 메시지 스타일
+const ErrorMessage = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 0 20px;
+  text-align: center;
+
+  h3 {
+    color: #ff3333;
+    margin-bottom: 8px;
+  }
+
+  p {
+    color: #666;
+    font-size: 14px;
+  }
+
+  button {
+    margin-top: 16px;
+    padding: 8px 16px;
+    background-color: #3a00e5;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+`;
+
 // 맵 컨테이너 스타일 - 영역 확장
 const MapWrapper = styled.div`
   position: absolute;
@@ -106,34 +84,46 @@ const HeaderWrapper = styled.div`
   background-color: rgba(255, 255, 255, 0.9);
 `;
 
+// 기본 좌표 (여의도)
+const DEFAULT_COORDINATES = { lat: 37.5244, lng: 126.9231 };
+const DEFAULT_LOCATION = '서울특별시 영등포구 여의도동';
+
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isKeeper, isClient } = useAuth();
 
   const [loading, setLoading] = useState<boolean>(true);
-  const [location, setLocation] = useState<string>('영등포구 여의도동');
+  const [error, setError] = useState<string | null>(null);
+  const [location, setLocation] = useState<string>(DEFAULT_LOCATION);
   const [places, setPlaces] = useState<Place[]>([]);
   const [discountItems, setDiscountItems] = useState<DiscountItem[]>([]);
   const [recentItems, setRecentItems] = useState<StorageItem[]>([]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
   const [dongDataLoaded, setDongDataLoaded] = useState<boolean>(false);
-  const [dongData, setDongData] = useState<DongDataType[]>([]);
+  const [dongData, setDongData] = useState<DongData[]>([]);
 
-  // 여의도동 좌표 (기본값)
-  const [mapCenter, setMapCenter] = useState({ lat: 37.5244, lng: 126.9231 });
+  // 지도 중심 좌표
+  const [mapCenter, setMapCenter] = useState(DEFAULT_COORDINATES);
   const [mapLevel] = useState(4); // 초기 지도 레벨은 4로 설정
 
   // 동 데이터 로드
   useEffect(() => {
     const loadDongData = async () => {
       try {
-        const data = await loadDongDataFromCSV('/data/korea_dong_coordinates.csv');
-        setDongData(data);
-        setDongDataLoaded(true);
+        setError(null);
+        const data = await loadDongDataFromCSV('data/korea_dong_coordinates.csv');
+
+        if (data.length > 0) {
+          console.log('동 데이터 로드 성공:', data.length);
+          setDongData(data);
+          setDongDataLoaded(true);
+        } else {
+          console.error('동 데이터가 비어있습니다');
+          setError('위치 데이터를 불러올 수 없습니다');
+        }
       } catch (error) {
         console.error('동 데이터 로드 실패:', error);
-        // 기본 더미 데이터 설정
-        setDongDataLoaded(true);
+        setError('위치 데이터를 불러오는 중 오류가 발생했습니다');
       }
     };
 
@@ -143,10 +133,10 @@ const HomePage: React.FC = () => {
   // 지도 중심 변경 핸들러
   const handleCenterChanged = (lat: number, lng: number) => {
     setMapCenter({ lat, lng });
-    console.log('지도 중심 변경:', lat, lng);
+    // 지도 중심 좌표가 변경될 때마다 주변 데이터를 다시 가져올 필요는 없음
   };
 
-  // 위치 선택 핸들러
+  // 선택한 위치로 지도 이동 및 데이터 로드
   const handleSelectLocation = (
     selectedLocation: string,
     latitude?: string,
@@ -154,91 +144,255 @@ const HomePage: React.FC = () => {
   ) => {
     setLocation(selectedLocation);
 
-    // 직접 제공된 좌표가 있으면 사용
+    // 위도/경도가 직접 제공된 경우
     if (latitude && longitude) {
       const lat = parseFloat(latitude);
       const lng = parseFloat(longitude);
-      setMapCenter({ lat, lng });
-      fetchNearbyData(lat, lng);
-      return;
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setMapCenter({ lat, lng });
+        fetchNearbyData(lat, lng, selectedLocation);
+        return;
+      }
     }
 
-    // 동 데이터에서 좌표 찾기
+    // 동 데이터가 로드되었다면 선택한 위치의 좌표를 찾아 지도 중심 변경
     if (dongDataLoaded && dongData.length > 0) {
       const coordinates = findDongCoordinates(dongData, selectedLocation);
 
       if (coordinates) {
         setMapCenter(coordinates);
-        fetchNearbyData(coordinates.lat, coordinates.lng);
+        fetchNearbyData(coordinates.lat, coordinates.lng, selectedLocation);
       } else {
         console.log('선택한 위치의 좌표를 찾을 수 없습니다:', selectedLocation);
+        // 기본 좌표 사용
+        setMapCenter(DEFAULT_COORDINATES);
+        fetchNearbyData(DEFAULT_COORDINATES.lat, DEFAULT_COORDINATES.lng, selectedLocation);
       }
     } else {
-      console.log('동 데이터가 로드되지 않았습니다.');
+      console.log('동 데이터가 로드되지 않았습니다. 기본 좌표 사용');
+      setMapCenter(DEFAULT_COORDINATES);
+      fetchNearbyData(DEFAULT_COORDINATES.lat, DEFAULT_COORDINATES.lng, selectedLocation);
     }
   };
 
   // 현재 위치를 기반으로 데이터 로드
-  const fetchNearbyData = async (lat: number, lng: number) => {
+  const fetchNearbyData = async (lat: number, lng: number, locationName: string = location) => {
     try {
-      // 주변 장소 API 호출 (실제 API 연동 시 사용)
-      // const placesResponse = await getNearbyPlaces(lat, lng);
-      // setPlaces(placesResponse.data.places);
+      setError(null);
 
-      // 더미 데이터 사용
-      setPlaces(dummyStorageLocations);
+      // 지도 마커 데이터 (실제 API 연동 시 사용)
+      try {
+        // const placesResponse = await getNearbyPlaces(lat, lng);
+        // setPlaces(placesResponse.data.places);
 
-      // 특가 아이템 로드 (구/동 정보 추출)
-      const locationParts = location.split(' ');
-      const district = locationParts[0] || '영등포구';
-      const neighborhood = locationParts[1] || '여의도동';
+        // 임시: 현재 위치 기반으로 더미 데이터 생성
+        const dummyMarkers = generateDummyMarkers(lat, lng, locationName);
+        setPlaces(dummyMarkers);
+      } catch (error) {
+        console.error('위치 데이터 로드 오류:', error);
+        // 오류 시 기본 더미 데이터 사용
+        const dummyMarkers = generateDummyMarkers(lat, lng, locationName);
+        setPlaces(dummyMarkers);
+      }
 
-      // 실제 API 호출 코드 (주석 처리)
-      /* const discountResponse = await getDiscountItems(district, neighborhood);
-      setDiscountItems(discountResponse.data.items);
+      // 위치 이름에서 구/동 정보 추출
+      const locationParts = locationName.split(' ');
+      let district = ''; // 구
+      let neighborhood = ''; // 동
 
-      // 최근 거래 내역 로드
-      const recentResponse = await getRecentItems(district, neighborhood);
-      setRecentItems(recentResponse.data.items); */
+      // 위치 문자열에서 구/동 정보 추출
+      for (let i = 0; i < locationParts.length; i++) {
+        if (locationParts[i].includes('구')) {
+          district = locationParts[i];
+        } else if (locationParts[i].includes('동') || locationParts[i].includes('가')) {
+          neighborhood = locationParts[i];
+        }
+      }
 
-      // 더미 데이터 설정
-      setDiscountItems([
-        {
-          id: '1',
-          placeId: '1',
-          title: '여의도 IFC 보관소 특가',
-          originalPrice: 15000,
-          discountPrice: 8250,
-          discountRate: 45,
-          imageUrl: '',
-        },
-      ]);
+      // 구/동 정보가 없는 경우 기본값 설정
+      if (!district) district = '영등포구';
+      if (!neighborhood) neighborhood = '여의도동';
 
-      setRecentItems([
-        {
-          id: '1',
-          name: '플레이스테이션',
-          price: 12000,
-          post_tags: ['전자기기', '일주일 이내'],
-          imageUrl: '',
-          location: district + ' ' + neighborhood,
-          keeperId: 'keeper1',
-          rating: 4.5,
-        },
-      ]);
-    } catch (error) {
-      console.error('데이터 로드 오류:', error);
-      // 오류 발생시 기본 더미 데이터 유지
+      try {
+        // 특가 아이템 로드 (실제 API 연동 시 사용)
+        // const discountResponse = await getDiscountItems(district, neighborhood);
+        // setDiscountItems(discountResponse.data.items);
+
+        // 임시: 더미 특가 아이템 생성
+        setDiscountItems([
+          {
+            id: '1',
+            placeId: '1',
+            title: `${neighborhood} 보관소 특가`,
+            originalPrice: 15000,
+            discountPrice: 8250,
+            discountRate: 45,
+            imageUrl: 'https://placehold.co/300x200',
+          },
+          {
+            id: '2',
+            placeId: '3',
+            title: `${district} 보관소 특가`,
+            originalPrice: 12000,
+            discountPrice: 7800,
+            discountRate: 35,
+            imageUrl: 'https://placehold.co/300x200',
+          },
+        ]);
+      } catch (error) {
+        console.error('특가 아이템 로드 오류:', error);
+        // 기본 더미 데이터
+        setDiscountItems([
+          {
+            id: '1',
+            placeId: '1',
+            title: `${neighborhood} 보관소 특가`,
+            originalPrice: 15000,
+            discountPrice: 8250,
+            discountRate: 45,
+            imageUrl: 'https://placehold.co/300x200',
+          },
+        ]);
+      }
+
+      try {
+        // 최근 거래 내역 로드 (실제 API 연동 시 사용)
+        // const recentResponse = await getRecentItems(district, neighborhood);
+        // setRecentItems(recentResponse.data.items);
+
+        // 임시: 더미 최근 거래 내역 생성
+        setRecentItems([
+          {
+            id: '1',
+            name: '플레이스테이션',
+            price: 12000,
+            post_tags: ['전자기기', '일주일 이내'],
+            imageUrl: 'https://placehold.co/64x64',
+            location: neighborhood,
+            keeperId: 'keeper1',
+            rating: 4.5,
+          },
+          {
+            id: '2',
+            name: '캐리어',
+            price: 8000,
+            post_tags: ['여행', '장기'],
+            imageUrl: 'https://placehold.co/64x64',
+            location: neighborhood,
+            keeperId: 'keeper2',
+            rating: 4.8,
+          },
+        ]);
+      } catch (error) {
+        console.error('최근 거래 내역 로드 오류:', error);
+        // 기본 더미 데이터
+        setRecentItems([
+          {
+            id: '1',
+            name: '플레이스테이션',
+            price: 12000,
+            post_tags: ['전자기기', '일주일 이내'],
+            imageUrl: 'https://placehold.co/64x64',
+            location: neighborhood,
+            keeperId: 'keeper1',
+            rating: 4.5,
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error('데이터 로드 오류:', err);
+      setError('데이터를 불러오는 중 오류가 발생했습니다');
     }
+  };
+
+  // 더미 마커 데이터 생성 함수 (랜덤 위치 생성)
+  const generateDummyMarkers = (
+    centerLat: number,
+    centerLng: number,
+    locationName: string,
+  ): Place[] => {
+    const locationParts = locationName.split(' ');
+    let district = ''; // 구
+    let neighborhood = ''; // 동
+
+    // 위치 문자열에서 구/동 정보 추출
+    for (let i = 0; i < locationParts.length; i++) {
+      if (locationParts[i].includes('구')) {
+        district = locationParts[i];
+      } else if (locationParts[i].includes('동') || locationParts[i].includes('가')) {
+        neighborhood = locationParts[i];
+      }
+    }
+
+    // 구/동 정보가 없는 경우 기본값 설정
+    if (!district) district = '영등포구';
+    if (!neighborhood) neighborhood = '여의도동';
+
+    // 중심 좌표 주변에 5개의 마커 생성
+    return [
+      {
+        id: '1',
+        name: `${neighborhood} 중앙 보관소`,
+        latitude: centerLat,
+        longitude: centerLng,
+        address: `${locationName}`,
+        district: district,
+        neighborhood: neighborhood,
+        isPopular: true,
+      },
+      {
+        id: '2',
+        name: `${neighborhood} 북쪽 보관소`,
+        latitude: centerLat + 0.002,
+        longitude: centerLng,
+        address: `${locationName}`,
+        district: district,
+        neighborhood: neighborhood,
+        isPopular: false,
+      },
+      {
+        id: '3',
+        name: `${neighborhood} 남쪽 보관소`,
+        latitude: centerLat - 0.002,
+        longitude: centerLng,
+        address: `${locationName}`,
+        district: district,
+        neighborhood: neighborhood,
+        isPopular: true,
+      },
+      {
+        id: '4',
+        name: `${neighborhood} 동쪽 보관소`,
+        latitude: centerLat,
+        longitude: centerLng + 0.003,
+        address: `${locationName}`,
+        district: district,
+        neighborhood: neighborhood,
+        isPopular: true,
+      },
+      {
+        id: '5',
+        name: `${neighborhood} 서쪽 보관소`,
+        latitude: centerLat,
+        longitude: centerLng - 0.003,
+        address: `${locationName}`,
+        district: district,
+        neighborhood: neighborhood,
+        isPopular: false,
+      },
+    ];
   };
 
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
     const loadInitialData = async () => {
       try {
+        setLoading(true);
+        setError(null);
         console.log('초기 데이터 로드 시작');
 
-        // 현재 위치 가져오기 시도 (성공하면 해당 위치로, 실패하면 기본 위치로)
+        // 현재 위치 가져오기 시도
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             position => {
@@ -247,38 +401,27 @@ const HomePage: React.FC = () => {
                 lng: position.coords.longitude,
               };
               setMapCenter(currentPos);
-
-              // 위치 기반 주소 가져오기
-              const geocoder = new window.kakao.maps.services.Geocoder();
-              geocoder.coord2Address(currentPos.lng, currentPos.lat, (result: any, status: any) => {
-                if (status === window.kakao.maps.services.Status.OK) {
-                  if (result[0]) {
-                    const address = result[0].address;
-                    // 구 + 동 형태의 주소로 업데이트
-                    if (address.region_2depth_name && address.region_3depth_name) {
-                      const newLocation = `${address.region_2depth_name} ${address.region_3depth_name}`;
-                      setLocation(newLocation);
-                    }
-                  }
-                }
-                fetchNearbyData(currentPos.lat, currentPos.lng);
-              });
+              fetchNearbyData(currentPos.lat, currentPos.lng);
             },
             error => {
               console.error('위치 정보를 가져오는데 실패했습니다:', error);
               // 기본 위치(여의도) 사용
-              fetchNearbyData(mapCenter.lat, mapCenter.lng);
+              fetchNearbyData(DEFAULT_COORDINATES.lat, DEFAULT_COORDINATES.lng);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
           );
         } else {
           // 위치 정보를 지원하지 않는 경우, 기본 위치 사용
-          fetchNearbyData(mapCenter.lat, mapCenter.lng);
+          fetchNearbyData(DEFAULT_COORDINATES.lat, DEFAULT_COORDINATES.lng);
         }
+      } catch (err) {
+        console.error('초기 데이터 로드 오류:', err);
+        setError('데이터를 불러오는 중 오류가 발생했습니다');
       } finally {
         // 데이터 로드 후 로딩 상태 업데이트
         setTimeout(() => {
           setLoading(false);
+          console.log('로딩 상태 업데이트: false');
         }, 500);
       }
     };
@@ -289,49 +432,6 @@ const HomePage: React.FC = () => {
   // 마커 클릭 핸들러 - 보관소 상세 페이지로 이동
   const handleMarkerClick = (placeId: string) => {
     navigate(`/storagedetail/${placeId}`);
-  };
-
-  // 현재 위치로 이동하는 핸들러
-  const handleCurrentLocationClick = () => {
-    setLoading(true);
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          const currentPos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setMapCenter(currentPos);
-          fetchNearbyData(currentPos.lat, currentPos.lng);
-
-          // 주소 정보 가져오기
-          const geocoder = new window.kakao.maps.services.Geocoder();
-          geocoder.coord2Address(currentPos.lng, currentPos.lat, (result: any, status: any) => {
-            if (status === window.kakao.maps.services.Status.OK) {
-              if (result[0]) {
-                const address = result[0].address;
-                // 구 + 동 형태의 주소로 업데이트
-                if (address.region_2depth_name && address.region_3depth_name) {
-                  const newLocation = `${address.region_2depth_name} ${address.region_3depth_name}`;
-                  setLocation(newLocation);
-                }
-              }
-            }
-            setLoading(false);
-          });
-        },
-        error => {
-          console.error('위치 정보를 가져오는데 실패했습니다:', error);
-          alert('현재 위치를 가져오는데 실패했습니다. 위치 접근 권한을 확인해주세요.');
-          setLoading(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-      );
-    } else {
-      alert('이 브라우저에서는 위치 서비스를 지원하지 않습니다.');
-      setLoading(false);
-    }
   };
 
   // 보관소 등록 페이지로 이동
@@ -355,6 +455,41 @@ const HomePage: React.FC = () => {
     navigate(`/storagedetail/${id}`);
   };
 
+  // 현재 위치로 이동 버튼 클릭 시 호출되는 함수
+  const handleCurrentLocationClick = () => {
+    // 현재 위치에 대한 정보 가져오기
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          // 지도 중심 설정 및 주변 데이터 로드
+          setMapCenter({ lat, lng });
+          fetchNearbyData(lat, lng);
+
+          // 역지오코딩으로 현재 위치 주소 가져오기 (실제로는 카카오 API 호출이 필요합니다)
+          // 여기서는 간단히 처리
+          setLocation('현재 위치');
+        },
+        error => {
+          console.error('위치 정보를 가져오는데 실패했습니다:', error);
+          alert('위치 정보를 가져올 수 없습니다. 위치 권한을 확인해주세요.');
+        },
+      );
+    } else {
+      alert('이 브라우저에서는 위치 정보를 지원하지 않습니다.');
+    }
+  };
+
+  // 에러 발생 시 재시도 버튼
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    fetchNearbyData(mapCenter.lat, mapCenter.lng);
+    setTimeout(() => setLoading(false), 500);
+  };
+
   if (loading) {
     return (
       <Container>
@@ -362,6 +497,22 @@ const HomePage: React.FC = () => {
           <Header title="마타조" />
         </HeaderWrapper>
         <LoadingIndicator>로딩 중...</LoadingIndicator>
+        <BottomNavigation activeTab="홈" />
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <HeaderWrapper>
+          <Header title="마타조" />
+        </HeaderWrapper>
+        <ErrorMessage>
+          <h3>오류가 발생했습니다</h3>
+          <p>{error}</p>
+          <button onClick={handleRetry}>다시 시도</button>
+        </ErrorMessage>
         <BottomNavigation activeTab="홈" />
       </Container>
     );
@@ -399,7 +550,7 @@ const HomePage: React.FC = () => {
         <Header title="마타조" />
       </HeaderWrapper>
 
-      {/* 맵 바텀시트 컴포넌트 */}
+      {/* 맵 바텀시트 컴포넌트 - z-index 설정 확인 */}
       <MapBottomSheet
         location={location}
         onRegisterStorage={handleRegisterStorage}

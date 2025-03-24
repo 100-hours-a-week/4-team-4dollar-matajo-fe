@@ -1,37 +1,56 @@
 // src/utils/csvUtils.ts
 import Papa from 'papaparse';
 
+// 동 데이터 인터페이스
 export interface DongData {
   original_name: string;
+  formatted_address: string;
   display_name: string;
   latitude: string;
   longitude: string;
   city_district?: string;
-  formatted_address?: string;
-  class?: string;
-  type?: string;
 }
 
-/**
- * CSV 파일에서 동 데이터를 로드
- * @param filePath CSV 파일 경로
- * @returns Promise<DongData[]> 동 데이터 배열
- */
+// CSV 파일에서 동 데이터 로드 함수
 export const loadDongDataFromCSV = async (filePath: string): Promise<DongData[]> => {
   try {
-    // 파일 내용 가져오기
-    const response = await fetch(filePath);
-    const csvContent = await response.text();
+    // 파일 경로가 '/'로 시작하지 않으면 추가
+    const path = filePath.startsWith('/') ? filePath : `/${filePath}`;
+
+    const response = await fetch(path);
+
+    if (!response.ok) {
+      throw new Error(`CSV 파일 로드 실패: ${response.status} ${response.statusText}`);
+    }
+
+    const csvText = await response.text();
 
     return new Promise((resolve, reject) => {
-      Papa.parse(csvContent, {
+      Papa.parse(csvText, {
         header: true,
-        dynamicTyping: true,
         skipEmptyLines: true,
+        dynamicTyping: false, // 문자열로 처리
         complete: results => {
-          // CSV 파싱 결과에서 데이터 추출
-          const data = results.data as DongData[];
-          resolve(data);
+          if (results.errors.length > 0) {
+            console.error('CSV 파싱 오류:', results.errors);
+            reject(new Error('CSV 파싱 중 오류가 발생했습니다.'));
+            return;
+          }
+
+          // 결과 데이터 매핑 및 검증
+          const dongData: DongData[] = results.data
+            .filter((row: any) => row.original_name && row.latitude && row.longitude)
+            .map((row: any) => ({
+              original_name: row.original_name?.trim() || '',
+              formatted_address: row.formatted_address?.trim() || '',
+              display_name: row.display_name?.trim() || '',
+              latitude: row.latitude?.trim() || '',
+              longitude: row.longitude?.trim() || '',
+              city_district: row.city_district?.trim() || '',
+            }));
+
+          console.log(`동 데이터 ${dongData.length}개 로드 완료`);
+          resolve(dongData);
         },
         error: (error: Error) => {
           console.error('CSV 파싱 오류:', error);
@@ -39,64 +58,89 @@ export const loadDongDataFromCSV = async (filePath: string): Promise<DongData[]>
         },
       });
     });
-  } catch (error) {
-    console.error('CSV 파일 로드 오류:', error);
+  } catch (error: unknown) {
+    console.error('동 데이터 로드 오류:', error);
     throw error;
   }
 };
 
-/**
- * 특정 검색어로 동 데이터 검색
- * @param dongData 검색할 동 데이터 배열
- * @param query 검색어
- * @returns DongData[] 검색 결과
- */
-export const searchDongData = (dongData: DongData[], query: string): DongData[] => {
-  if (!query || query.trim() === '') {
+// 검색어로 동 데이터 검색 함수
+export const searchDongData = (dongData: DongData[], searchText: string): DongData[] => {
+  if (!searchText.trim()) {
     return [];
   }
 
-  // SQL LIKE 스타일로 검색 (% 와일드카드처럼)
-  const searchTerm = query.toLowerCase();
+  const searchTermLower = searchText.toLowerCase();
 
   return dongData.filter(item => {
-    const displayName = item.display_name?.toLowerCase() || '';
-    const originalName = item.original_name?.toLowerCase() || '';
-    const formattedAddress = item.formatted_address?.toLowerCase() || '';
+    // display_name에서 검색 (SQL LIKE 방식)
+    const displayNameMatch = item.display_name.toLowerCase().includes(searchTermLower);
 
-    // 검색어가 포함된 항목 필터링 (SQL LIKE 쿼리와 유사하게)
-    return (
-      displayName.includes(searchTerm) ||
-      originalName.includes(searchTerm) ||
-      formattedAddress.includes(searchTerm)
-    );
+    // original_name에서 검색 (백업 검색)
+    const originalNameMatch = item.original_name.toLowerCase().includes(searchTermLower);
+
+    return displayNameMatch || originalNameMatch;
   });
 };
 
-/**
- * 선택한 위치의 좌표 찾기
- * @param dongData 동 데이터 배열
- * @param location 위치 문자열
- * @returns {lat: number, lng: number} | null 좌표 객체 또는 null
- */
+// 동 이름으로 좌표 찾기
 export const findDongCoordinates = (
   dongData: DongData[],
   location: string,
 ): { lat: number; lng: number } | null => {
-  // 선택한 위치가 있는 항목 찾기
-  const selectedLocation = dongData.find(
-    item =>
-      item.original_name === location ||
-      item.display_name === location ||
-      item.formatted_address === location,
+  // 위치 이름에서 동 이름 추출
+  const parts = location.split(' ');
+  const dongName = parts[parts.length - 1]; // 마지막 부분을 동 이름으로 간주
+
+  // 전체 위치 이름으로 정확히 일치하는 항목 찾기
+  const exactMatch = dongData.find(
+    item => item.original_name === location || item.display_name.includes(location),
   );
 
-  if (selectedLocation && selectedLocation.latitude && selectedLocation.longitude) {
+  if (exactMatch) {
     return {
-      lat: parseFloat(selectedLocation.latitude),
-      lng: parseFloat(selectedLocation.longitude),
+      lat: parseFloat(exactMatch.latitude),
+      lng: parseFloat(exactMatch.longitude),
     };
   }
 
+  // 동 이름만으로 검색
+  const dongMatch = dongData.find(
+    item => item.original_name.includes(dongName) || item.display_name.includes(dongName),
+  );
+
+  if (dongMatch) {
+    return {
+      lat: parseFloat(dongMatch.latitude),
+      lng: parseFloat(dongMatch.longitude),
+    };
+  }
+
+  // 구 이름으로 검색 (동 이름이 없는 경우)
+  if (parts.length > 1) {
+    const guName = parts[0]; // 첫 번째 부분을 구 이름으로 간주
+
+    const guMatch = dongData.find(
+      item => item.original_name.includes(guName) || item.display_name.includes(guName),
+    );
+
+    if (guMatch) {
+      return {
+        lat: parseFloat(guMatch.latitude),
+        lng: parseFloat(guMatch.longitude),
+      };
+    }
+  }
+
+  // 아무것도 찾지 못한 경우 null 반환
   return null;
+};
+
+// 한글자 동 검색 함수
+export const searchSingleCharDong = (dongList: string[], searchText: string): string[] => {
+  if (!searchText || searchText.length === 0) {
+    return [];
+  }
+
+  return dongList.filter(dong => dong.startsWith(searchText) || dong.includes(searchText));
 };
