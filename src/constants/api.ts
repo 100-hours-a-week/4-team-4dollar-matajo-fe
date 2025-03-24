@@ -31,6 +31,7 @@ export const API_PATHS = {
     UPDATE: '/api/posts/:postId',
     DETAIL: '/api/posts/:postId',
     DELETE: '/api/posts/:postId',
+    VISIBLE: '/api/posts/:postId/visibility',
   },
 
   // 사용자 관련

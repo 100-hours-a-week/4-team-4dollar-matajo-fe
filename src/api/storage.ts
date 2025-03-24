@@ -130,10 +130,16 @@ export const base64ToFile = (
 
 /**
  * 보관소 수정 요청을 위한 함수
+ *
+ * @param id 수정할 보관소 ID
+ * @param postData 보관소 기본 정보
+ * @param mainImage 대표 이미지 파일
+ * @param detailImages 상세 이미지 파일 배열
+ * @returns 수정 결과와 ID
  */
 export const updateStorage = async (
   id: string,
-  data: StorageRegistrationRequest,
+  postData: StorageRegistrationRequest,
   mainImage: File,
   detailImages: File[],
 ): Promise<StorageRegistrationResponse> => {
@@ -141,12 +147,18 @@ export const updateStorage = async (
     // FormData 객체 생성
     const formData = new FormData();
 
-    // id를 포함한 모든 데이터를 단일 JSON 객체로 추가
-    const fullData = {
-      id,
-      ...data,
-    };
-    formData.append('postData', JSON.stringify(fullData));
+    // postData 객체를 JSON 문자열로 직렬화
+    const postDataStr = JSON.stringify({
+      post_id: id,
+      post_title: postData.postTitle,
+      post_content: postData.postContent,
+      post_address_data: postData.postAddressData,
+      prefer_price: postData.preferPrice,
+      post_tags: postData.postTags,
+    });
+
+    // 데이터 추가
+    formData.append('postData', new Blob([postDataStr], { type: 'application/json' }));
 
     // 이미지 파일 추가
     formData.append('mainImage', mainImage);
@@ -156,16 +168,25 @@ export const updateStorage = async (
       formData.append('detailImages', file);
     });
 
+    console.log('보관소 수정 데이터:', {
+      postData: JSON.parse(postDataStr),
+      mainImage: mainImage.name,
+      detailImages: detailImages.map(f => f.name),
+    });
+
     // API 호출
-    const response = await client.put('/storage/update', formData, {
+    const endpoint = API_PATHS.STORAGE.UPDATE.replace(':postId', id);
+    const response = await client.put(endpoint, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      withCredentials: true,
     });
 
     return {
-      id: response.data.id,
-      success: true,
+      id: response.data.data?.post_id || id,
+      success: response.data.success,
+      message: response.data.message,
     };
   } catch (error) {
     console.error('보관소 수정 실패:', error);
@@ -173,7 +194,7 @@ export const updateStorage = async (
     if (axios.isAxiosError(error) && error.response) {
       return {
         id: '',
-        success: false,
+        success: error.response.data.success || false,
         message: error.response.data.message || '보관소 수정에 실패했습니다.',
       };
     }
