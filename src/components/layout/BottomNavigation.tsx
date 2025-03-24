@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { isLoggedIn } from '../../utils/authUtils';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -88,7 +89,7 @@ const MyPageIcon = ({ isActive }: { isActive: boolean }) => (
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabChange }) => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const isAuthenticated = isLoggedIn();
 
   // 탭 데이터
   const tabs: Array<{ name: TabType; icon: React.FC<{ isActive: boolean }>; path: string }> = [

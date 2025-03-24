@@ -6,51 +6,10 @@ import BottomNavigation from '../../components/layout/BottomNavigation';
 import MapBottomSheet from './MapBottomSheet';
 import KakaoMap from '../../components/map/KakaoMap';
 import { useAuth } from '../../hooks/useAuth';
-import { getNearbyPlaces, getDiscountItems, getRecentItems } from '../../api/place';
 import { DiscountItem, StorageItem, Place } from '../../api/place';
 import LocationSearchModal from './LocationSearchModal';
 import { findDongCoordinates, loadDongDataFromCSV } from '../../utils/csvUtils';
-
-// 컨테이너 컴포넌트 - 전체 화면 크기로 설정
-const Container = styled.div`
-  width: 100%;
-  height: 100vh;
-  position: relative;
-  background: #ffffff;
-  overflow: hidden;
-  margin: 0 auto;
-  max-width: 480px; // 모바일 환경 고려
-`;
-
-// 로딩 인디케이터
-const LoadingIndicator = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  font-size: 18px;
-  color: #666;
-`;
-
-// 맵 컨테이너 스타일 - 영역 확장
-const MapWrapper = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1;
-`;
-
-// 헤더 래퍼 (투명 배경으로 지도 위에 표시)
-const HeaderWrapper = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 5;
-  background-color: rgba(255, 255, 255, 0.9);
-`;
+import type { DongData as DongDataType } from '../../utils/csvUtils';
 
 // 여의도 주변 더미 보관소 데이터
 const dummyStorageLocations = [
@@ -106,13 +65,46 @@ const dummyStorageLocations = [
   },
 ];
 
-// 동 데이터 인터페이스 (충돌 방지용 로컬 타입)
-interface LocalDongData {
-  original_name: string;
-  display_name: string;
-  latitude: string;
-  longitude: string;
-}
+// 컨테이너 컴포넌트 - 전체 화면 크기로 설정
+const Container = styled.div`
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  background: #ffffff;
+  overflow: hidden;
+  margin: 0 auto;
+  max-width: 480px; // 모바일 환경 고려
+`;
+
+// 로딩 인디케이터
+const LoadingIndicator = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 18px;
+  color: #666;
+`;
+
+// 맵 컨테이너 스타일 - 영역 확장
+const MapWrapper = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+`;
+
+// 헤더 래퍼 (투명 배경으로 지도 위에 표시)
+const HeaderWrapper = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background-color: rgba(255, 255, 255, 0.9);
+`;
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -125,7 +117,7 @@ const HomePage: React.FC = () => {
   const [recentItems, setRecentItems] = useState<StorageItem[]>([]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
   const [dongDataLoaded, setDongDataLoaded] = useState<boolean>(false);
-  const [dongData, setDongData] = useState<LocalDongData[]>([]);
+  const [dongData, setDongData] = useState<DongDataType[]>([]);
 
   // 여의도동 좌표 (기본값)
   const [mapCenter, setMapCenter] = useState({ lat: 37.5244, lng: 126.9231 });
@@ -140,7 +132,7 @@ const HomePage: React.FC = () => {
         setDongDataLoaded(true);
       } catch (error) {
         console.error('동 데이터 로드 실패:', error);
-        // 기본 더미 데이터 설정 (필요시)
+        // 기본 더미 데이터 설정
         setDongDataLoaded(true);
       }
     };
@@ -152,22 +144,31 @@ const HomePage: React.FC = () => {
   const handleCenterChanged = (lat: number, lng: number) => {
     setMapCenter({ lat, lng });
     console.log('지도 중심 변경:', lat, lng);
-
-    // 필요한 경우 여기서 새 위치에 대한 데이터를 다시 로드할 수 있음
-    // 예: fetchNearbyData(lat, lng);
   };
 
-  // src/pages/Home/index.tsx의 handleSelectLocation 함수
-  const handleSelectLocation = (selectedLocation: string) => {
+  // 위치 선택 핸들러
+  const handleSelectLocation = (
+    selectedLocation: string,
+    latitude?: string,
+    longitude?: string,
+  ) => {
     setLocation(selectedLocation);
 
-    // 동 데이터가 로드되었다면 선택한 위치의 좌표를 찾아 지도 중심 변경
+    // 직접 제공된 좌표가 있으면 사용
+    if (latitude && longitude) {
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+      setMapCenter({ lat, lng });
+      fetchNearbyData(lat, lng);
+      return;
+    }
+
+    // 동 데이터에서 좌표 찾기
     if (dongDataLoaded && dongData.length > 0) {
       const coordinates = findDongCoordinates(dongData, selectedLocation);
 
       if (coordinates) {
         setMapCenter(coordinates);
-        // 새 위치에 대한 데이터 가져오기
         fetchNearbyData(coordinates.lat, coordinates.lng);
       } else {
         console.log('선택한 위치의 좌표를 찾을 수 없습니다:', selectedLocation);
@@ -176,6 +177,7 @@ const HomePage: React.FC = () => {
       console.log('동 데이터가 로드되지 않았습니다.');
     }
   };
+
   // 현재 위치를 기반으로 데이터 로드
   const fetchNearbyData = async (lat: number, lng: number) => {
     try {
@@ -186,25 +188,20 @@ const HomePage: React.FC = () => {
       // 더미 데이터 사용
       setPlaces(dummyStorageLocations);
 
-      // 위치 정보 업데이트는 이제 handleSelectLocation에서 처리
-
       // 특가 아이템 로드 (구/동 정보 추출)
       const locationParts = location.split(' ');
       const district = locationParts[0] || '영등포구';
       const neighborhood = locationParts[1] || '여의도동';
 
+      // 실제 API 호출 코드 (주석 처리)
       /* const discountResponse = await getDiscountItems(district, neighborhood);
       setDiscountItems(discountResponse.data.items);
 
       // 최근 거래 내역 로드
       const recentResponse = await getRecentItems(district, neighborhood);
       setRecentItems(recentResponse.data.items); */
-    } catch (error) {
-      console.error('데이터 로드 오류:', error);
 
-      // 오류 시 더미 데이터 사용
-      setPlaces(dummyStorageLocations);
-
+      // 더미 데이터 설정
       setDiscountItems([
         {
           id: '1',
@@ -213,16 +210,7 @@ const HomePage: React.FC = () => {
           originalPrice: 15000,
           discountPrice: 8250,
           discountRate: 45,
-          imageUrl: 'https://placehold.co/300x200',
-        },
-        {
-          id: '2',
-          placeId: '3',
-          title: '국회의사당 보관소 특가',
-          originalPrice: 12000,
-          discountPrice: 7800,
-          discountRate: 35,
-          imageUrl: 'https://placehold.co/300x200',
+          imageUrl: '',
         },
       ]);
 
@@ -232,22 +220,15 @@ const HomePage: React.FC = () => {
           name: '플레이스테이션',
           price: 12000,
           post_tags: ['전자기기', '일주일 이내'],
-          imageUrl: 'https://placehold.co/64x64',
-          location: '여의도동',
+          imageUrl: '',
+          location: district + ' ' + neighborhood,
           keeperId: 'keeper1',
           rating: 4.5,
         },
-        {
-          id: '2',
-          name: '캐리어',
-          price: 8000,
-          post_tags: ['여행', '장기'],
-          imageUrl: 'https://placehold.co/64x64',
-          location: '여의도동',
-          keeperId: 'keeper2',
-          rating: 4.8,
-        },
       ]);
+    } catch (error) {
+      console.error('데이터 로드 오류:', error);
+      // 오류 발생시 기본 더미 데이터 유지
     }
   };
 
@@ -266,7 +247,22 @@ const HomePage: React.FC = () => {
                 lng: position.coords.longitude,
               };
               setMapCenter(currentPos);
-              fetchNearbyData(currentPos.lat, currentPos.lng);
+
+              // 위치 기반 주소 가져오기
+              const geocoder = new window.kakao.maps.services.Geocoder();
+              geocoder.coord2Address(currentPos.lng, currentPos.lat, (result: any, status: any) => {
+                if (status === window.kakao.maps.services.Status.OK) {
+                  if (result[0]) {
+                    const address = result[0].address;
+                    // 구 + 동 형태의 주소로 업데이트
+                    if (address.region_2depth_name && address.region_3depth_name) {
+                      const newLocation = `${address.region_2depth_name} ${address.region_3depth_name}`;
+                      setLocation(newLocation);
+                    }
+                  }
+                }
+                fetchNearbyData(currentPos.lat, currentPos.lng);
+              });
             },
             error => {
               console.error('위치 정보를 가져오는데 실패했습니다:', error);
@@ -283,7 +279,6 @@ const HomePage: React.FC = () => {
         // 데이터 로드 후 로딩 상태 업데이트
         setTimeout(() => {
           setLoading(false);
-          console.log('로딩 상태 업데이트: false');
         }, 500);
       }
     };
@@ -294,6 +289,49 @@ const HomePage: React.FC = () => {
   // 마커 클릭 핸들러 - 보관소 상세 페이지로 이동
   const handleMarkerClick = (placeId: string) => {
     navigate(`/storagedetail/${placeId}`);
+  };
+
+  // 현재 위치로 이동하는 핸들러
+  const handleCurrentLocationClick = () => {
+    setLoading(true);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const currentPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setMapCenter(currentPos);
+          fetchNearbyData(currentPos.lat, currentPos.lng);
+
+          // 주소 정보 가져오기
+          const geocoder = new window.kakao.maps.services.Geocoder();
+          geocoder.coord2Address(currentPos.lng, currentPos.lat, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              if (result[0]) {
+                const address = result[0].address;
+                // 구 + 동 형태의 주소로 업데이트
+                if (address.region_2depth_name && address.region_3depth_name) {
+                  const newLocation = `${address.region_2depth_name} ${address.region_3depth_name}`;
+                  setLocation(newLocation);
+                }
+              }
+            }
+            setLoading(false);
+          });
+        },
+        error => {
+          console.error('위치 정보를 가져오는데 실패했습니다:', error);
+          alert('현재 위치를 가져오는데 실패했습니다. 위치 접근 권한을 확인해주세요.');
+          setLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+      );
+    } else {
+      alert('이 브라우저에서는 위치 서비스를 지원하지 않습니다.');
+      setLoading(false);
+    }
   };
 
   // 보관소 등록 페이지로 이동
@@ -351,6 +389,8 @@ const HomePage: React.FC = () => {
           zoomable={true} // 줌 가능 반드시 true
           onCenterChanged={handleCenterChanged}
           isLocationModalOpen={isLocationModalOpen}
+          showCurrentLocation={true}
+          onCurrentLocationClick={handleCurrentLocationClick}
         />
       </MapWrapper>
 
@@ -359,7 +399,7 @@ const HomePage: React.FC = () => {
         <Header title="마타조" />
       </HeaderWrapper>
 
-      {/* 맵 바텀시트 컴포넌트 - z-index 설정 확인 */}
+      {/* 맵 바텀시트 컴포넌트 */}
       <MapBottomSheet
         location={location}
         onRegisterStorage={handleRegisterStorage}
