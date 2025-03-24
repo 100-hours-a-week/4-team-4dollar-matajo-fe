@@ -14,14 +14,14 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   // 인증 정보 로딩 중일 때 로딩 표시
-  // if (loading) {
-  //   return <div>로딩 중...</div>;
-  // }
+  if (loading) {
+    return <div>로딩 중...</div>;
+  }
 
   // 로그인하지 않은 경우 로그인 페이지로 리다이렉트
-  // if (!isAuthenticated) {
-  //   return <Navigate to="/login" replace />;
-  // }
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   // 특정 역할이 요구되는 경우 역할 확인
   if (requiredRole && user?.role !== requiredRole) {

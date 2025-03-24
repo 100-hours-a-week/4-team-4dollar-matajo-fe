@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { kakaoLogin } from '../../api/auth';
 import { saveKakaoLoginData } from '../../utils/authUtils';
+// KAKAO_AUTH 상수에서 리다이렉트 URI를 가져오므로 여기서는 별도로 선언하지 않음
+// 카카오 로그인 관련 상수 가져오기
+import { KAKAO_AUTH } from '../../constants/api';
 
 // 로딩 컨테이너
 const LoadingContainer = styled.div`
@@ -98,13 +101,17 @@ const KakaoCallback: React.FC = () => {
           sessionStorage.setItem('processed_kakao_code', code);
 
           // 토큰 및 사용자 정보 저장
-          const { accessToken } = response.data;
+          const { accessToken, userId, nickname, role } = response.data;
 
           // 유틸리티 함수를 사용하여 로그인 데이터 저장
           saveKakaoLoginData({
             accessToken,
+            userId,
+            nickname,
+            role,
           });
-          console.log('로그인 정보 저장 완료:', localStorage.getItem('token'));
+
+          console.log('로그인 정보 저장 완료:', localStorage.getItem('accessToken'));
 
           // 메인 페이지로 리다이렉트 (토스트 메시지 표시 위한 상태 포함)
           console.log('홈으로 리다이렉트 시도...');

@@ -1,21 +1,12 @@
-// <<<<<<< feat/teddy_0324
 // src/api/client.ts
 import axios from 'axios';
-import { getToken } from '../utils/authUtils';
-import { logout } from '../utils/authUtils';
+import { getToken, logout } from '../utils/authUtils';
+import { API_BASE_URL } from '../constants/api';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://15.164.251.118:8080';
+// API_BASE_URL은 이제 constants/api.ts에서 가져옴
 
 const client = axios.create({
   baseURL: API_BASE_URL,
-  // =======
-  // import axios, { AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
-  // import { API_BACKEND_URL } from '../constants/api';
-
-  // // 기본 axios 인스턴스 생성
-  // export const client = axios.create({
-  //   baseURL: API_BACKEND_URL,
-  // >>>>>>> main
   headers: {
     'Content-Type': 'application/json',
   },
