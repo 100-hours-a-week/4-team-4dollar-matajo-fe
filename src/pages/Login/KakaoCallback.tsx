@@ -98,24 +98,22 @@ const KakaoCallback: React.FC = () => {
           sessionStorage.setItem('processed_kakao_code', code);
 
           // 토큰 및 사용자 정보 저장
-          const { accessToken, refreshToken, userId, nickname, role } = response.data;
+          const { accessToken } = response.data;
 
           // 유틸리티 함수를 사용하여 로그인 데이터 저장
           saveKakaoLoginData({
             accessToken,
-            refreshToken,
-            userId,
-            nickname,
-            role,
           });
+          console.log('로그인 정보 저장 완료:', localStorage.getItem('token'));
 
           // 메인 페이지로 리다이렉트 (토스트 메시지 표시 위한 상태 포함)
+          console.log('홈으로 리다이렉트 시도...');
           setTimeout(() => {
             navigate('/', {
               replace: true,
               state: { showToast: true, message: '로그인에 성공하였습니다.' },
             });
-          }, 1000);
+          }, 2000);
         } else {
           throw new Error(response.message || '로그인 처리 중 오류가 발생했습니다.');
         }

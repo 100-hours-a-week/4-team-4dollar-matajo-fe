@@ -1,4 +1,4 @@
-import { client } from './client';
+import client from './client';
 import { API_BACKEND_URL, API_PATHS } from '../constants/api';
 import axios from 'axios';
 import { DaumAddressData } from '../utils/KakaoToDaum';
@@ -70,7 +70,7 @@ export const registerStorage = async (
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      withCredentials: false,
+      withCredentials: true,
     });
 
     return {

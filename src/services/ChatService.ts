@@ -66,7 +66,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false,
+  withCredentials: true,
 });
 
 // 인증 토큰 및 userId 인터셉터 추가
@@ -156,7 +156,7 @@ class ChatService {
         const sockJSOptions: any = {
           transports: ['websocket', 'xhr-streaming', 'xhr-polling'],
           timeout: 10000,
-          withCredentials: false,
+          withCredentials: true,
         };
 
         // userId 가져오기
