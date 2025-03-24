@@ -20,6 +20,7 @@ export const API_PATHS = {
     READ: '/api/chat/:roomId/read', // 기존대로 유지
     LEAVE: '/api/chat/:roomId', // '/api/chat/:roomId/leave'에서 수정 (DELETE 메서드 사용)
     UPLOAD_IMAGE: '/api/chat/images/upload', // 기존대로 유지
+    TRADE_INFO: '/api/trade',
   },
 
   // 보관소 관련
@@ -35,6 +36,12 @@ export const API_PATHS = {
   USER: {
     PROFILE: '/user/profile',
     UPDATE: '/user/update',
+  },
+
+  // 사용자 관련
+  MYPAGE: {
+    TRADE: '/api/my/trade',
+    PLACE: '/api/my/posts',
   },
 
   // 장소 관련

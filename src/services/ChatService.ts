@@ -7,6 +7,7 @@ import { API_BACKEND_URL, API_PATHS } from '../constants/api';
 export enum MessageType {
   TEXT = 'TEXT',
   IMAGE = 'IMAGE',
+  SYSTEM = 'SYSTEM',
 }
 
 // 백엔드 DTO와 일치하는 인터페이스 정의
@@ -89,6 +90,22 @@ apiClient.interceptors.request.use(
     return Promise.reject(error);
   },
 );
+
+export interface TradeData {
+  itemName: string;
+  price: number;
+  startDate: string;
+  storagePeriod: number;
+  endDate: string;
+  itemTypes: string[]; // Changed from string to string[]
+  category: string;
+}
+
+// Add this interface for the response from the trade confirmation API
+export interface TradeConfirmationResponseDto {
+  tradeId: number;
+  status: string;
+}
 
 class ChatService {
   private static instance: ChatService;
@@ -338,6 +355,18 @@ class ChatService {
     });
   }
 
+  // 텍스트 메시지 전송 - 수정된 DTO 형식 사용
+  public sendSystemMessage(roomId: number, content: string): Promise<boolean> {
+    // Use a pseudo sender ID for system messages (e.g., 0 or -1)
+    const systemSenderId = 0;
+
+    return this.sendMessage(roomId, {
+      senderId: systemSenderId,
+      content: content,
+      messageType: MessageType.SYSTEM,
+    });
+  }
+
   // 이미지 메시지 전송 - 수정된 DTO 형식 사용
   public sendImageMessage(roomId: number, senderId: number, imageUrl: string): Promise<boolean> {
     return this.sendMessage(roomId, {
@@ -506,6 +535,39 @@ class ChatService {
           return response.data.data;
         }
         throw new Error(response.data.message || '이미지 업로드에 실패했습니다');
+      });
+  }
+
+  public confirmTrade(roomId: number, tradeData: TradeData): Promise<number> {
+    const url = `${API_PATHS.CHAT.TRADE_INFO}`;
+
+    // Get userId from localStorage
+    const userId = localStorage.getItem('userId') || '1';
+
+    // Prepare data in the format expected by backend
+    const requestData = {
+      room_id: roomId,
+      product_name: tradeData.itemName,
+      trade_price: tradeData.price,
+      start_date: tradeData.startDate,
+      storage_period: tradeData.storagePeriod,
+      category: tradeData.category,
+    };
+
+    console.log('Sending trade confirmation:', requestData);
+
+    return apiClient
+      .post<CommonResponse<TradeConfirmationResponseDto>>(url, requestData)
+      .then(response => {
+        if (response.data.success && response.data.data) {
+          console.log('Trade confirmation successful:', response.data.data);
+          return response.data.data.tradeId;
+        }
+        throw new Error(response.data.message || 'Failed to confirm trade');
+      })
+      .catch(error => {
+        console.error('Error confirming trade:', error);
+        throw error;
       });
   }
 

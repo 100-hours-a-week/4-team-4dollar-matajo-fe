@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import { useNavigate } from 'react-router-dom';
+import { getMyTrades, TradeItem } from '../../api/user';
+import moment from 'moment';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -111,16 +113,34 @@ const TotalAmount = styled.div`
   letter-spacing: 0.02px;
 `;
 
-// 트랜잭션 항목 타입 정의
-interface TransactionItem {
-  id: number;
-  type: 'deposited' | 'stored'; // 맡아줬어요 or 보관했어요
-  itemName: string;
-  userCode: string;
-  location: string;
-  period: string;
-  amount: number;
-}
+// 로딩 컴포넌트
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: ${THEME.lightGrayText};
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+`;
+
+// 에러 메시지 컴포넌트
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: red;
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+`;
+
+// 데이터 없음 메시지
+const NoDataMessage = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  color: ${THEME.lightGrayText};
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+`;
 
 interface MyTradeProps {
   onBack?: () => void;
@@ -129,56 +149,51 @@ interface MyTradeProps {
 // 메인 컴포넌트
 const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
   const navigate = useNavigate();
+  const [trades, setTrades] = useState<TradeItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 거래 내역 데이터 조회
+  useEffect(() => {
+    const fetchTrades = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getMyTrades();
+        setTrades(data);
+      } catch (err) {
+        console.error('거래 내역 조회 실패:', err);
+        setError('거래 내역을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTrades();
+  }, []);
 
   // 뒤로가기 핸들러 함수 - MyPage로 이동
   const handleBackClick = () => {
     navigate('/mypage');
   };
 
-  // 더미 데이터
-  const transactions: TransactionItem[] = [
-    {
-      id: 1,
-      type: 'deposited',
-      itemName: '농구공',
-      userCode: '타조 20229',
-      location: '서울시 성동구',
-      period: '2024.09.14.~2025.03.02',
-      amount: 20000,
-    },
-    {
-      id: 2,
-      type: 'stored',
-      itemName: '노트북',
-      userCode: '타조 23229',
-      location: '서울시 중랑구',
-      period: '2024.09.14.~2025.03.02',
-      amount: 70000,
-    },
-    {
-      id: 3,
-      type: 'deposited',
-      itemName: '농구공',
-      userCode: '타조 20229',
-      location: '서울시 성동구',
-      period: '2024.09.14.~2025.03.02',
-      amount: 20000,
-    },
-    {
-      id: 4,
-      type: 'stored',
-      itemName: '노트북',
-      userCode: '타조 23229',
-      location: '서울시 중랑구',
-      period: '2024.09.14.~2025.03.02',
-      amount: 70000,
-    },
-  ];
+  // 날짜 형식 변환 - '2025-03-18' -> '2025.03.18'
+  const formatDate = (dateString: string) => {
+    return dateString.replace(/-/g, '.');
+  };
+
+  // 보관 기간 계산 - 시작일 + 보관 기간으로 종료일 계산
+  const calculateEndDate = (startDate: string, storagePeriod: number) => {
+    return moment(startDate).add(storagePeriod, 'days').format('YYYY.MM.DD');
+  };
 
   // 금액 포맷 함수
   const formatAmount = (amount: number) => {
     return `총 ${amount.toLocaleString()}원`;
   };
+
+  // 현재 사용자 ID 가져오기
+  const currentUserId = parseInt(localStorage.getItem('userId') || '0');
 
   return (
     <>
@@ -186,28 +201,42 @@ const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
       <Header title="내 거래 내역" showBackButton={true} onBack={handleBackClick} />
 
       <Container>
-        {/* 거래 내역 목록 */}
-        {transactions.map(item => (
-          <TransactionCard key={item.id}>
-            <CardHeader>
-              <TransactionType isDeposit={true}>
-                {item.type === 'deposited' ? '맡아줬어요' : '보관했어요'}
-              </TransactionType>
-              <ItemName>{item.itemName}</ItemName>
-            </CardHeader>
+        {loading ? (
+          <LoadingContainer>거래 내역을 불러오는 중...</LoadingContainer>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : trades.length === 0 ? (
+          <NoDataMessage>거래 내역이 없습니다.</NoDataMessage>
+        ) : (
+          // 거래 내역 목록
+          trades.map(trade => {
+            // 타입 결정 - 보관자(keeper)면 '맡아줬어요', 아니면 '보관했어요'
+            const isKeeper = trade.keeperStatus;
+            const endDate = calculateEndDate(trade.startDate, trade.storagePeriod);
 
-            <CardContent>
-              <UserInfo>{item.userCode}</UserInfo>
-              <LocationDate>
-                {item.location} | {item.period}
-              </LocationDate>
-            </CardContent>
+            return (
+              <TransactionCard key={trade.tradeId}>
+                <CardHeader>
+                  <TransactionType isDeposit={isKeeper}>
+                    {isKeeper ? '맡아줬어요' : '보관했어요'}
+                  </TransactionType>
+                  <ItemName>{trade.productName}</ItemName>
+                </CardHeader>
 
-            <Divider />
+                <CardContent>
+                  <UserInfo>타조 {trade.userId}</UserInfo>
+                  <LocationDate>
+                    {trade.postAddress} | {formatDate(trade.startDate)} ~ {endDate}
+                  </LocationDate>
+                </CardContent>
 
-            <TotalAmount>{formatAmount(item.amount)}</TotalAmount>
-          </TransactionCard>
-        ))}
+                <Divider />
+
+                <TotalAmount>{formatAmount(trade.tradePrice)}</TotalAmount>
+              </TransactionCard>
+            );
+          })
+        )}
       </Container>
 
       {/* 하단 네비게이션 */}
