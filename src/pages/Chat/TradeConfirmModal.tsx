@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { ko } from 'date-fns/locale';
+import { ko } from 'date-fns/locale/ko';
 import { format, differenceInDays } from 'date-fns';
 
 // 테마 컬러 상수 정의

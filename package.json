@@ -48,6 +48,7 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "husky": "^9.0.11",
+    "identity-obj-proxy": "^3.0.0",
     "lint-staged": "^15.1.0",
     "postcss": "^8.4.31",
     "prettier": "^3.5.3",
@@ -73,8 +74,12 @@
       "^.+\\.(ts|tsx|js|jsx)$": "babel-jest"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(axios)/)"
-    ]
+      "node_modules/(?!(axios|date-fns)/)"
+    ],
+    "moduleNameMapper": {
+      "\\.(css|less|scss|sass)$": "identity-obj-proxy",
+      "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js"
+    }
   },
   "repository": {
     "type": "git",
