@@ -1,15 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet, useNavigate } from 'react-router-dom';
-import { isAuthenticated, getUserRoleInToken, isKeeper } from '../utils/api/authUtils';
-
-// UserRole 타입 정의
-export enum UserRole {
-  Client = '1', // 의뢰인
-  Keeper = '2', // 보관인
-}
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { isAuthenticated, getUserRoleInToken } from '../utils/api/authUtils';
+import { UserRole } from '../contexts/auth';
 
 interface PrivateRouteProps {
-  requiredRole?: UserRole; // 접근에 필요한 역할 (선택적)
+  requiredRole?: UserRole;
 }
 
 /**
@@ -17,81 +12,85 @@ interface PrivateRouteProps {
  * requiredRole이 지정되면 해당 역할을 가진 사용자만 접근할 수 있음
  */
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
-  const navigate = useNavigate();
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAllowed, setIsAllowed] = useState(false);
-  const [isKeeper, setIsKeeper] = useState(false);
+  const location = useLocation();
+  const [authState, setAuthState] = useState<{
+    isChecking: boolean;
+    isAllowed: boolean;
+  }>({
+    isChecking: true,
+    isAllowed: false,
+  });
 
   useEffect(() => {
-    // 인증 상태 확인
     const checkAuth = () => {
-      setIsChecking(true);
-
-      // 로그인 되어 있는지 확인
-      const userAuthenticated = isAuthenticated();
-
-      if (!userAuthenticated) {
-        // 로그인되어 있지 않으면 접근 불가
-        setIsAllowed(false);
-        setIsChecking(false);
-        return;
-      }
-
-      // 특정 역할이 필요한 경우 역할 확인
-      if (requiredRole) {
-        const userRole = getUserRoleInToken();
-
-        // 사용자 역할이 필요한 역할과 일치하는지 확인
-        if (userRole === requiredRole) {
-          setIsAllowed(true);
-        } else {
-          setIsAllowed(false);
+      try {
+        // 기본 인증 확인
+        if (!isAuthenticated()) {
+          setAuthState({ isChecking: false, isAllowed: false });
+          return;
         }
-      } else {
-        // 역할 제한이 없으면 인증만으로 충분
-        setIsAllowed(true);
-      }
 
-      setIsChecking(false);
+        // 역할 확인이 필요한 경우
+        if (requiredRole) {
+          const userRole = getUserRoleInToken()?.toUpperCase() ?? '';
+          const hasRequiredRole = userRole === requiredRole.toString().toUpperCase();
+          setAuthState({ isChecking: false, isAllowed: hasRequiredRole });
+          return;
+        }
+
+        // 일반 인증된 사용자
+        setAuthState({ isChecking: false, isAllowed: true });
+      } catch (error) {
+        console.error('인증 확인 중 오류 발생:', error);
+        setAuthState({ isChecking: false, isAllowed: false });
+      }
     };
 
     checkAuth();
   }, [requiredRole]);
 
-  // 인증 확인 중에는 로딩 표시
-  if (isChecking) {
+  // 로딩 상태
+  if (authState.isChecking) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          flexDirection: 'column',
-        }}
-      >
-        <img
-          src="/tajo-logo.png"
-          alt="Logo"
-          style={{ width: '80px', height: '80px', marginBottom: '20px' }}
-        />
+      <div className="flex justify-center items-center h-screen flex-col">
+        <img src="/tajo-logo.png" alt="Logo" className="w-20 h-20 mb-5" />
         <div>인증 확인 중...</div>
       </div>
     );
   }
 
-  // 인증되지 않았거나 권한이 없는 경우 리다이렉트
-  if (!isAllowed) {
-    if (requiredRole === UserRole.Keeper) {
-      // 보관인 권한이 필요한 페이지인 경우, 보관인 등록 페이지로 이동할 수 있도록 상태와 함께 마이페이지로 리다이렉트
-      return <Navigate to="/mypage" state={{ showKeeperModal: true }} replace />;
+  // 접근 권한 확인
+  if (!authState.isAllowed) {
+    if (!isAuthenticated()) {
+      return <Navigate to="/login" replace state={{ from: location.pathname }} />;
     }
 
-    // 그냥 로그인이 안 된 경우는 로그인 페이지로 리다이렉트
-    return <Navigate to="/login" replace />;
+    // 보관인 권한 필요
+    if (requiredRole === UserRole.Keeper) {
+      return (
+        <Navigate
+          to="/mypage"
+          replace
+          state={{
+            showKeeperModal: true,
+            message: '보관인 권한이 필요한 페이지입니다.',
+          }}
+        />
+      );
+    }
+
+    // 기타 권한 오류
+    return (
+      <Navigate
+        to="/mypage"
+        replace
+        state={{
+          message: '해당 페이지에 접근 권한이 없습니다.',
+        }}
+      />
+    );
   }
 
-  // 인증되고 권한이 있는 경우 자식 라우트 렌더링
   return <Outlet />;
 };
 

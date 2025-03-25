@@ -1,6 +1,7 @@
 // src/utils/api/authUtils.ts
 
 import { decodeJWT, getRole, getUserId, getNickname } from '../formatting/decodeJWT';
+import { UserRole } from '../../contexts/auth';
 
 // 로그인 데이터 인터페이스
 interface KakaoLoginData {
@@ -17,12 +18,6 @@ const AUTH_STATE_CHANGED = 'AUTH_STATE_CHANGED';
 export const notifyAuthStateChange = () => {
   window.dispatchEvent(new CustomEvent(AUTH_STATE_CHANGED));
 };
-
-// 사용자 역할 enum
-export enum UserRole {
-  Client = '1', // 의뢰인
-  Keeper = '2', // 보관인
-}
 
 /**
  * 카카오 로그인 데이터를 로컬 스토리지에 저장하는 함수

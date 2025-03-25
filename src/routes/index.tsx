@@ -1,6 +1,6 @@
 // routes/index.tsx
 import { RouteObject } from 'react-router-dom';
-import { UserRole } from '../utils/api/authUtils';
+import { UserRole } from '../contexts/auth';
 
 // 페이지 컴포넌트 가져오기
 import HomePage from '../pages/Home';

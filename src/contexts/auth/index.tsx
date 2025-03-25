@@ -3,9 +3,9 @@ import * as authApi from '../../services/api/modules/auth';
 
 // 사용자 역할 타입 정의
 export enum UserRole {
-  None = 'none', // 비회원
-  Client = 'client', // 의뢰인
-  Keeper = 'keeper', // 보관인
+  None = 'NONE',
+  Client = 'CLIENT',
+  Keeper = 'KEEPER',
 }
 
 // 사용자 정보 타입 정의
