@@ -215,7 +215,7 @@ const HelperText = styled.div`
   position: absolute;
   left: 90px;
   top: 15px;
-  color: ${THEME.accentRed};
+  color: rgba(255, 0, 0, 0);
   font-size: 8px;
   font-family: 'Noto Sans KR';
   font-weight: 400;

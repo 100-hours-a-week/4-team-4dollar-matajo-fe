@@ -102,17 +102,21 @@ const KakaoCallback: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // 이미 요청을 보냈다면 중복 실행 방지
     if (requestSentRef.current) return;
 
     // 인가 코드 추출
-    const code = new URLSearchParams(window.location.search).get('code');
+    const code = new URLSearchParams(location.search).get('code');
+
     console.log('인가 코드:', code);
 
     if (!code) {
+      // 인가 코드가 없으면 즉시 로그인 페이지로 리다이렉트
+      console.error('인가 코드를 찾을 수 없습니다. 로그인 페이지로 리다이렉트합니다.');
       setError('인가 코드를 찾을 수 없습니다.');
       setLoading(false);
-      setTimeout(() => navigate('/login', { replace: true }), 2000);
+
+      // 즉시 로그인 페이지로 이동 (setTimeout 사용하지 않음)
+      navigate('/login', { replace: true });
       return;
     }
 
@@ -127,29 +131,30 @@ const KakaoCallback: React.FC = () => {
     console.log('인가 코드 받음, 백엔드로 전송 중...');
     requestSentRef.current = true; // 요청 전송 표시
 
+    const handleLoginSuccess = (response: any) => {
+      const { accessToken, userId, role } = response.data;
+
+      // 로그인 데이터 저장 (이 함수가 AUTH_STATE_CHANGED 이벤트를 발생시킴)
+      saveKakaoLoginData({
+        accessToken,
+        userId,
+        role,
+      });
+
+      // 처리된 코드 저장
+      sessionStorage.setItem('processed_kakao_code', code);
+
+      // 홈 페이지로 리다이렉트
+      setTimeout(redirectToHome, 1000);
+    };
+
     // 직접 백엔드의 /auth/kakao 엔드포인트로 요청
     kakaoLogin(code)
       .then(response => {
         console.log('로그인 응답:', response);
 
         if (response.success) {
-          // 처리 성공 시 코드 저장
-          sessionStorage.setItem('processed_kakao_code', code);
-
-          // 토큰 및 사용자 정보 저장 (닉네임 제외)
-          const { accessToken, userId, role } = response.data;
-
-          // 닉네임을 제외하고 로그인 데이터 저장
-          saveKakaoLoginData({
-            accessToken,
-            userId,
-            role,
-          });
-
-          console.log('로그인 정보 저장 완료:', localStorage.getItem('accessToken'));
-
-          // 홈 페이지로 리다이렉트
-          setTimeout(redirectToHome, 1000);
+          handleLoginSuccess(response);
         } else {
           throw new Error(response.message || '로그인 처리 중 오류가 발생했습니다.');
         }

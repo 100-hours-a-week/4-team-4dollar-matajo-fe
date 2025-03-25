@@ -827,7 +827,7 @@ const EditStorage: React.FC = () => {
     // API 호출 예시 (실제로는 구현해야 함)
     // updateStorage(storageData)
     //   .then(() => {
-    //     navigate(`/storagedetail/${storageData.id}`);
+    //     navigate(`/storage/${storageData.id}`);
     //   })
     //   .catch(error => {
     //     console.error('업데이트 오류:', error);
@@ -835,7 +835,7 @@ const EditStorage: React.FC = () => {
 
     // 테스트용 코드
     setTimeout(() => {
-      navigate(`/storagedetail`);
+      navigate(`/storage`);
     }, 1000);
   };
 

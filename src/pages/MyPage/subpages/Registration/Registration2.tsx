@@ -319,13 +319,13 @@ const Registration2: React.FC = () => {
     }
 
     // 태그 문자열 리스트로 변환
-    const tagStrings = convertTagsToStrings(
+    const tagStrings = convertTagsToStrings({
       storageLocation,
       selectedItemTypes,
       selectedStorageTypes,
       selectedDurationOptions,
       isValuableSelected,
-    );
+    });
 
     // 이전 단계 데이터와 현재 단계 데이터 병합
     const step2Data = {

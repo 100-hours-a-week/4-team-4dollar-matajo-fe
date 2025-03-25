@@ -1,21 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+// src/pages/Home/MapBottomSheet.tsx
+import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useAuth } from '../../hooks/auth';
-import { DiscountItem, StorageItem } from '../../services/api/modules/place';
+import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import Modal from '../../components/common/Modal';
 
 // 테마 컬러 상수 정의
 const THEME = {
   primary: '#3A00E5',
   primaryLight: '#5E5CFD',
-  primaryAlpha: 'rgba(94, 92, 253, 0.60)',
+  primaryAlpha: 'rgba(56.26, 53.49, 252.61, 0.80)',
   background: '#F5F5FF',
   darkText: '#464646',
-  lightGrayText: '#999999',
+  lightGrayText: '#9C9C9C',
   priceText: '#3A5BFF',
-  borderColor: '#EFEFF0',
+  borderColor: '#D9D9D9',
+  dividerColor: '#D9D9D9',
   white: '#FFFFFF',
   discountRed: '#FF3333',
   gray100: '#F5F5F5',
@@ -51,7 +51,7 @@ const MapText = styled.p`
 `;
 
 // 바텀 시트 스타일
-const BottomSheet = styled(motion.div)`
+const BottomSheet = styled.div`
   position: absolute;
   width: 100%;
   background-color: ${THEME.white};
@@ -344,26 +344,60 @@ const ItemTags = styled.div`
   color: ${THEME.gray500};
 `;
 
-// 모달 관련 스타일 컴포넌트
-const GrayText = styled.span`
-  color: #5b5a5d;
-  font-size: 16px;
-  font-family: 'Noto Sans KR';
-  font-weight: 500;
-  line-height: 19.21px;
-  word-wrap: break-word;
-`;
+// 보관소 등록 핸들러 함수
+export const handleRegisterStorage = (
+  navigate: ReturnType<typeof useNavigate>,
+  setShowKeeperModal: (show: boolean) => void,
+): void => {
+  // 인증 확인
+  if (!isLoggedIn()) {
+    // 로그인 페이지로 이동
+    navigate('/login');
+    return;
+  }
 
-const HighlightText = styled.span`
-  color: #010048;
-  font-size: 16px;
-  font-family: 'Noto Sans KR';
-  font-weight: 700;
-  line-height: 19.21px;
-  word-wrap: break-word;
-`;
+  // 보관인 여부 확인
+  if (isKeeper()) {
+    // 보관인이면 보관소 등록 페이지로 이동
+    navigate('/registration/step1');
+  } else {
+    // 일반 사용자면 보관인 등록 모달 표시
+    setShowKeeperModal(true);
+  }
+};
 
-// 타입 정의
+// KeeperRegistrationModal 컴포넌트
+export const KeeperRegistrationModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}> = ({ isOpen, onClose, onConfirm }) => {
+  // 모달 내용
+  const keeperRegistrationContent = (
+    <>
+      <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>
+        보관인 미등록 계정입니다.
+        <br />
+      </span>
+      <span style={{ color: '#010048', fontSize: '16px', fontWeight: 700 }}>보관인 등록</span>
+      <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>하시겠습니까?</span>
+    </>
+  );
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      content={keeperRegistrationContent}
+      cancelText="취소"
+      confirmText="등록"
+      onCancel={onClose}
+      onConfirm={onConfirm}
+    />
+  );
+};
+
+// 바텀 시트 타입 정의
 type BottomSheetState = 'closed' | 'half-expanded' | 'full';
 
 interface MapBottomSheetProps {
@@ -371,9 +405,9 @@ interface MapBottomSheetProps {
   onRegisterStorage?: () => void;
   onGoToBoard?: () => void;
   onDiscountItemClick?: (id: string) => void;
-  discountItems?: DiscountItem[];
-  recentItems?: StorageItem[];
-  onEditLocation?: () => void; // 동네 수정 버튼 클릭 핸들러 추가
+  discountItems?: any[];
+  recentItems?: any[];
+  onEditLocation?: () => void;
 }
 
 const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
@@ -383,151 +417,30 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   onDiscountItemClick,
   discountItems = [],
   recentItems = [],
-  onEditLocation, // 동네 수정 버튼 클릭 핸들러
+  onEditLocation,
 }) => {
-  // 네비게이션
   const navigate = useNavigate();
-  const { isKeeper, isClient } = useAuth();
-
-  // 시트 상태 관리
+  const [showKeeperModal, setShowKeeperModal] = useState(false);
   const [sheetState, setSheetState] = useState<BottomSheetState>('half-expanded');
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const initialY = window.innerHeight - 220; // 닫혔을 때 위치
-  const halfY = window.innerHeight / 2; // 반 펼쳐졌을 때 위치
-
-  // 위치 상태 및 핸들러
-  const [startY, setStartY] = useState<number>(0);
-  const [currentY, setCurrentY] = useState<number>(halfY);
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-
-  // 모달 상태
-  const [showKeeperModal, setShowKeeperModal] = useState<boolean>(false);
-
-  // 현재 상태에 따른 목표 위치 계산
-  const getTargetY = (): number => {
-    switch (sheetState) {
-      case 'full':
-        return 100; // 완전히 펼쳐졌을 때 상단에서 약간 여백
-      case 'half-expanded':
-        return halfY;
-      case 'closed':
-        return initialY;
-      default:
-        return halfY;
-    }
-  };
-
-  // 현재 위치에 따라 새로운 상태 결정
-  const determineStateFromPosition = (position: number): BottomSheetState => {
-    if (position < halfY / 2) return 'full';
-    if (position < initialY - 100) return 'half-expanded';
-    return 'closed';
-  };
-
-  // 드래그 시작 핸들러
-  const handleDragStart = (e: React.TouchEvent | React.MouseEvent): void => {
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    setStartY(clientY);
-    setIsDragging(true);
-  };
-
-  // 드래그 이동 핸들러
-  const handleDragMove = (e: TouchEvent | MouseEvent): void => {
-    if (!isDragging) return;
-
-    const clientY =
-      'touches' in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
-    const delta = clientY - startY;
-    let newY = currentY + delta;
-
-    // 경계 확인
-    if (newY < 100) newY = 100; // 최소 100px은 노출되도록
-    if (newY > initialY) newY = initialY;
-
-    setCurrentY(newY);
-    setStartY(clientY);
-  };
-
-  // 드래그 종료 핸들러
-  const handleDragEnd = (): void => {
-    if (!isDragging) return;
-
-    setIsDragging(false);
-    const newState = determineStateFromPosition(currentY);
-    setSheetState(newState);
-  };
-
-  // 상태 변경 시 목표 위치로 애니메이션 적용
-  useEffect(() => {
-    if (!isDragging) {
-      const targetY = getTargetY();
-      setCurrentY(targetY);
-    }
-  }, [sheetState, isDragging]);
-
-  // 이벤트 리스너 추가/제거
-  useEffect(() => {
-    const handleTouchMove = (e: TouchEvent): void => {
-      if (isDragging) {
-        e.preventDefault(); // 스크롤 방지
-        handleDragMove(e);
-      }
-    };
-
-    const handleMouseMove = (e: MouseEvent): void => {
-      if (isDragging) {
-        handleDragMove(e);
-      }
-    };
-
-    const handleTouchEnd = (): void => {
-      if (isDragging) {
-        handleDragEnd();
-      }
-    };
-
-    // 이벤트 리스너 등록
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('touchend', handleTouchEnd);
-    document.addEventListener('mouseup', handleTouchEnd);
-
-    return () => {
-      // 이벤트 리스너 제거
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('mouseup', handleTouchEnd);
-    };
-  }, [isDragging, startY, currentY]);
+  const [currentY, setCurrentY] = useState(window.innerHeight / 2);
 
   // 보관소 등록 핸들러
-  const handleRegisterStorage = (): void => {
-    if (isKeeper()) {
-      // 이미 보관인인 경우, 보관소 등록 페이지로 이동
-      navigate('/registration/step1');
-    } else if (isClient()) {
-      // 보관인이 아닌 경우 모달 표시
-      setShowKeeperModal(true);
+  const handleRegisterClick = () => {
+    if (onRegisterStorage) {
+      onRegisterStorage();
     } else {
-      // 로그인이 필요한 경우
-      navigate('/login');
+      handleRegisterStorage(navigate, setShowKeeperModal);
     }
   };
 
-  // 의뢰인이 보관인 등록 확인 모달 처리
-  const handleKeeperConfirmModal = () => {
-    // 보관인 등록 페이지로 이동
+  // 보관인 등록 확인 핸들러
+  const handleKeeperConfirm = () => {
+    setShowKeeperModal(false);
     navigate('/keeper/registration');
   };
 
-  // 모달 취소 처리
-  const handleKeeperCancelModal = () => {
-    setShowKeeperModal(false);
-  };
-
-  // 게시판 페이지로 이동
-  const handleGoToBoard = (): void => {
+  // 게시판 이동 핸들러
+  const handleGoToBoard = () => {
     if (onGoToBoard) {
       onGoToBoard();
     } else {
@@ -537,7 +450,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
   // 아이템 상세 페이지로 이동
   const handleItemClick = (id: string): void => {
-    navigate(`/storagedetail/${id}`);
+    navigate(`/storage/${id}`);
   };
 
   // 지역 특가 아이템 클릭 핸들러
@@ -545,56 +458,34 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     if (onDiscountItemClick) {
       onDiscountItemClick(id);
     } else {
-      navigate(`/storagedetail/${id}`);
+      navigate(`/storage/${id}`);
     }
   };
 
   // 동네 수정 버튼 클릭 핸들러
-  const handleEditLocation = (): void => {
+  const handleEditLocation = () => {
     if (onEditLocation) {
       onEditLocation();
     }
   };
 
-  // 보관인 등록 모달 컨텐츠
-  const keeperRegistrationContent = (
-    <>
-      <GrayText>
-        보관인 미등록 계정입니다.
-        <br />
-      </GrayText>
-      <HighlightText>보관인 등록</HighlightText>
-      <GrayText>하시겠습니까?</GrayText>
-    </>
-  );
-
   return (
     <Container>
-      {/* 지도 영역 */}
       <MapArea>
         <MapText>지도가 이곳에 표시됩니다</MapText>
       </MapArea>
 
-      {/* 바텀 시트 */}
       <BottomSheet
-        ref={sheetRef}
         style={{
           top: `${currentY}px`,
-          height: `${window.innerHeight - 100}px`, // 상단에서 100px 여백
+          height: `${window.innerHeight - 100}px`,
         }}
-        animate={{ top: currentY }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       >
-        {/* 드래그 핸들 */}
-        <DragHandleContainer
-          onTouchStart={(e: React.TouchEvent<HTMLDivElement>) => handleDragStart(e)}
-          onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => handleDragStart(e)}
-        >
+        <DragHandleContainer>
           <DragHandle />
         </DragHandleContainer>
 
         <ContentContainer>
-          {/* 위치 정보 */}
           <LocationContainer>
             <LocationIcon>
               <svg viewBox="0 0 12 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -612,9 +503,8 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
           <Divider />
 
-          {/* 메뉴 아이템 */}
           <MenuContainer>
-            <MenuItem onClick={handleRegisterStorage}>
+            <MenuItem onClick={handleRegisterClick}>
               <MenuTitle>보관장소 등록하기</MenuTitle>
               <MenuDescription>보관인이 되어 장소를 등록해요</MenuDescription>
               <MenuArrow>›</MenuArrow>
@@ -628,7 +518,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
           <Divider />
 
-          {/* 지역 특가 섹션 */}
           <SectionTitle>{location.split(' ')[1]} 지역 특가</SectionTitle>
           <DiscountGrid>
             {discountItems.length > 0 ? (
@@ -644,21 +533,21 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
                 <AreaText>{location.split(' ')[1]}</AreaText>
               </DiscountItemBox>
             )}
-            <MatjoItem onClick={handleRegisterStorage}>
+            <MatjoItem onClick={handleRegisterClick}>
               <MatjoIcon />
               <MatjoText>내가 마타조?</MatjoText>
             </MatjoItem>
           </DiscountGrid>
 
-          {/* 최근 거래 내역 */}
           <SectionTitle>{location.split(' ')[1]} 최근 거래 내역</SectionTitle>
           <ItemList>
             {recentItems.length > 0 ? (
               recentItems.map(item => (
-                // 아이템 카드에서 onClick 속성 제거
                 <ItemCard key={item.id}>
                   <ItemImage
-                    style={{ backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : 'none' }}
+                    style={{
+                      backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : 'none',
+                    }}
                   />
                   <ItemInfo>
                     <ItemName>{item.name}</ItemName>
@@ -687,15 +576,10 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
         </ContentContainer>
       </BottomSheet>
 
-      {/* 보관인 등록 확인 모달 */}
-      <Modal
+      <KeeperRegistrationModal
         isOpen={showKeeperModal}
-        onClose={handleKeeperCancelModal}
-        content={keeperRegistrationContent}
-        cancelText="취소"
-        confirmText="등록"
-        onCancel={handleKeeperCancelModal}
-        onConfirm={handleKeeperConfirmModal}
+        onClose={() => setShowKeeperModal(false)}
+        onConfirm={handleKeeperConfirm}
       />
     </Container>
   );

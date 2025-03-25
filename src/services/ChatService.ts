@@ -1,6 +1,6 @@
 import SockJS from 'sockjs-client';
 import { Client, IFrame, IMessage, StompSubscription } from '@stomp/stompjs';
-import axios from 'axios';
+import client from '../services/api/client';
 import { API_BACKEND_URL, API_PATHS } from '../constants/api';
 
 // 메시지 타입 정의 - 백엔드와 일치
@@ -59,37 +59,6 @@ interface CommonResponse<T> {
   data: T;
   timestamp?: string;
 }
-
-// API 클라이언트 설정
-const apiClient = axios.create({
-  baseURL: API_BACKEND_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: true,
-});
-
-// 인증 토큰 및 userId 인터셉터 추가
-apiClient.interceptors.request.use(
-  config => {
-    // JWT 토큰
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // userId 헤더 추가
-    const userId = localStorage.getItem('userId');
-    if (userId) {
-      config.headers['userId'] = userId;
-    }
-
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  },
-);
 
 export interface TradeData {
   itemName: string;
@@ -432,7 +401,7 @@ class ChatService {
     size: number = 50,
   ): Promise<ChatMessageResponseDto[]> {
     const url = API_PATHS.CHAT.MESSAGES.replace(':roomId', roomId.toString());
-    return apiClient
+    return client
       .get<CommonResponse<any[]>>(url, {
         params: { page, size },
       })
@@ -452,7 +421,7 @@ class ChatService {
 
   // 채팅방 목록 로드 - 응답 변환 로직 추가
   public loadChatRooms(): Promise<ChatRoomResponseDto[]> {
-    return apiClient
+    return client
       .get<CommonResponse<any[]>>(API_PATHS.CHAT.ROOMS)
       .then(response => {
         if (response.data.success && response.data.data) {
@@ -481,7 +450,7 @@ class ChatService {
 
   // 채팅방 생성 - 수정된 DTO 형식 사용
   public createChatRoom(postId: number): Promise<number> {
-    return apiClient
+    return client
       .post<CommonResponse<ChatRoomCreateResponseDto>>('/api/chat', { postId })
       .then(response => {
         if (response.data.success && response.data.data) {
@@ -493,7 +462,7 @@ class ChatService {
 
   // 채팅방 나가기
   public leaveChatRoom(roomId: number): Promise<boolean> {
-    return apiClient
+    return client
       .delete<CommonResponse<null>>(`/api/chat/${roomId}`)
       .then(response => {
         return response.data.success === true;
@@ -506,7 +475,7 @@ class ChatService {
 
   // 메시지 읽음 처리 - 수정된 파라미터 이름
   public markMessagesAsRead(roomId: number, userId: number): Promise<boolean> {
-    return apiClient
+    return client
       .put<CommonResponse<null>>(`/api/chat/${roomId}/read`, null, {
         params: { userId },
       })
@@ -524,7 +493,7 @@ class ChatService {
     const formData = new FormData();
     formData.append('chatImage', file);
 
-    return apiClient
+    return client
       .post<CommonResponse<string>>('/api/chat/images/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -556,7 +525,7 @@ class ChatService {
 
     console.log('Sending trade confirmation:', requestData);
 
-    return apiClient
+    return client
       .post<CommonResponse<TradeConfirmationResponseDto>>(url, requestData)
       .then(response => {
         if (response.data.success && response.data.data) {

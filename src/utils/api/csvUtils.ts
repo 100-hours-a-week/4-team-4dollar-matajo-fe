@@ -1,13 +1,15 @@
-// src/utils/csvUtils.ts
+// src/utils/api/csvUtils.ts
 import Papa from 'papaparse';
 
-// 동 데이터 인터페이스
+// 동 데이터 인터페이스 - CSV 파일의 실제 컬럼명과 일치하도록 수정
 export interface DongData {
   original_name: string;
   formatted_address: string;
-  display_name: string;
   latitude: string;
   longitude: string;
+  display_name: string;
+  class?: string;
+  type?: string;
   city_district?: string;
 }
 
@@ -43,9 +45,11 @@ export const loadDongDataFromCSV = async (filePath: string): Promise<DongData[]>
             .map((row: any) => ({
               original_name: row.original_name?.trim() || '',
               formatted_address: row.formatted_address?.trim() || '',
-              display_name: row.display_name?.trim() || '',
               latitude: row.latitude?.trim() || '',
               longitude: row.longitude?.trim() || '',
+              display_name: row.display_name?.trim() || '',
+              class: row.class?.trim() || '',
+              type: row.type?.trim() || '',
               city_district: row.city_district?.trim() || '',
             }));
 
@@ -79,7 +83,10 @@ export const searchDongData = (dongData: DongData[], searchText: string): DongDa
     // original_name에서 검색 (백업 검색)
     const originalNameMatch = item.original_name.toLowerCase().includes(searchTermLower);
 
-    return displayNameMatch || originalNameMatch;
+    // formatted_address에서 검색 (추가 검색)
+    const formattedAddressMatch = item.formatted_address.toLowerCase().includes(searchTermLower);
+
+    return displayNameMatch || originalNameMatch || formattedAddressMatch;
   });
 };
 
