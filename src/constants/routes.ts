@@ -4,10 +4,12 @@
 export const ROUTES = {
   // 홈 관련
   HOME: '/',
+  MAIN: '/main', // 추가된 메인 경로
 
   // 인증 관련
   LOGIN: '/login',
   SIGNUP: '/signup',
+  KAKAO_CALLBACK: '/auth/kakao', // 추가된 카카오 콜백 경로
 
   // 채팅 관련
   CHAT_LIST: '/chat/list',

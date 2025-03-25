@@ -20,23 +20,26 @@ const THEME = {
   white: '#FFFFFF',
 };
 
-// 컨테이너 컴포넌트
+// 컨테이너 컴포넌트 - 중앙 정렬 추가
 const Container = styled.div`
   width: 100%;
-  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
-  position: relative;
+  max-width: 375px;
+  min-height: calc(100vh - 166px);
   background: white;
   overflow-y: auto;
-  overflow-x: auto;
   padding-bottom: 40px;
   padding-top: 10px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 `;
 
-// 트랜잭션 카드 스타일 - 절대 위치 제거
+// 트랜잭션 카드 스타일 - 중앙 정렬 개선
 const TransactionCard = styled.div`
   width: 300px;
   height: 130px;
-  margin: 15px;
+  margin: 15px auto;
   background: rgba(217, 217, 217, 0);
   border-radius: 10px;
   border: 2px ${THEME.borderColor} solid;

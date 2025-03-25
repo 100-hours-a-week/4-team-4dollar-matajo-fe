@@ -1,186 +1,133 @@
-import React, { ReactNode } from 'react';
+import React from 'react';
 import styled from 'styled-components';
 
-// 모달 오버레이 - 화면 전체를 덮는 반투명 배경
-const ModalOverlay = styled.div`
+// 모달 컨테이너 - 화면 전체를 덮는 반투명 배경
+const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  right: 0;
+  bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
+  display: ${props => (props.isOpen ? 'flex' : 'none')};
   justify-content: center;
   align-items: center;
   z-index: 1000;
 `;
 
-// 모달 컨테이너
+// 모달 내용 컨테이너
 const ModalContainer = styled.div`
-  width: 300px;
-  background: white;
-  border-radius: 10px;
+  width: 80%;
+  max-width: 327px;
+  background-color: white;
+  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
   position: relative;
+  margin: 0 auto;
 `;
 
-// 텍스트 스타일 컴포넌트들
-const PrimaryText = styled.span`
-  color: #fcfcfe;
-  font-size: 14px;
-  font-family: 'Noto Sans KR';
-  font-weight: 700;
-  line-height: 14.09px;
-  word-wrap: break-word;
+// 모달 텍스트 컨테이너
+const ModalContent = styled.div`
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 10px 0;
 `;
 
-const DarkBlueText = styled.span`
-  color: #010048;
-  font-size: 16px;
-  font-family: 'Noto Sans KR';
-  font-weight: 700;
-  line-height: 19.21px;
-  word-wrap: break-word;
-`;
-
-const GrayText = styled.span`
-  color: #5b5a5d;
-  font-size: 16px;
-  font-family: 'Noto Sans KR';
-  font-weight: 500;
-  line-height: 19.21px;
-  word-wrap: break-word;
-`;
-
-const SecondaryGrayText = styled.span`
-  color: #5b5a5d;
-  font-size: 14px;
-  font-family: 'Noto Sans KR';
-  font-weight: 700;
-  line-height: 14.09px;
-  word-wrap: break-word;
-`;
-
-// 버튼 컨테이너
+// 모달 버튼 컨테이너
 const ButtonContainer = styled.div`
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  margin-top: 20px;
 `;
 
-// 라이트 버튼 (취소)
-const LightButton = styled.button`
-  width: 130px;
-  height: 32px;
-  padding: 7.69px 10.25px;
-  background: #d7d7ff;
-  overflow: hidden;
-  border-radius: 4px;
-  border: none;
-  justify-content: center;
-  align-items: center;
-  gap: 6.4px;
-  display: flex;
+// 모달 버튼 공통 스타일
+const Button = styled.button`
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.2s;
+`;
+
+// 취소 버튼
+const CancelButton = styled(Button)`
+  background-color: #f2f2f2;
+  color: #464646;
+  border: none;
 
   &:hover {
-    background: #c7c7ff;
+    background-color: #e5e5e5;
   }
 `;
 
-// 다크 버튼 (등록)
-const DarkButton = styled.button`
-  width: 130px;
-  height: 32px;
-  padding: 7.69px 10.25px;
-  background: #010048;
-  overflow: hidden;
-  border-radius: 4px;
+// 확인 버튼 - 원래 스타일로 돌려놓음 (보라색 배경, 흰색 텍스트)
+const ConfirmButton = styled(Button)`
+  background-color: #3a00e5;
+  color: white;
   border: none;
-  justify-content: center;
-  align-items: center;
-  gap: 6.4px;
-  display: flex;
-  cursor: pointer;
 
   &:hover {
-    background: #01002e;
+    background-color: #2e00b8;
   }
-`;
-
-// 모달 제목 컨테이너
-const ModalTitle = styled.div`
-  margin-bottom: 16px;
-  text-align: center;
-`;
-
-// 모달 내용 컨테이너
-const ModalContent = styled.div`
-  margin-bottom: 24px;
-  text-align: center;
 `;
 
 // 모달 프롭스 정의
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title?: ReactNode;
-  content: ReactNode;
+  content: React.ReactNode;
   cancelText?: string;
   confirmText?: string;
   onCancel?: () => void;
   onConfirm?: () => void;
 }
 
-/**
- * 재사용 가능한 모달 컴포넌트
- */
 const Modal: React.FC<ModalProps> = ({
   isOpen,
   onClose,
-  title,
   content,
   cancelText = '취소',
   confirmText = '확인',
   onCancel,
   onConfirm,
 }) => {
-  if (!isOpen) return null;
-
-  // 배경 클릭 시 모달 닫기
+  // 외부 클릭 핸들러 (모달 외부 클릭 시 닫기)
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
 
-  // 취소 버튼 클릭 핸들러
+  // 취소 버튼 핸들러
   const handleCancel = () => {
-    if (onCancel) onCancel();
-    onClose();
+    if (onCancel) {
+      onCancel();
+    } else {
+      onClose();
+    }
   };
 
-  // 확인 버튼 클릭 핸들러
+  // 확인 버튼 핸들러
   const handleConfirm = () => {
-    if (onConfirm) onConfirm();
-    onClose();
+    if (onConfirm) {
+      onConfirm();
+    } else {
+      onClose();
+    }
   };
 
   return (
-    <ModalOverlay onClick={handleOverlayClick}>
+    <ModalOverlay isOpen={isOpen} onClick={handleOverlayClick}>
       <ModalContainer>
-        {title && <ModalTitle>{title}</ModalTitle>}
         <ModalContent>{content}</ModalContent>
         <ButtonContainer>
-          <LightButton onClick={handleCancel}>
-            <SecondaryGrayText>{cancelText}</SecondaryGrayText>
-          </LightButton>
-          <DarkButton onClick={handleConfirm}>
-            <PrimaryText>{confirmText}</PrimaryText>
-          </DarkButton>
+          <CancelButton onClick={handleCancel}>{cancelText}</CancelButton>
+          <ConfirmButton onClick={handleConfirm}>{confirmText}</ConfirmButton>
         </ButtonContainer>
       </ModalContainer>
     </ModalOverlay>

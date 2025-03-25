@@ -5,7 +5,8 @@ import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
-import { useAuth, UserRole } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
+import { logout } from '../../utils/authUtils';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -23,18 +24,19 @@ const THEME = {
 
 // 푸터 컨테이너 추가
 const FooterContainer = styled.div`
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 5px;
+  width: 100%;
+  max-width: 375px;
+  margin: 0 auto;
+  position: relative;
+  padding: 0 20px;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 20px;
 `;
 
 // 푸터 텍스트 스타일 수정
-const FooterText = styled.div<{ left?: number }>`
+const FooterText = styled.div`
   color: #666;
   font-size: 12px;
   font-family: 'Noto Sans KR';
@@ -120,41 +122,38 @@ const ChevronIcon = styled.div`
 
 // 메뉴 아이템 래퍼 (클릭 가능한 영역)
 const MenuItemWrapper = styled.div`
-  position: relative;
-  width: 346px;
+  width: 100%;
   height: 50px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: relative;
 `;
 
-const Divider = styled.div<{ top: number }>`
-  width: 346px;
-  height: 0;
-  position: absolute;
-  left: 11px;
-  top: ${props => props.top}px;
-  outline: 1px ${THEME.borderColor} solid;
-  outline-offset: -0.5px;
+const Divider = styled.div`
+  width: 100%;
+  height: 1px;
+  background-color: ${THEME.borderColor};
+  margin: 5px 0;
 `;
 
 const ProfileCard = styled.div`
-  width: 348px;
+  width: 100%;
+  max-width: 348px;
   height: 96px;
-  position: absolute;
-  left: 13px;
-  top: 104px;
   background: ${THEME.lightBackground};
   border-radius: 10px;
+  position: relative;
+  margin: 20px auto;
 `;
 
 const ProfileImageContainer = styled.div`
   width: 65px;
   height: 62px;
   position: absolute;
-  left: 26px;
-  top: 120px;
+  left: 15px;
+  top: 17px;
   background: ${THEME.white};
   border-radius: 9999px;
 `;
@@ -163,15 +162,16 @@ const ProfileImage = styled.img`
   width: 58px;
   height: 59px;
   position: absolute;
-  left: 31px;
-  top: 118px;
+  left: 3px;
+  top: 1px;
   box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+  border-radius: 50%;
 `;
 
 const UserName = styled.div`
   position: absolute;
-  left: 108px;
-  top: 130px;
+  left: 90px;
+  top: 30px;
   color: black;
   font-size: 15px;
   font-family: 'Noto Sans KR';
@@ -182,40 +182,39 @@ const UserName = styled.div`
 
 const ProfileDivider = styled.div`
   width: 219px;
-  height: 0;
+  height: 1px;
   position: absolute;
-  left: 108px;
-  top: 152px;
-  outline: 1px #f7f7f7 solid;
-  outline-offset: -0.5px;
+  left: 90px;
+  top: 52px;
+  background-color: #f7f7f7;
 `;
 
-const BadgeContainer = styled.div<{ left: number }>`
+const BadgeContainer = styled.div`
   width: 32px;
   height: 17px;
   position: absolute;
-  left: ${props => props.left}px;
-  top: 158px;
+  left: 90px;
+  top: 60px;
   background: ${THEME.darkBlue};
   border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
-const BadgeText = styled.div<{ left: number }>`
-  position: absolute;
-  left: ${props => props.left}px;
-  top: 161px;
+const BadgeText = styled.div`
   color: ${THEME.white};
   font-size: 9px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
   letter-spacing: 0.01px;
-  word-wrap: break-word;
+  text-align: center;
 `;
 
 const HelperText = styled.div`
   position: absolute;
-  left: 109px;
-  top: 120px;
+  left: 90px;
+  top: 15px;
   color: ${THEME.accentRed};
   font-size: 8px;
   font-family: 'Noto Sans KR';
@@ -224,34 +223,39 @@ const HelperText = styled.div`
   word-wrap: break-word;
 `;
 
-const ActionIcon = styled.div<{ left: number; color: string }>`
+const ActionIconsContainer = styled.div`
+  position: absolute;
+  right: 15px;
+  top: 30px;
+  display: flex;
+  gap: 10px;
+`;
+
+const ActionIcon = styled.div<{ color: string }>`
   width: 21px;
   height: 21px;
-  position: absolute;
-  left: ${props => props.left}px;
-  top: 126px;
-
-  & > div {
-    width: 14.62px;
-    height: 12.29px;
-    left: 3.5px;
-    top: 4.38px;
-    position: absolute;
-    background: ${props => props.color};
-  }
+  background-color: ${props => props.color};
+  border-radius: 50%;
 `;
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 100%;
-  height: calc(100vh - 100px); /* 네비게이션 바 높이 제외 */
-  position: relative;
+  max-width: 375px;
+  min-height: calc(100vh - 120px);
   background: white;
-  overflow-y: auto;
-  overflow-x: auto;
-  padding-bottom: 40px;
-  padding-top: 10px;
-  margin-top: -70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  margin: 0 auto;
+`;
+
+// 메뉴 섹션 컨테이너
+const MenuSection = styled.div`
+  width: 100%;
+  max-width: 346px;
+  margin: 80px auto 20px;
 `;
 
 // 메인 컴포넌트
@@ -270,6 +274,7 @@ const MyPage: React.FC = () => {
   // 모달 상태 관리
   const [isKeeperModalOpen, setIsKeeperModalOpen] = useState(false);
   const [isMembershipModalOpen, setIsMembershipModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // 토스트 메시지 상태 관리
   const [toastMessage, setToastMessage] = useState('');
@@ -322,24 +327,21 @@ const MyPage: React.FC = () => {
     window.open('https://www.notion.so', '_blank');
   };
 
-  // 로그아웃 핸들러
-  const handleLogout = () => {
-    // 로그아웃 처리
-    showToast('로그아웃 되었습니다');
+  // 로그아웃 모달 열기
+  const openLogoutModal = () => {
+    setIsLogoutModalOpen(true);
+  };
 
-    // 실제 로그아웃 로직 (주석처리)
-    /*
-    // 로컬 스토리지에서 토큰 제거
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    
-    // 상태 초기화 로직이 있다면 여기에 추가
-    
-    // 로그인 페이지로 이동
-    setTimeout(() => {
-      navigate('/login');
-    }, 1000);
-    */
+  // 로그아웃 처리 함수
+  const handleLogout = () => {
+    // 로그아웃 함수 호출 (authUtils에서 가져온 함수)
+    logout();
+
+    // 모달 닫기
+    setIsLogoutModalOpen(false);
+
+    // 로그인 페이지로 즉시 이동
+    navigate('/login');
   };
 
   // 회원 탈퇴 모달 열기
@@ -353,6 +355,7 @@ const MyPage: React.FC = () => {
     // 실제 구현 시에는 API 호출 및 정보 검증 로직 추가
     navigate('/keeper/registration');
   };
+
   // 보관인 등록 취소 처리
   const handleKeeperCancel = () => {
     setIsKeeperModalOpen(false);
@@ -364,21 +367,25 @@ const MyPage: React.FC = () => {
     /*
     // API 호출로 회원 탈퇴 처리
     // 성공 시 로컬 스토리지 정보 제거 및 로그인 페이지로 이동
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
     */
+
+    // 로그아웃 처리
+    logout();
 
     showToast('회원 탈퇴가 완료되었습니다');
 
-    // 로그인 페이지로 이동 (실제로는 API 호출 성공 후 이동)
-    setTimeout(() => {
-      navigate('/login');
-    }, 1000);
+    // 로그인 페이지로 이동
+    navigate('/login');
   };
 
   // 회원 탈퇴 취소 처리
   const handleMembershipCancel = () => {
     setIsMembershipModalOpen(false);
+  };
+
+  // 로그아웃 취소 처리
+  const handleLogoutCancel = () => {
+    setIsLogoutModalOpen(false);
   };
 
   // 모달 내용 컴포넌트 - 보관인 등록
@@ -401,11 +408,19 @@ const MyPage: React.FC = () => {
     </>
   );
 
+  // 모달 내용 컴포넌트 - 로그아웃
+  const logoutContent = (
+    <>
+      <HighlightText>로그아웃</HighlightText>
+      <GrayText>을 하시겠습니까?</GrayText>
+      <div style={{ fontSize: '13px', color: '#909090', marginTop: '10px' }}>
+        로그아웃 하시면 서비스를 이용할 수 없습니다.
+      </div>
+    </>
+  );
+
   return (
     <Container>
-      {/* 페이지 헤더 */}
-      <Header title="마이페이지" />
-
       {/* 토스트 메시지 */}
       <Toast
         message={toastMessage}
@@ -434,54 +449,65 @@ const MyPage: React.FC = () => {
         onCancel={handleMembershipCancel}
         onConfirm={handleMembershipConfirm}
       />
+
+      {/* 로그아웃 모달 */}
+      <Modal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        content={logoutContent}
+        cancelText="취소"
+        confirmText="로그아웃"
+        onCancel={handleLogoutCancel}
+        onConfirm={handleLogout}
+      />
+
       {/* 프로필 카드 */}
-      <ProfileCard />
-      <ProfileImageContainer />
-      <ProfileImage src="https://placehold.co/58x59" />
-      <UserName>{USER_STATE.userName}</UserName>
-      <ProfileDivider />
-      <HelperText>헬퍼텍스트입니다</HelperText>
-      {/* 배지 영역 */}
-      <BadgeContainer left={107} />
-      <BadgeText left={111}>의뢰인</BadgeText>
+      <ProfileCard>
+        <ProfileImageContainer>
+          <ProfileImage src="https://placehold.co/58x59" />
+        </ProfileImageContainer>
+        <HelperText>헬퍼텍스트입니다</HelperText>
+        <UserName>{USER_STATE.userName}</UserName>
+        <ProfileDivider />
 
-      {USER_STATE.isKeeper && (
-        <>
-          <BadgeContainer left={143} />
-          <BadgeText left={147}>보관인</BadgeText>
-        </>
-      )}
+        <BadgeContainer>
+          <BadgeText>의뢰인</BadgeText>
+        </BadgeContainer>
 
-      {/* 액션 아이콘 */}
-      <ActionIcon left={223} color={THEME.accentGreen}>
-        <div style={{ width: 14.62, height: 12.29, left: 3.5, top: 4.38, position: 'absolute' }} />
-      </ActionIcon>
-      <ActionIcon left={248} color={THEME.accentRed}>
-        <div style={{ width: 14.44, height: 14.44, left: 3.5, top: 3.5, position: 'absolute' }} />
-      </ActionIcon>
-      {/* 메뉴 항목 */}
-      <Divider top={240} />
-      <div style={{ position: 'absolute', left: '11px', top: '245px', width: '346px' }}>
+        {USER_STATE.isKeeper && (
+          <BadgeContainer style={{ left: '130px' }}>
+            <BadgeText>보관인</BadgeText>
+          </BadgeContainer>
+        )}
+
+        <ActionIconsContainer>
+          <ActionIcon color={THEME.accentGreen} />
+          <ActionIcon color={THEME.accentRed} />
+        </ActionIconsContainer>
+      </ProfileCard>
+
+      {/* 메뉴 섹션 */}
+      <MenuSection>
+        <Divider />
         <MenuItemWrapper onClick={moveToMyTradePage}>
           <MenuItem>내 거래 내역 보기</MenuItem>
           <ChevronIcon />
         </MenuItemWrapper>
-      </div>
-      <Divider top={300} />
-      <div style={{ position: 'absolute', left: '11px', top: '305px', width: '346px' }}>
+
+        <Divider />
         <MenuItemWrapper onClick={handleKeeperRegistration}>
           <MenuItem>보관인 등록</MenuItem>
           <ChevronIcon />
         </MenuItemWrapper>
-      </div>
-      <Divider top={360} />
-      <div style={{ position: 'absolute', left: '11px', top: '365px', width: '346px' }}>
+
+        <Divider />
         <MenuItemWrapper onClick={moveToMyPlacePage}>
           <MenuItem>내 보관소 조회</MenuItem>
           <ChevronIcon />
         </MenuItemWrapper>
-      </div>
-      <Divider top={420} />
+
+        <Divider />
+      </MenuSection>
 
       {/* 푸터 영역 */}
       <FooterContainer>
@@ -489,23 +515,19 @@ const MyPage: React.FC = () => {
         <MenuLinksContainer>
           <FooterText onClick={moveToPrivacyPolicy}>개인정보 약관</FooterText>
           <Separator>|</Separator>
-          <FooterText onClick={handleLogout}>로그아웃</FooterText>
+          <FooterText onClick={openLogoutModal}>로그아웃</FooterText>
           <Separator>|</Separator>
           <FooterText onClick={openMembershipModal}>회원탈퇴</FooterText>
         </MenuLinksContainer>
 
         {/* 사업자 정보 */}
         <BusinessInfoContainer>
-          <BusinessInfo>(주)마타조 | 대표이사: 홍길동</BusinessInfo>
-          <BusinessInfo>사업자등록번호: 123-45-67890</BusinessInfo>
-          <BusinessInfo>주소: 서울특별시 영등포구 여의도동 국제금융로 10</BusinessInfo>
-          <BusinessInfo>고객센터: 1588-0000 | 이메일: support@matoajo.com</BusinessInfo>
+          <BusinessInfo>(주)마타조 | 대표이사: 정유진</BusinessInfo>
+          <BusinessInfo>사업자등록번호: 604-11-41401</BusinessInfo>
+          <BusinessInfo>이메일: matajoktb@gmail.com</BusinessInfo>
           <BusinessInfo>© 2025 마타조(MATOAJO) Inc. All rights reserved.</BusinessInfo>
         </BusinessInfoContainer>
       </FooterContainer>
-
-      {/* 하단 네비게이션 */}
-      <BottomNavigation activeTab="마이페이지" />
     </Container>
   );
 };

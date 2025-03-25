@@ -17,22 +17,26 @@ const THEME = {
   white: '#FFFFFF',
 };
 
-// 컨테이너 컴포넌트
+// 컨테이너 컴포넌트 - 중앙 정렬 추가
 const Container = styled.div`
   width: 100%;
-  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
-  position: relative;
+  max-width: 375px;
+  min-height: calc(100vh - 166px);
   background: white;
   overflow-y: auto;
-  overflow-x: auto;
   padding-bottom: 40px;
   padding-top: 10px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 `;
 
-// 거래 아이템 카드
+// 거래 아이템 카드 - 중앙 정렬 수정
 const TradeItemCard = styled.div`
-  width: calc(100% - 48px);
-  margin: 10px 7px;
+  width: 90%;
+  max-width: 340px;
+  margin: 10px auto;
   padding: 16px;
   border-radius: 10px;
   border: 1px solid ${THEME.borderColor};
@@ -111,6 +115,30 @@ const ArrowIcon = styled.div`
   }
 `;
 
+// 토글 컴포넌트 - 중앙 정렬
+const ToggleContainer = styled.div`
+  width: 238px;
+  height: 40px;
+  position: relative;
+  background: rgba(56.26, 53.49, 252.61, 0.8);
+  overflow: hidden;
+  border-radius: 15px;
+  margin: 15px auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const ToggleText = styled.span`
+  color: white;
+  font-size: 14px;
+  font-family: 'Noto Sans KR';
+  font-weight: 700;
+  line-height: 18.84px;
+  letter-spacing: 0.28px;
+  word-wrap: break-word;
+`;
+
 interface MyPlaceProps {
   onBack?: () => void;
 }
@@ -173,11 +201,22 @@ const MyPlace: React.FC<MyPlaceProps> = ({ onBack }) => {
     console.log(`거래 아이템 ${id} 클릭됨, 상세 페이지로 이동`);
   };
 
+  // 토글 버튼 클릭 핸들러
+  const handleToggleClick = () => {
+    // 토글 기능 구현
+    console.log('토글 버튼 클릭됨');
+  };
+
   return (
     <>
       <Header title="내 보관소" showBackButton={true} onBack={handleBack} />
 
       <Container>
+        {/* 토글 버튼 */}
+        <ToggleContainer onClick={handleToggleClick}>
+          <ToggleText>보관소가 비공개 되었습니다.</ToggleText>
+        </ToggleContainer>
+
         {tradeItems.map(item => (
           <TradeItemCard key={item.id} onClick={() => handleTradeItemClick(item.id)}>
             <TradeImage>
