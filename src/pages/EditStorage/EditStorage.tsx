@@ -1,9 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
+import { DaumAddressData, autoConvertAddress } from '../../utils/KakaoToDaum';
+import { updateStorage, base64ToFile } from '../../api/storage';
+import { getStorageDetail } from '../../api/place';
+import { convertTagsToStrings } from '../../services/TagMappingService';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -110,11 +115,11 @@ const RequiredMark = styled.span`
 `;
 
 // 입력 필드
-const InputField = styled.input`
+const InputField = styled.input<{ isError: boolean }>`
   width: 321px;
   height: 40px;
   border-radius: 15px;
-  border: 0.5px solid ${THEME.primary};
+  border: 0.5px solid ${props => (props.isError ? THEME.redText : THEME.primary)};
   padding: 0 15px;
   margin-bottom: 18px;
   font-size: 14px;
@@ -126,21 +131,22 @@ const InputField = styled.input`
 `;
 
 // 헬퍼 텍스트
-const HelperText = styled.div`
+const HelperText = styled.div<{ visible: boolean }>`
   color: ${THEME.redText};
   font-size: 12px;
   font-family: 'Noto Sans KR';
   font-weight: 350;
   letter-spacing: 0.01px;
   margin-bottom: 3px;
+  display: ${props => (props.visible ? 'block' : 'none')};
 `;
 
 // 텍스트 영역
-const TextArea = styled.textarea`
+const TextArea = styled.textarea<{ isError: boolean }>`
   width: 321px;
   height: 171px;
   border-radius: 15px;
-  border: 0.5px solid ${THEME.primary};
+  border: 0.5px solid ${props => (props.isError ? THEME.redText : THEME.primary)};
   padding: 15px;
   margin-bottom: 18px;
   font-size: 14px;
@@ -409,20 +415,39 @@ const valuableOptions = ['귀중품'];
 
 // 보관소 데이터 타입 정의
 interface StorageData {
-  id: string;
-  address: string;
-  description: string;
-  details: string;
-  price: string;
+  postId: string;
+  postAddress: string;
+  postTitle: string;
+  postContent: string;
+  preferPrice: string;
+  postTags: string[];
+  postAddressData?: DaumAddressData;
   storageLocation: '실내' | '실외';
   selectedItemTypes: string[];
   selectedStorageTypes: string[];
   selectedDurationOptions: string[];
   isValuableSelected: boolean;
   mainImage: string | null;
-  subImages: string[];
+  detailImages: string[];
 }
 
+// API 응답 데이터 인터페이스
+interface StorageDetailResponse {
+  postId: string | number;
+  postImages?: string[];
+  postTitle: string;
+  postTags: string[];
+  preferPrice: number;
+  postContent: string;
+  postAddress: string;
+  nickname: string;
+  hiddenStatus: boolean;
+  // 지도 표시를 위한 필드 (API에서 제공되지 않는 경우 기본값 사용)
+  latitude?: number;
+  longitude?: number;
+}
+
+// 편집 단계 열거형
 enum EditStep {
   BASIC_INFO = 1,
   OPTIONS = 2,
@@ -433,41 +458,54 @@ const EditStorage: React.FC = () => {
   // 라우터 관련 훅
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams<{ id: string }>();
+
+  // 토스트 상태
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   // 현재 단계 상태
   const [currentStep, setCurrentStep] = useState<EditStep>(EditStep.BASIC_INFO);
 
+  // 로딩 상태
+  const [isLoading, setIsLoading] = useState(false);
+
   // 보관소 데이터 상태
   const [storageData, setStorageData] = useState<StorageData>({
-    id: '',
-    address: '',
-    description: '',
-    details: '',
-    price: '',
+    postId: '',
+    postAddress: '',
+    postTitle: '',
+    postContent: '',
+    preferPrice: '',
+    postTags: [],
     storageLocation: '실내',
     selectedItemTypes: [],
     selectedStorageTypes: [],
     selectedDurationOptions: [],
     isValuableSelected: false,
     mainImage: null,
-    subImages: [],
+    detailImages: [],
   });
 
   // 파일 입력 참조
   const mainImageInputRef = useRef<HTMLInputElement>(null);
-  const subImagesInputRef = useRef<HTMLInputElement>(null);
+  const detailImagesInputRef = useRef<HTMLInputElement>(null);
+
+  // 원본 파일 객체
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [detailImageFiles, setDetailImageFiles] = useState<File[]>([]);
 
   // 에러 상태
   const [errors, setErrors] = useState({
-    address: false,
-    description: false,
-    details: false,
-    price: false,
-    storageLocation: false,
-    itemTypes: false,
-    storageTypes: false,
-    durationOptions: false,
-    mainImage: false,
+    postAddress: '',
+    postTitle: '',
+    postContent: '',
+    preferPrice: '',
+    storageLocation: '',
+    itemTypes: '',
+    storageTypes: '',
+    durationOptions: '',
+    mainImage: '',
   });
 
   // 모달 상태 관리
@@ -477,76 +515,128 @@ const EditStorage: React.FC = () => {
   const DESCRIPTION_MAX_LENGTH = 15;
   const DETAILS_MAX_LENGTH = 500;
 
-  // 더미 데이터 로드 및 초기 데이터 설정 (실제로는 API 호출)
+  // 토스트 메시지 표시 함수
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 3000);
+  };
+
+  // 보관소 상세 정보 조회 (API 호출)
   useEffect(() => {
-    // 여기서는 StorageDetail에서 데이터를 전달받았다고 가정합니다
-    // 실제로는 location.state를 사용하거나 API 호출을 통해 데이터를 가져옵니다
-    const dummyData: StorageData = {
-      id: '123',
-      address: '제주특별자치도 제주시 월성로',
-      description: '제주시청 근처 큰 방 입니다',
-      details:
-        '첫째가 독립해서 공간이 남네요. 잡화 보관해 드립니다. 근처 거주하시는 분 보관 가능합니다. 장기간 등록시 할인해드려요~^^ 냄새나는 물건은 받지 않겠습니다',
-      price: '10000',
-      storageLocation: '실내',
-      selectedItemTypes: ['의류', '전자기기'],
-      selectedStorageTypes: ['상온보관'],
-      selectedDurationOptions: ['한달 이내'],
-      isValuableSelected: false,
-      mainImage: 'https://placehold.co/400x300',
-      subImages: ['https://placehold.co/200x150', 'https://placehold.co/200x150'],
+    const fetchStorageDetail = async () => {
+      if (!id) return;
+
+      setIsLoading(true);
+      try {
+        const response = await getStorageDetail(id);
+        if (response.data.success) {
+          const detail: StorageDetailResponse = response.data.data;
+
+          // 태그에서 보관 위치, 물건 유형, 보관 방식, 보관 기간, 귀중품 유무 추출
+          const storageLocation = detail.postTags.includes('실내') ? '실내' : '실외';
+          const selectedItemTypes = itemTypes.filter(type => detail.postTags.includes(type));
+          const selectedStorageTypes = storageTypes.filter(type => detail.postTags.includes(type));
+          const selectedDurationOptions = durationOptions.filter(duration =>
+            detail.postTags.includes(duration),
+          );
+          const isValuableSelected = detail.postTags.includes('귀중품');
+
+          // 데이터 설정
+          setStorageData({
+            postId: detail.postId.toString(),
+            postAddress: detail.postAddress,
+            postTitle: detail.postTitle,
+            postContent: detail.postContent,
+            preferPrice: detail.preferPrice.toString(),
+            postTags: detail.postTags,
+            storageLocation,
+            selectedItemTypes,
+            selectedStorageTypes,
+            selectedDurationOptions,
+            isValuableSelected,
+            mainImage:
+              detail.postImages && detail.postImages.length > 0 ? detail.postImages[0] : null,
+            detailImages:
+              detail.postImages && detail.postImages.length > 1 ? detail.postImages.slice(1) : [],
+          });
+        } else {
+          showToast('보관소 정보를 가져오는데 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('보관소 상세 정보 조회 오류:', error);
+        showToast('보관소 정보를 가져오는데 오류가 발생했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    setStorageData(dummyData);
-  }, []);
+    fetchStorageDetail();
+  }, [id]);
 
   // 다음 단계로 이동하는 함수
   const goToNextStep = () => {
     switch (currentStep) {
       case EditStep.BASIC_INFO: {
-        const step1Errors = {
-          address: !storageData.address.trim(),
-          description: !storageData.description.trim(),
-          details: !storageData.details.trim(),
-          price: !storageData.price || isNaN(Number(storageData.price)),
+        const newErrors = {
+          postAddress: !storageData.postAddress.trim() ? '주소를 입력해주세요.' : '',
+          postTitle: !storageData.postTitle.trim() ? '공간 한줄 소개를 입력해주세요.' : '',
+          postContent: !storageData.postContent.trim() ? '내용을 입력해주세요.' : '',
+          preferPrice:
+            !storageData.preferPrice || isNaN(Number(storageData.preferPrice))
+              ? '유효한 가격을 입력해주세요.'
+              : '',
         };
 
-        setErrors(prev => ({ ...prev, ...step1Errors }));
+        setErrors(prev => ({ ...prev, ...newErrors }));
 
         // 에러가 없으면 다음 단계로
-        if (!Object.values(step1Errors).some(error => error)) {
+        if (!Object.values(newErrors).some(error => error)) {
           setCurrentStep(EditStep.OPTIONS);
+        } else {
+          showToast('필수 입력 항목을 확인해주세요.');
         }
         break;
       }
 
       case EditStep.OPTIONS: {
-        const step2Errors = {
-          storageLocation: !storageData.storageLocation,
-          itemTypes: storageData.selectedItemTypes.length === 0,
-          storageTypes: storageData.selectedStorageTypes.length === 0,
-          durationOptions: storageData.selectedDurationOptions.length === 0,
+        const newErrors = {
+          storageLocation: !storageData.storageLocation ? '보관 위치를 선택해주세요.' : '',
+          itemTypes:
+            storageData.selectedItemTypes.length === 0 ? '물건 유형을 하나 이상 선택해주세요.' : '',
+          storageTypes:
+            storageData.selectedStorageTypes.length === 0
+              ? '보관 방식을 하나 이상 선택해주세요.'
+              : '',
+          durationOptions:
+            storageData.selectedDurationOptions.length === 0
+              ? '보관 기간을 하나 이상 선택해주세요.'
+              : '',
         };
 
-        setErrors(prev => ({ ...prev, ...step2Errors }));
+        setErrors(prev => ({ ...prev, ...newErrors }));
 
         // 에러가 없으면 다음 단계로
-        if (!Object.values(step2Errors).some(error => error)) {
+        if (!Object.values(newErrors).some(error => error)) {
           setCurrentStep(EditStep.IMAGES);
+        } else {
+          showToast('필수 항목을 선택해주세요.');
         }
         break;
       }
 
       case EditStep.IMAGES: {
-        const step3Errors = {
-          mainImage: !storageData.mainImage,
+        const newErrors = {
+          mainImage: !storageData.mainImage ? '대표 이미지를 업로드해주세요.' : '',
         };
 
-        setErrors(prev => ({ ...prev, ...step3Errors }));
+        setErrors(prev => ({ ...prev, ...newErrors }));
 
         // 에러가 없으면 완료
-        if (!Object.values(step3Errors).some(error => error)) {
+        if (!Object.values(newErrors).some(error => error)) {
           setIsUpdateModalOpen(true);
+        } else {
+          showToast('대표 이미지를 업로드해주세요.');
         }
         break;
       }
@@ -558,35 +648,34 @@ const EditStorage: React.FC = () => {
     if (currentStep > EditStep.BASIC_INFO) {
       setCurrentStep(currentStep - 1);
     } else {
-      navigate(-1); // 첫 단계에서 뒤로가기는 보관소 상세 페이지로 이동
+      navigate(-1); // 첫 단계에서 뒤로가기는 이전 페이지로 이동
     }
+  };
+
+  // 주소 필드 클릭 핸들러
+  const handleAddressClick = () => {
+    navigate('/search-address', { state: { returnTo: `/edit-storage/${id}` } });
   };
 
   // 주소 변경 핸들러
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStorageData(prev => ({ ...prev, address: e.target.value }));
-    if (errors.address) {
-      setErrors(prev => ({ ...prev, address: false }));
-    }
+    setStorageData(prev => ({ ...prev, postAddress: e.target.value }));
+    setErrors(prev => ({ ...prev, postAddress: '' }));
   };
 
   // 설명 변경 핸들러
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.value.length <= DESCRIPTION_MAX_LENGTH) {
-      setStorageData(prev => ({ ...prev, description: e.target.value }));
-      if (errors.description) {
-        setErrors(prev => ({ ...prev, description: false }));
-      }
+      setStorageData(prev => ({ ...prev, postTitle: e.target.value }));
+      setErrors(prev => ({ ...prev, postTitle: '' }));
     }
   };
 
   // 상세 내용 변경 핸들러
   const handleDetailsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (e.target.value.length <= DETAILS_MAX_LENGTH) {
-      setStorageData(prev => ({ ...prev, details: e.target.value }));
-      if (errors.details) {
-        setErrors(prev => ({ ...prev, details: false }));
-      }
+      setStorageData(prev => ({ ...prev, postContent: e.target.value }));
+      setErrors(prev => ({ ...prev, postContent: '' }));
     }
   };
 
@@ -594,18 +683,14 @@ const EditStorage: React.FC = () => {
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // 숫자만 입력 가능하도록
     const onlyNums = e.target.value.replace(/[^0-9]/g, '');
-    setStorageData(prev => ({ ...prev, price: onlyNums }));
-    if (errors.price) {
-      setErrors(prev => ({ ...prev, price: false }));
-    }
+    setStorageData(prev => ({ ...prev, preferPrice: onlyNums }));
+    setErrors(prev => ({ ...prev, preferPrice: '' }));
   };
 
   // 위치 선택 핸들러
   const handleLocationSelect = (locationType: '실내' | '실외') => {
     setStorageData(prev => ({ ...prev, storageLocation: locationType }));
-    if (errors.storageLocation) {
-      setErrors(prev => ({ ...prev, storageLocation: false }));
-    }
+    setErrors(prev => ({ ...prev, storageLocation: '' }));
   };
 
   // 아이템 유형 토글 핸들러
@@ -616,9 +701,7 @@ const EditStorage: React.FC = () => {
         ? prev.selectedItemTypes.filter(type => type !== itemType)
         : [...prev.selectedItemTypes, itemType],
     }));
-    if (errors.itemTypes) {
-      setErrors(prev => ({ ...prev, itemTypes: false }));
-    }
+    setErrors(prev => ({ ...prev, itemTypes: '' }));
   };
 
   // 보관 방식 토글 핸들러
@@ -629,9 +712,7 @@ const EditStorage: React.FC = () => {
         ? prev.selectedStorageTypes.filter(type => type !== storageType)
         : [...prev.selectedStorageTypes, storageType],
     }));
-    if (errors.storageTypes) {
-      setErrors(prev => ({ ...prev, storageTypes: false }));
-    }
+    setErrors(prev => ({ ...prev, storageTypes: '' }));
   };
 
   // 보관 기간 토글 핸들러
@@ -642,9 +723,7 @@ const EditStorage: React.FC = () => {
         ? prev.selectedDurationOptions.filter(d => d !== duration)
         : [...prev.selectedDurationOptions, duration],
     }));
-    if (errors.durationOptions) {
-      setErrors(prev => ({ ...prev, durationOptions: false }));
-    }
+    setErrors(prev => ({ ...prev, durationOptions: '' }));
   };
 
   // 귀중품 토글 핸들러
@@ -663,9 +742,9 @@ const EditStorage: React.FC = () => {
   };
 
   // 서브 이미지 업로드 핸들러
-  const handleSubImagesUpload = () => {
-    if (subImagesInputRef.current) {
-      subImagesInputRef.current.click();
+  const handleDetailImagesUpload = () => {
+    if (detailImagesInputRef.current) {
+      detailImagesInputRef.current.click();
     }
   };
 
@@ -673,27 +752,31 @@ const EditStorage: React.FC = () => {
   const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // 원본 파일 저장
+      setMainImageFile(file);
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setStorageData(prev => ({ ...prev, mainImage: reader.result as string }));
-        if (errors.mainImage) {
-          setErrors(prev => ({ ...prev, mainImage: false }));
-        }
+        setErrors(prev => ({ ...prev, mainImage: '' }));
       };
       reader.readAsDataURL(file);
     }
   };
 
   // 서브 이미지 변경 핸들러
-  const handleSubImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDetailImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       // 최대 4개까지만 허용
-      const remainingSlots = 4 - storageData.subImages.length;
+      const remainingSlots = 4 - storageData.detailImages.length;
       const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
       if (filesToProcess.length > 0) {
-        const newImages: string[] = [];
+        // 원본 파일 저장
+        setDetailImageFiles(prev => [...prev, ...filesToProcess]);
+
+        const newImages = [...storageData.detailImages];
         let processed = 0;
 
         filesToProcess.forEach(file => {
@@ -705,7 +788,7 @@ const EditStorage: React.FC = () => {
             if (processed === filesToProcess.length) {
               setStorageData(prev => ({
                 ...prev,
-                subImages: [...prev.subImages, ...newImages],
+                detailImages: newImages,
               }));
             }
           };
@@ -718,19 +801,21 @@ const EditStorage: React.FC = () => {
   // 메인 이미지 삭제 핸들러
   const handleDeleteMainImage = () => {
     setStorageData(prev => ({ ...prev, mainImage: null }));
+    setMainImageFile(null);
     if (mainImageInputRef.current) {
       mainImageInputRef.current.value = '';
     }
   };
 
   // 서브 이미지 삭제 핸들러
-  const handleDeleteSubImage = (index: number) => {
+  const handleDeleteDetailImage = (index: number) => {
     setStorageData(prev => ({
       ...prev,
-      subImages: prev.subImages.filter((_, i) => i !== index),
+      detailImages: prev.detailImages.filter((_, i) => i !== index),
     }));
-    if (subImagesInputRef.current) {
-      subImagesInputRef.current.value = '';
+    setDetailImageFiles(prev => prev.filter((_, i) => i !== index));
+    if (detailImagesInputRef.current) {
+      detailImagesInputRef.current.value = '';
     }
   };
 
@@ -779,58 +864,76 @@ const EditStorage: React.FC = () => {
         {/* 단계 1: 기본 정보 */}
         {currentStep === EditStep.BASIC_INFO && (
           <FormContainer>
-            {/* 주소 입력 */}
+            {/* 주소 입력 - 읽기 전용 및 클릭 시 주소 검색 페이지로 이동 */}
             <InputLabel>
               주소를 입력해 주세요 <RequiredMark>*</RequiredMark>
             </InputLabel>
-            {errors.address && <HelperText>주소는 필수 입력 항목입니다.</HelperText>}
+            <HelperText visible={!!errors.postAddress}>
+              {errors.postAddress || '헬퍼 텍스트입니다.'}
+            </HelperText>
             <InputField
               type="text"
-              value={storageData.address}
+              name="postAddress"
+              value={storageData.postAddress}
               onChange={handleAddressChange}
               placeholder="주소를 입력해주세요"
+              isError={!!errors.postAddress}
+              readOnly={true} // 읽기 전용으로 설정
+              onClick={handleAddressClick} // 클릭 시 주소 검색 페이지로 이동
             />
 
             {/* 한줄 소개 */}
             <InputLabel>
               공간 한줄 소개 <RequiredMark>*</RequiredMark>
             </InputLabel>
-            {errors.description && <HelperText>한줄 소개는 필수 입력 항목입니다.</HelperText>}
+            <HelperText visible={!!errors.postTitle}>
+              {errors.postTitle || '헬퍼 텍스트입니다.'}
+            </HelperText>
             <InputField
               type="text"
-              value={storageData.description}
+              name="postTitle"
+              value={storageData.postTitle}
               onChange={handleDescriptionChange}
               placeholder="공간을 한줄로 작성해주세요 (최대 15글자)"
               maxLength={DESCRIPTION_MAX_LENGTH}
+              isError={!!errors.postTitle}
             />
 
             {/* 상세 내용 */}
             <InputLabel>
               내용을 입력해주세요 <RequiredMark>*</RequiredMark>
             </InputLabel>
-            {errors.details && <HelperText>상세 내용은 필수 입력 항목입니다.</HelperText>}
+            <HelperText visible={!!errors.postContent}>
+              {errors.postContent || '헬퍼 텍스트입니다.'}
+            </HelperText>
             <TextArea
-              value={storageData.details}
+              name="postContent"
+              value={storageData.postContent}
               onChange={handleDetailsChange}
               placeholder="장소에 대한 설명을 자세히 입력해주세요.
-          보관 장소 설명 (보관장소 크기, 환경)
-          유의사항 (보관기간, 보관 시 주의해야할 점)
-          보관이 안되는 품목 (ex. 귀중품, 가구)
-          기타 (자율적으로 하고 싶은말)
-          *최대 500글자까지 입력 가능합니다*"
+              보관 장소 설명 (보관장소 크기, 환경)
+              유의사항 (보관기간, 보관 시 주의해야할 점)
+              보관이 안되는 품목 (ex. 귀중품, 가구)
+              기타 (자율적으로 하고 싶은말)
+              *최대 500글자까지 입력 가능합니다*"
               maxLength={DETAILS_MAX_LENGTH}
+              isError={!!errors.postContent}
             />
 
             {/* 가격 입력 */}
             <InputLabel>
               희망 가격 입력 <RequiredMark>*</RequiredMark>
             </InputLabel>
-            {errors.price && <HelperText>가격은 필수 입력 항목입니다.</HelperText>}
+            <HelperText visible={!!errors.preferPrice}>
+              {errors.preferPrice || '헬퍼 텍스트입니다.'}
+            </HelperText>
             <InputField
               type="text"
-              value={storageData.price}
+              name="preferPrice"
+              value={storageData.preferPrice}
               onChange={handlePriceChange}
               placeholder="가격을 입력해주세요 (숫자만 입력해주세요)"
+              isError={!!errors.preferPrice}
             />
           </FormContainer>
         )}
@@ -840,8 +943,10 @@ const EditStorage: React.FC = () => {
           <>
             {/* 보관 위치 선택 */}
             <SectionTitle>보관 위치</SectionTitle>
-            {errors.storageLocation && (
-              <HelperText style={{ marginLeft: '25px' }}>보관 위치를 선택해주세요.</HelperText>
+            {!!errors.storageLocation && (
+              <HelperText visible={!!errors.storageLocation} style={{ marginLeft: '25px' }}>
+                {errors.storageLocation || '헬퍼 텍스트입니다.'}
+              </HelperText>
             )}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '14px' }}>
               <LocationOptionButton
@@ -866,9 +971,9 @@ const EditStorage: React.FC = () => {
 
             {/* 물건 유형 선택 */}
             <SectionTitle>물건 유형</SectionTitle>
-            {errors.itemTypes && (
-              <HelperText style={{ marginLeft: '25px' }}>
-                물건 유형을 하나 이상 선택해주세요.
+            {!!errors.itemTypes && (
+              <HelperText visible={!!errors.itemTypes} style={{ marginLeft: '25px' }}>
+                {errors.itemTypes || '헬퍼 텍스트입니다.'}
               </HelperText>
             )}
             <OptionGroupContainer>
@@ -885,9 +990,9 @@ const EditStorage: React.FC = () => {
 
             {/* 보관 방식 선택 */}
             <SectionTitle>보관 방식</SectionTitle>
-            {errors.storageTypes && (
-              <HelperText style={{ marginLeft: '25px' }}>
-                보관 방식을 하나 이상 선택해주세요.
+            {!!errors.storageTypes && (
+              <HelperText visible={!!errors.storageTypes} style={{ marginLeft: '25px' }}>
+                {errors.storageTypes || '헬퍼 텍스트입니다.'}
               </HelperText>
             )}
             <OptionGroupContainer>
@@ -904,9 +1009,9 @@ const EditStorage: React.FC = () => {
 
             {/* 보관 기간 선택 */}
             <SectionTitle>보관 기간</SectionTitle>
-            {errors.durationOptions && (
-              <HelperText style={{ marginLeft: '25px' }}>
-                보관 기간을 하나 이상 선택해주세요.
+            {!!errors.durationOptions && (
+              <HelperText visible={!!errors.durationOptions} style={{ marginLeft: '25px' }}>
+                {errors.durationOptions || '헬퍼 텍스트입니다.'}
               </HelperText>
             )}
             <OptionGroupContainer>
@@ -938,7 +1043,9 @@ const EditStorage: React.FC = () => {
             <InputLabel>
               대표이미지 <RequiredMark>*</RequiredMark>
             </InputLabel>
-            {errors.mainImage && <HelperText>대표 이미지를 업로드해주세요.</HelperText>}
+            <HelperText visible={!!errors.mainImage}>
+              {errors.mainImage || '헬퍼 텍스트입니다.'}
+            </HelperText>
 
             <MainImageUploadArea>
               {storageData.mainImage ? (
@@ -971,17 +1078,17 @@ const EditStorage: React.FC = () => {
             <InputLabel>이미지</InputLabel>
 
             <SubImageUploadArea>
-              {storageData.subImages.length > 0 ? (
+              {storageData.detailImages.length > 0 ? (
                 <SubImagesScrollContainer>
-                  {storageData.subImages.map((img, index) => (
+                  {storageData.detailImages.map((img, index) => (
                     <SubImageItem key={index}>
                       <SubImage src={img} alt={`추가 이미지 ${index + 1}`} />
-                      <DeleteImageButton onClick={() => handleDeleteSubImage(index)}>
+                      <DeleteImageButton onClick={() => handleDeleteDetailImage(index)}>
                         ×
                       </DeleteImageButton>
                     </SubImageItem>
                   ))}
-                  {storageData.subImages.length < 4 && (
+                  {storageData.detailImages.length < 4 && (
                     <SubImageItem
                       style={{
                         display: 'flex',
@@ -990,7 +1097,7 @@ const EditStorage: React.FC = () => {
                         alignItems: 'center',
                         background: THEME.lightGray,
                       }}
-                      onClick={handleSubImagesUpload}
+                      onClick={handleDetailImagesUpload}
                     >
                       <UploadGuideText>추가 이미지</UploadGuideText>
                       <div style={{ fontSize: '24px', marginTop: '10px' }}>+</div>
@@ -1004,7 +1111,7 @@ const EditStorage: React.FC = () => {
                     <br />
                     (선택사항)
                   </UploadGuideText>
-                  <UploadButton onClick={handleSubImagesUpload}>파일 업로드</UploadButton>
+                  <UploadButton onClick={handleDetailImagesUpload}>파일 업로드</UploadButton>
                 </>
               )}
             </SubImageUploadArea>
@@ -1012,8 +1119,8 @@ const EditStorage: React.FC = () => {
             {/* 숨겨진 파일 업로드 입력 필드 (다중 선택) */}
             <input
               type="file"
-              ref={subImagesInputRef}
-              onChange={handleSubImagesChange}
+              ref={detailImagesInputRef}
+              onChange={handleDetailImagesChange}
               accept="image/*"
               multiple
               style={{ display: 'none' }}

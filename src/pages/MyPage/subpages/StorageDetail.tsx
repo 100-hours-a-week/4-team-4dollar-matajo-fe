@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
+import { useParams, useNavigate } from 'react-router-dom';
 import Header, { HeaderDropdownOption } from '../../../components/layout/Header';
 import BottomNavigation from '../../../components/layout/BottomNavigation';
 import Modal from '../../../components/common/Modal';
 import KakaoMap from '../../../components/feature/map/KakaoMap';
+import { getStorageDetail, deleteStorage } from '../../../services/api/modules/place';
+import { transformStorageDetail } from '../../../utils/dataTransformers';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -19,7 +22,7 @@ const THEME = {
   white: '#FFFFFF',
 };
 
-// 모달관련 스타일 컴포넌트트
+// 모달관련 스타일 컴포넌트
 const GrayText = styled.span`
   color: #5b5a5d;
   font-size: 16px;
@@ -327,10 +330,20 @@ const ScrollToTopButton = styled.img`
   z-index: 99;
 `;
 
-// 이미지 데이터 타입 정의
-interface StorageImage {
-  id: number;
-  url: string;
+// 백엔드 API 응답 데이터 타입 정의
+interface StorageDetailData {
+  postId: string | number;
+  postImages?: string[];
+  postTitle: string;
+  postTags: string[];
+  preferPrice: number;
+  postContent: string;
+  postAddress: string;
+  nickname: string;
+  hiddenStatus: boolean;
+  // 지도 표시를 위한 필드 (API에서 제공되지 않는 경우 기본값 사용)
+  latitude?: number;
+  longitude?: number;
 }
 
 interface StorageDetailProps {
@@ -338,7 +351,15 @@ interface StorageDetailProps {
   onBack?: () => void;
 }
 
-const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
+const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => {
+  // URL에서 id 파라미터 가져오기
+  const { id: paramId } = useParams<{ id: string }>();
+  // React Router의 useNavigate 훅 사용
+  const navigate = useNavigate();
+
+  // props로 전달된 id가 있으면 사용하고, 없으면 URL 파라미터 사용
+  const id = propId || paramId;
+
   // 컨테이너 참조 생성
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -350,41 +371,45 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
   const [dragStartX, setDragStartX] = useState(0);
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  // 더미 이미지 데이터 및 API 로딩 상태
-  const [storageImages, setStorageImages] = useState<StorageImage[]>([]);
+  // API 응답 데이터 및 로딩 상태
+  const [storageDetail, setStorageDetail] = useState<StorageDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // API에서 보관소 이미지 로드 (실제 구현 시 실제 API 호출로 대체)
+  // API에서 보관소 상세 정보 로드
   useEffect(() => {
-    const fetchStorageImages = async () => {
+    const fetchStorageDetail = async () => {
+      if (!id) {
+        setError('보관소 ID가 제공되지 않았습니다.');
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
-        // 실제 API 호출 대신 더미 데이터 사용
-        // const response = await api.getStorageImages(id);
+        setError(null);
 
-        // 더미 데이터
-        const dummyImages = [
-          { id: 1, url: 'https://placehold.co/375x260?text=Living+Room' },
-          { id: 2, url: 'https://placehold.co/375x260?text=Kitchen' },
-          { id: 3, url: 'https://placehold.co/375x260?text=Bedroom' },
-          { id: 4, url: 'https://placehold.co/375x260?text=Storage+Space' },
-          { id: 5, url: 'https://placehold.co/375x260?text=Outside+View' },
-        ];
+        // 실제 API 호출
+        const response = await getStorageDetail(id);
 
-        // 실제 구현에서는 응답에서 이미지 배열을 추출
-        // const images = response.data.images;
-
-        setStorageImages(dummyImages);
-      } catch (error) {
-        console.error('보관소 이미지 로드 실패:', error);
-        // 오류 시 기본 이미지 설정
-        setStorageImages([{ id: 1, url: 'https://placehold.co/375x260?text=Default+Image' }]);
+        // API 응답 데이터 추출
+        if (response.data && response.data.success) {
+          // Transform the data from snake_case to camelCase
+          const transformedData = transformStorageDetail(response.data.data);
+          setStorageDetail(transformedData);
+        } else {
+          throw new Error('데이터를 불러오는 데 실패했습니다.');
+        }
+      } catch (err) {
+        console.error('보관소 상세 정보 로드 실패:', err);
+        setError('보관소 정보를 불러오는 데 실패했습니다.');
+        setStorageDetail(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchStorageImages();
+    fetchStorageDetail();
   }, [id]);
 
   const handleChatClick = () => {
@@ -409,10 +434,10 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
     setTouchEndX(e.touches[0].clientX);
 
     // 슬라이더가 있고 이미지가 2개 이상일 때만 실시간 드래그 효과 적용
-    if (sliderRef.current && storageImages.length > 1) {
+    if (sliderRef.current && (storageDetail?.postImages?.length ?? 0) > 1) {
       const dragDistance = e.touches[0].clientX - touchStartX;
       const slideWidth = sliderRef.current.offsetWidth;
-      const maxOffset = (storageImages.length - 1) * slideWidth;
+      const maxOffset = ((storageDetail?.postImages?.length ?? 1) - 1) * slideWidth;
 
       // 현재 위치에서의 드래그 오프셋 계산
       let newOffset = currentImageIndex * slideWidth - dragDistance;
@@ -445,7 +470,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
     }
 
     // 상태 업데이트 및 이미지 이동
-    if (distance > 0 && currentImageIndex < storageImages.length - 1) {
+    if (distance > 0 && currentImageIndex < (storageDetail?.postImages?.length || 0) - 1) {
       // 오른쪽에서 왼쪽으로 스와이프 (다음 이미지)
       const newIndex = currentImageIndex + 1;
       setCurrentImageIndex(newIndex);
@@ -491,10 +516,10 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
     setTouchEndX(e.clientX);
 
     // 슬라이더가 있고 이미지가 2개 이상일 때만 실시간 드래그 효과 적용
-    if (sliderRef.current && storageImages.length > 1) {
+    if (sliderRef.current && (storageDetail?.postImages?.length ?? 0) > 1) {
       const dragDistance = e.clientX - dragStartX;
       const slideWidth = sliderRef.current.offsetWidth;
-      const maxOffset = (storageImages.length - 1) * slideWidth;
+      const maxOffset = ((storageDetail?.postImages?.length ?? 1) - 1) * slideWidth;
 
       // 현재 위치에서의 드래그 오프셋 계산
       let newOffset = currentImageIndex * slideWidth - dragDistance;
@@ -530,7 +555,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
     }
 
     // 상태 업데이트 및 이미지 이동
-    if (distance > 0 && currentImageIndex < storageImages.length - 1) {
+    if (distance > 0 && currentImageIndex < (storageDetail?.postImages?.length || 0) - 1) {
       // 오른쪽에서 왼쪽으로 드래그 (다음 이미지)
       const newIndex = currentImageIndex + 1;
       setCurrentImageIndex(newIndex);
@@ -563,7 +588,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
 
   // 이미지 제어 함수
   const nextImage = () => {
-    if (currentImageIndex < storageImages.length - 1) {
+    if (currentImageIndex < (storageDetail?.postImages?.length || 0) - 1) {
       const newIndex = currentImageIndex + 1;
       setCurrentImageIndex(newIndex);
 
@@ -590,7 +615,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
 
   // 특정 인덱스로 이동
   const goToImage = (index: number) => {
-    if (index >= 0 && index < storageImages.length) {
+    if (index >= 0 && index < (storageDetail?.postImages?.length || 0)) {
       setCurrentImageIndex(index);
 
       // 슬라이더 애니메이션 적용
@@ -633,14 +658,44 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
   };
 
   // 게시글 삭제 확인 처리
-  const handleDeleteConfirm = () => {
-    console.log('게시글 삭제 처리');
-    // 여기에 게시글 삭제 관련 로직 추가
+  const handleDeleteConfirm = async () => {
+    try {
+      if (!id) return;
+
+      // 모달 닫기
+      setIsDeleteModalOpen(false);
+
+      // 로딩 표시
+      setIsLoading(true);
+
+      // API 호출로 보관소 삭제
+      const response = await deleteStorage(id);
+
+      console.log('보관소 삭제 완료:', response);
+
+      // 성공 시 보관소 목록으로 이동
+      navigate('/storage');
+    } catch (err) {
+      console.error('보관소 삭제 실패:', err);
+      setError('보관소 삭제에 실패했습니다. 다시 시도해주세요.');
+      setIsLoading(false);
+    }
   };
 
   // 게시글 삭제 취소 처리
   const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false);
     console.log('게시글 삭제 취소');
+  };
+
+  // 뒤로가기 처리 함수
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      // 보관소 목록으로 이동 (기본값)
+      navigate('/storage');
+    }
   };
 
   // 모달 내용 컴포넌트 - 게시글 삭제
@@ -658,7 +713,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
         title="보관소 상세 페이지"
         showBackButton={true}
         showOptionButton={true}
-        onBack={onBack}
+        onBack={handleBack}
         dropdownOptions={headerDropdownOptions}
       />
 
@@ -673,154 +728,190 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id, onBack }) => {
           onCancel={handleDeleteCancel}
           onConfirm={handleDeleteConfirm}
         />
-        <ContentContainer>
-          {/* 이미지 섹션 */}
-          <ImageContainer>
-            {isLoading ? (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  background: '#f0f0f0',
-                }}
-              >
-                <div>이미지 로딩 중...</div>
-              </div>
-            ) : storageImages.length === 0 ? (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  background: '#f0f0f0',
-                }}
-              >
-                <div>이미지가 없습니다</div>
-              </div>
-            ) : (
-              <>
-                <ImageSlider
-                  ref={sliderRef}
-                  currentIndex={currentImageIndex}
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
+
+        {isLoading ? (
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: '#f0f0f0',
+            }}
+          >
+            <div>데이터 로딩 중...</div>
+          </div>
+        ) : error ? (
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: '#f0f0f0',
+            }}
+          >
+            <div>{error}</div>
+          </div>
+        ) : storageDetail ? (
+          <ContentContainer>
+            {/* 이미지 섹션 */}
+            <ImageContainer>
+              {!storageDetail.postImages || storageDetail.postImages.length === 0 ? (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    background: '#f0f0f0',
+                  }}
                 >
-                  {storageImages.map((image, index) => (
-                    <ImageSlide key={image.id}>
-                      <SlideImage src={image.url} alt={`보관소 이미지 ${index + 1}`} />
-                    </ImageSlide>
-                  ))}
-                </ImageSlider>
-
-                {/* 이미지 인디케이터 - 이미지가 2개 이상일 때만 표시 */}
-                {storageImages.length > 1 && (
-                  <ImageIndicator>
-                    {storageImages.map((_, index) => (
-                      <Dot
-                        key={index}
-                        isActive={currentImageIndex === index}
-                        onClick={() => goToImage(index)}
-                      />
+                  <div>이미지가 없습니다</div>
+                </div>
+              ) : (
+                <>
+                  <ImageSlider
+                    ref={sliderRef}
+                    currentIndex={currentImageIndex}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  >
+                    {storageDetail.postImages.map((imageUrl, index) => (
+                      <ImageSlide key={index}>
+                        <SlideImage src={imageUrl} alt={`보관소 이미지 ${index + 1}`} />
+                      </ImageSlide>
                     ))}
-                  </ImageIndicator>
-                )}
-              </>
-            )}
-          </ImageContainer>
+                  </ImageSlider>
 
-          {/* 제목 및 정보 */}
-          <InfoSection>
-            <Title>제주시청 근처 큰 방 입니다</Title>
-            <TagsContainer>#실내 #냉장보관 #상온 #의류</TagsContainer>
+                  {/* 이미지 인디케이터 - 이미지가 2개 이상일 때만 표시 */}
+                  {storageDetail.postImages.length > 1 && (
+                    <ImageIndicator>
+                      {storageDetail.postImages.map((_, index) => (
+                        <Dot
+                          key={index}
+                          isActive={currentImageIndex === index}
+                          onClick={() => goToImage(index)}
+                        />
+                      ))}
+                    </ImageIndicator>
+                  )}
+                </>
+              )}
+            </ImageContainer>
 
-            <div
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
-            >
-              <PriceContainer>
-                <PriceText>10,000원</PriceText>
-                <UnitText>/일</UnitText>
-              </PriceContainer>
+            {/* 제목 및 정보 */}
+            <InfoSection>
+              <Title>{storageDetail.postTitle}</Title>
+              <TagsContainer>
+                {storageDetail.postTags.map((tag, index) => (
+                  <span key={index}>#{tag} </span>
+                ))}
+              </TagsContainer>
 
-              {/* 채팅 버튼 */}
-              <ChatButton onClick={handleChatClick}>
-                <ChatButtonText>채팅하기</ChatButtonText>
-              </ChatButton>
-            </div>
-          </InfoSection>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <PriceContainer>
+                  <PriceText>{storageDetail.preferPrice.toLocaleString()}원</PriceText>
+                  <UnitText>/일</UnitText>
+                </PriceContainer>
 
-          {/* 구분선 */}
-          <Divider />
-
-          {/* 상세 설명 */}
-          <DescriptionContainer>
-            첫째가 독립해서 공간이 남네요. <br />
-            잡화 보관해 드립니다. <br />
-            근처 거주하시는 분 보관 가능합니다.
-            <br />
-            <br />
-            장기간 등록시 할인해드려요~^^
-            <br />
-            냄새나는 물건은 받지 않겠습니다
-          </DescriptionContainer>
-
-          {/* 구분선 */}
-          <Divider />
-
-          {/* 위치 정보 */}
-          <LocationSection>
-            <LocationInfo>
-              <LocationIcon src="https://placehold.co/20x20" alt="위치 아이콘" />
-              <LocationLabel>위치</LocationLabel>
-              <LocationText>제주특별자치도 제주시 월성로</LocationText>
-            </LocationInfo>
+                {/* 채팅 버튼 */}
+                <ChatButton onClick={handleChatClick}>
+                  <ChatButtonText>채팅하기</ChatButtonText>
+                </ChatButton>
+              </div>
+            </InfoSection>
 
             {/* 구분선 */}
             <Divider />
 
-            {/* 지도 - 기존 MapImage 대신 KakaoMap 사용 */}
-            <MapContainer>
-              <KakaoMap
-                center={{ lat: 37.5198, lng: 126.9402 }} // 여의도 63빌딩 좌표 (더미 데이터)
-                level={3} // 상세 페이지에서는 레벨 3으로 지정
-                storageMarkers={[
-                  {
-                    id: '1',
-                    name: '제주시청 근처 큰 방',
-                    latitude: 37.5198,
-                    longitude: 126.9402,
-                    address: '제주특별자치도 제주시 월성로',
-                  },
-                ]}
-                detailMode={true} // 상세 페이지 모드 활성화
-                draggable={false} // 드래그 비활성화
-                zoomable={false} // 줌 비활성화
-              />
-            </MapContainer>
-          </LocationSection>
+            {/* 상세 설명 */}
+            <DescriptionContainer>
+              {storageDetail.postContent.split('\n').map((line, index) => (
+                <React.Fragment key={index}>
+                  {line}
+                  <br />
+                </React.Fragment>
+              ))}
+            </DescriptionContainer>
 
-          {/* 보관인 정보 */}
-          <KeeperSection>
-            <KeeperCard>
-              <KeeperImageContainer>
-                <KeeperImage src="https://placehold.co/28x29" alt="보관인 프로필" />
-              </KeeperImageContainer>
-              <KeeperInfo>
-                <KeeperLabel>보관인</KeeperLabel>
-                <KeeperName>타조 89389</KeeperName>
-              </KeeperInfo>
-            </KeeperCard>
-          </KeeperSection>
-        </ContentContainer>
+            {/* 구분선 */}
+            <Divider />
+
+            {/* 위치 정보 */}
+            <LocationSection>
+              <LocationInfo>
+                <LocationIcon src="https://placehold.co/20x20" alt="위치 아이콘" />
+                <LocationLabel>위치</LocationLabel>
+                <LocationText>{storageDetail.postAddress || '위치 정보 없음'}</LocationText>
+              </LocationInfo>
+
+              {/* 구분선 */}
+              <Divider />
+
+              {/* 지도 */}
+              <MapContainer>
+                <KakaoMap
+                  center={{
+                    lat: storageDetail.latitude || 37.5665, // 기본값: 서울
+                    lng: storageDetail.longitude || 126.978,
+                  }}
+                  level={3}
+                  storageMarkers={[
+                    {
+                      id: storageDetail.postId.toString(),
+                      name: storageDetail.postTitle,
+                      latitude: storageDetail.latitude || 37.5665,
+                      longitude: storageDetail.longitude || 126.978,
+                      address: storageDetail.postAddress || '',
+                    },
+                  ]}
+                  detailMode={true}
+                  draggable={false}
+                  zoomable={false}
+                />
+              </MapContainer>
+            </LocationSection>
+
+            {/* 보관인 정보 */}
+            <KeeperSection>
+              <KeeperCard>
+                <KeeperImageContainer>
+                  <KeeperImage src="https://placehold.co/28x29" alt="보관인 프로필" />
+                </KeeperImageContainer>
+                <KeeperInfo>
+                  <KeeperLabel>보관인</KeeperLabel>
+                  <KeeperName>{storageDetail.nickname}</KeeperName>
+                </KeeperInfo>
+              </KeeperCard>
+            </KeeperSection>
+          </ContentContainer>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: '100%',
+            }}
+          >
+            <div>보관소 정보가 없습니다.</div>
+          </div>
+        )}
       </Container>
 
       {/* 스크롤 상단 이동 버튼 */}

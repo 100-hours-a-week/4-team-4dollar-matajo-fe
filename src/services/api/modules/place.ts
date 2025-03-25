@@ -188,3 +188,15 @@ export const getStorageDetail = async (id: string) => {
     throw error;
   }
 };
+
+// 보관소 삭제 함수
+export const deleteStorage = async (id: string) => {
+  try {
+    // API_PATHS.STORAGE.DELETE 엔드포인트 사용
+    const endpoint = API_PATHS.STORAGE.DELETE.replace(':postId', id);
+    return await client.delete(endpoint);
+  } catch (error) {
+    console.error('보관소 삭제 오류:', error);
+    throw error;
+  }
+};
