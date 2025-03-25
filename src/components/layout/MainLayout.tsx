@@ -15,7 +15,7 @@ const LayoutContainer = styled.div`
   position: relative;
 `;
 
-// MainContent 스타일
+// MainContent 스타일 - 중앙 정렬 개선
 const MainContent = styled.main`
   flex: 1;
   padding: 47px 0 60px 0; // 헤더(47px)와 네비게이션(60px) 높이만큼 패딩
@@ -24,22 +24,26 @@ const MainContent = styled.main`
   margin: 0 auto;
   overflow-y: auto; // 스크롤이 필요할 경우 MainContent 내부에서만 스크롤 되도록 함
   position: relative; // 위치 지정
+  display: flex;
+  flex-direction: column;
+  align-items: center; // 내용 중앙 정렬
 `;
 
 // 네비게이션 메뉴 매핑 - routes/index.tsx와 일치하도록 수정
 const tabPathMap = {
-  홈: '/',
-  보관소: '/storage', // '/storagelist'에서 '/storage'로 수정
-  채팅: '/chat/list', // '/chat'에서 '/chat/list'로 수정
+  홈: '/main', // '/'에서 '/main'으로 수정
+  보관소: '/storage',
+  채팅: '/chat/list',
   마이페이지: '/mypage',
 };
 
 // 경로에 따른 헤더 제목 매핑 - 실제 라우트와 일치하도록 수정
 const pathTitleMap: { [key: string]: string } = {
   '/': '홈',
-  '/storage': '보관소', // '/storagelist'에서 '/storage'로 수정
+  '/main': '홈', // '/main' 추가
+  '/storage': '보관소',
   '/storagedetail': '보관소 상세',
-  '/chat/list': '채팅', // '/chat'에서 '/chat/list'로 수정
+  '/chat/list': '채팅',
   '/chat': '채팅',
   '/mypage': '마이페이지',
   '/login': '로그인',
@@ -48,7 +52,7 @@ const pathTitleMap: { [key: string]: string } = {
   '/registration/step1': '회원가입 (1/3)',
   '/registration/step2': '회원가입 (2/3)',
   '/registration/step3': '회원가입 (3/3)',
-  '/editstorage': '보관소 등록', // 보관소 등록 페이지 추가
+  '/editstorage': '보관소 등록',
 };
 
 // 네비게이션이 표시되지 않는 경로 목록
@@ -96,7 +100,7 @@ const MainLayout: React.FC = () => {
     setShowNav(shouldShowNav);
 
     // 현재 경로에 해당하는 활성 탭 설정
-    if (path === '/') {
+    if (path === '/' || path === '/main') {
       setActiveTab('홈');
     } else if (path.startsWith('/storage') || path.startsWith('/storagedetail')) {
       setActiveTab('보관소');
@@ -126,7 +130,7 @@ const MainLayout: React.FC = () => {
     <LayoutContainer>
       <Header
         title={pageTitle}
-        showBackButton={location.pathname !== '/'}
+        showBackButton={location.pathname !== '/' && location.pathname !== '/main'}
         onBack={handleBack}
         showOptionButton={
           location.pathname.startsWith('/storagedetail/') || location.pathname === '/mytrade'

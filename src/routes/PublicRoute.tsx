@@ -1,7 +1,7 @@
 // src/routes/PublicRoute.tsx
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/auth';
 
 interface PublicRouteProps {
   // 리다이렉트 로직은 각 컴포넌트 내부에서 처리

@@ -1,25 +1,25 @@
 // routes/index.tsx
 import { RouteObject } from 'react-router-dom';
-import { UserRole } from '../contexts/AuthContext';
-
+import { UserRole } from '../contexts/auth';
+import MyPlace from '../pages/MyPage/subpages/MyPlacePage';
+import MyTrade from '../pages/MyPage/subpages/MyTradePage';
 // 페이지 컴포넌트 가져오기
 import HomePage from '../pages/Home';
 import LoginPage from '../pages/Login/index';
-import MyPage from '../pages/MyPage/MyPage';
-import MyPlace from '../pages/MyPlace/MyPlace';
-import MyTrade from '../pages/MyTrade/MyTrade';
+import MyPage from '../pages/MyPage';
 import StorageList from '../pages/StorageList/StorageList';
-import StorageDetail from '../pages/StorageDetail/StorageDetail';
-import KeeperRegistration from '../pages/Keeper/KeeperRegistration';
-import Registration1 from '../pages/Registration/Registration1';
-import Registration2 from '../pages/Registration/Registration2';
-import Registration3 from '../pages/Registration/Registration3';
-import SearchAddress from '../pages/Map/SearchAddress';
+import StorageDetail from '../pages/MyPage/subpages/StorageDetail';
+import KeeperRegistration from '../pages/MyPage/subpages/KeeperRegistration';
+import Registration1 from '../pages/MyPage/subpages/Registration/Registration1';
+import Registration2 from '../pages/MyPage/subpages/Registration/Registration2';
+import Registration3 from '../pages/MyPage/subpages/Registration/Registration3';
+import SearchAddress from '../pages/Home/SearchAddress';
 import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
 import EditStorage from '../pages/EditStorage/EditStorage';
 import NotFoundPage from '../pages/NotFound';
 import KakaoCallback from '../pages/Login/KakaoCallback';
+import MainRedirect from '../pages/Home/MainRedirect';
 
 // 레이아웃 컴포넌트
 import MainLayout from '../components/layout/MainLayout';
@@ -30,6 +30,11 @@ import PublicRoute from './PublicRoute';
 
 // 라우트 정의
 const routes: RouteObject[] = [
+  // 메인 리다이렉트 라우트
+  {
+    path: '/',
+    element: <MainRedirect />,
+  },
   // 공개 라우트 (로그인하지 않아도 접근 가능)
   {
     path: '/',
@@ -39,7 +44,7 @@ const routes: RouteObject[] = [
         path: 'login',
         element: <LoginPage />,
       },
-      // 카카오 로그인 콜백 라우트 - 하나만 유지하고 이것만 사용합니다
+      // 카카오 로그인 콜백 라우트
       {
         path: 'auth/kakao',
         element: <KakaoCallback />,
@@ -55,7 +60,7 @@ const routes: RouteObject[] = [
         path: '/',
         element: <MainLayout />,
         children: [
-          { index: true, element: <HomePage /> },
+          { path: 'main', element: <HomePage /> },
           { path: 'mypage', element: <MyPage /> },
           { path: 'mytrade', element: <MyTrade /> },
           { path: 'myplace', element: <MyPlace /> },

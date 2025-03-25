@@ -1,10 +1,8 @@
 // src/pages/Login/index.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import styled from 'styled-components';
 import { KAKAO_AUTH } from '../../constants/api';
-// 환경 변수에서 직접 가져올 수도 있음
-// const KAKAO_REST_API_KEY = process.env.REACT_APP_KAKAO_REST_API_KEY;
-// const KAKAO_REDIRECT_URI = process.env.REACT_APP_KAKAO_REDIRECT_URI;
+import { logout } from '../../utils/api/authUtils';
 
 // 스타일 컴포넌트들
 const PageContainer = styled.div`
@@ -109,6 +107,20 @@ const LogoImage = styled.div`
 `;
 
 const LoginPage: React.FC = () => {
+  // 로그인 페이지 마운트 시 로그아웃 처리
+  useEffect(() => {
+    // 로그아웃 함수 호출로 로컬 스토리지 정리
+    logout();
+
+    // 모든 쿠키 삭제
+    document.cookie.split(';').forEach(cookie => {
+      const name = cookie.split('=')[0].trim();
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    });
+
+    console.log('로그인 페이지 마운트: 로그아웃 및 쿠키 정리 완료');
+  }, []);
+
   // 카카오 로그인 처리 함수
   const handleKakaoLogin = () => {
     // 콘스탄트 파일에서 정의된 함수 사용

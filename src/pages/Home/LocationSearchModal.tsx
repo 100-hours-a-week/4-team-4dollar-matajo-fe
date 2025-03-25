@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { loadDongDataFromCSV, searchDongData } from '../../utils/csvUtils';
+import { loadDongDataFromCSV, searchDongData } from '../../utils/api/csvUtils';
 
 // CSV 유틸에서 가져온 타입과 충돌을 피하기 위한 별칭 사용
-import type { DongData as DongDataType } from '../../utils/csvUtils';
+import type { DongData as DongDataType } from '../../utils/api/csvUtils';
 
 // 모달 오버레이 - 화면 전체를 덮는 반투명 배경
 const ModalOverlay = styled.div`

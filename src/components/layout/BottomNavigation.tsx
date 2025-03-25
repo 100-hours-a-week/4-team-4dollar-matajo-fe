@@ -1,8 +1,9 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { isLoggedIn } from '../../utils/authUtils';
+// useAuth와 authUtils 임포트 수정
+import { useAuth } from '../../hooks/auth';
+import { isLoggedIn } from '../../utils/api/authUtils';
 
 // 테마 컬러 상수 정의
 const THEME = {

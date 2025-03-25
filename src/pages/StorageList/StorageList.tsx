@@ -3,8 +3,10 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
-import StorageFilterModal, { FilterOptions } from './StorageFilterModal';
-import { getStorageList, StorageItem as StorageItemType } from '../../api/place';
+import StorageFilterModal, {
+  FilterOptions,
+} from '../../components/feature/storage/StorageFilterModal';
+import { getStorageList, StorageItem as StorageItemType } from '../../services/api/modules/place';
 
 // 테마 컬러 상수 정의
 const THEME = {

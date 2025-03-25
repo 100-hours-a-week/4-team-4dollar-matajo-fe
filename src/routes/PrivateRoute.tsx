@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth, UserRole } from '../contexts/AuthContext';
+import { useAuth, UserRole } from '../contexts/auth';
 
 interface PrivateRouteProps {
   requiredRole?: UserRole; // 접근에 필요한 역할

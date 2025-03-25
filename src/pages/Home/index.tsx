@@ -1,16 +1,15 @@
+import { Place, DiscountItem, StorageItem } from '../../types/place';
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import MapBottomSheet from './MapBottomSheet';
-import KakaoMap from '../../components/map/KakaoMap';
-import { useAuth } from '../../hooks/useAuth';
-import { getNearbyPlaces, getDiscountItems, getRecentItems } from '../../api/place';
-import { DiscountItem, StorageItem, Place } from '../../api/place';
+import KakaoMap from '../../components/feature/map/KakaoMap';
+import { useAuth } from '../../hooks/auth';
+import { findDongCoordinates, loadDongDataFromCSV } from '../../utils/api/csvUtils';
 import LocationSearchModal from './LocationSearchModal';
-import { findDongCoordinates, loadDongDataFromCSV } from '../../utils/csvUtils';
-import type { DongData } from '../../utils/csvUtils';
+import type { DongData } from '../../utils/api/csvUtils';
 
 // 컨테이너 컴포넌트 - 전체 화면 크기로 설정
 const Container = styled.div`
