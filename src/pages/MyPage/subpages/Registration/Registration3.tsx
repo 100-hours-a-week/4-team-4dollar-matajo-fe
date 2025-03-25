@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Header from '../../components/layout/Header';
-import BottomNavigation from '../../components/layout/BottomNavigation';
-import Modal from '../../components/common/Modal';
-import Toast from '../../components/common/Toast';
-import { registerStorage, base64ToFile, StorageRegistrationRequest } from '../../api/storage';
-import { DaumAddressData } from '../../utils/KakaoToDaum';
+import Header from '../../../../components/layout/Header';
+import BottomNavigation from '../../../../components/layout/BottomNavigation';
+import Modal from '../../../../components/common/Modal';
+import Toast from '../../../../components/common/Toast';
+import {
+  registerStorage,
+  base64ToFile,
+  StorageRegistrationRequest,
+} from '../../../../services/api/modules/storage';
+import { DaumAddressData } from '../../../../utils/api/kakaoToDaum';
 
 const RegistrationContainer = styled.div`
   width: 100%;

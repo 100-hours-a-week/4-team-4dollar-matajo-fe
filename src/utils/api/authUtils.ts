@@ -1,5 +1,5 @@
 // src/utils/authUtils.ts
-import { LoginResponse } from '../api/auth';
+import { LoginResponse } from '../../services/api/modules/auth';
 
 // 로그인 데이터 인터페이스
 interface KakaoLoginData {

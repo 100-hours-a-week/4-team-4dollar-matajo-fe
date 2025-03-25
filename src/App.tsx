@@ -6,10 +6,10 @@ import HomePage from './pages/Home';
 import NotFoundPage from './pages/NotFound';
 import LoginPage from './pages/Login';
 import KakaoCallback from './pages/Login/KakaoCallback';
-import MyPage from './pages/MyPage/MyPage';
+import MyPage from './pages/MyPage';
 import ChatroomList from './pages/Chat/ChatroomList';
 import StorageList from './pages/StorageList/StorageList';
-import MainRedirect from './pages/MainRedirect';
+import MainRedirect from './pages/Home/MainRedirect';
 import { ROUTES } from './constants/routes';
 
 const App: React.FC = () => {

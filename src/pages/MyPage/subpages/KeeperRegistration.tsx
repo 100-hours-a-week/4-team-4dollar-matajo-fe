@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import Header from '../../components/layout/Header';
+import Header from '../../../components/layout/Header';
 
 // 테마 컬러 상수 정의
 const THEME = {

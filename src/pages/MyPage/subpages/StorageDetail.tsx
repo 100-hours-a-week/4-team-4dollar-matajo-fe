@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
-import Header, { HeaderDropdownOption } from '../../components/layout/Header';
-import BottomNavigation from '../../components/layout/BottomNavigation';
-import Modal from '../../components/common/Modal';
-import KakaoMap from '../../components/map/KakaoMap';
+import Header, { HeaderDropdownOption } from '../../../components/layout/Header';
+import BottomNavigation from '../../../components/layout/BottomNavigation';
+import Modal from '../../../components/common/Modal';
+import KakaoMap from '../../../components/feature/map/KakaoMap';
 
 // 테마 컬러 상수 정의
 const THEME = {

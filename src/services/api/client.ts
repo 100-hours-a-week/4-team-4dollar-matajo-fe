@@ -1,7 +1,7 @@
 // src/api/client.ts
 import axios from 'axios';
-import { getToken, logout } from '../utils/authUtils';
-import { API_BASE_URL } from '../constants/api';
+import { getToken, logout } from '../../utils/api/authUtils';
+import { API_BASE_URL } from '../../constants/api';
 
 // API_BASE_URL은 이제 constants/api.ts에서 가져옴
 

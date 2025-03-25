@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BACKEND_URL, API_PATHS } from '../constants/api';
+import { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
 
 // API 클라이언트 생성
 const apiClient = axios.create({

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import * as authApi from '../api/auth';
+import * as authApi from '../../services/api/modules/auth';
 
 // 사용자 역할 타입 정의
 export enum UserRole {

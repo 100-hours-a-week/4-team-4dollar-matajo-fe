@@ -1,8 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import Header from '../../components/layout/Header';
-import BottomNavigation from '../../components/layout/BottomNavigation';
+import Header from '../../../components/layout/Header';
+import BottomNavigation from '../../../components/layout/BottomNavigation';
 
 // 테마 컬러 상수 정의
 const THEME = {

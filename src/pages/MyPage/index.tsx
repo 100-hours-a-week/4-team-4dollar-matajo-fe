@@ -5,8 +5,8 @@ import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
-import { useAuth } from '../../hooks/useAuth';
-import { logout } from '../../utils/authUtils';
+import { useAuth } from '../../hooks/auth';
+import { logout } from '../../utils/api/authUtils';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {

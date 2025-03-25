@@ -1,6 +1,6 @@
 // src/api/auth.ts
-import client from './client';
-import { API_PATHS } from '../constants/api';
+import client from '../client';
+import { API_PATHS } from '../../../constants/api';
 import { redirect } from 'react-router-dom';
 
 // 로그인 응답 타입 정의

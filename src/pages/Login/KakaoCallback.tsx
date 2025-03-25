@@ -2,10 +2,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { kakaoLogin } from '../../api/auth';
-import { saveKakaoLoginData, logout } from '../../utils/authUtils';
-// KAKAO_AUTH 상수에서 리다이렉트 URI를 가져오므로 여기서는 별도로 선언하지 않음
-// 카카오 로그인 관련 상수 가져오기
+import { kakaoLogin } from '../../services/api/modules/auth';
+import { saveKakaoLoginData, logout } from '../../utils/api/authUtils';
 import { KAKAO_AUTH } from '../../constants/api';
 
 // 로딩 컨테이너
@@ -71,7 +69,7 @@ const KakaoCallback: React.FC = () => {
   const redirectToHome = () => {
     try {
       console.log('홈으로 리다이렉트 시도...');
-      navigate('/', {
+      navigate('/main', {
         replace: true,
         state: { showToast: true, message: '로그인에 성공하였습니다.' },
       });

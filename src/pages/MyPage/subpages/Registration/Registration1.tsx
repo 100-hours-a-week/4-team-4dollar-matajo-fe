@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import Header from '../../components/layout/Header';
-import BottomNavigation from '../../components/layout/BottomNavigation';
-import Modal from '../../components/common/Modal';
-import Toast from '../../components/common/Toast';
-import { DaumAddressData, autoConvertAddress } from '../../utils/KakaoToDaum';
+import Header from '../../../../components/layout/Header';
+import BottomNavigation from '../../../../components/layout/BottomNavigation';
+import Modal from '../../../../components/common/Modal';
+import Toast from '../../../../components/common/Toast';
+import { DaumAddressData, autoConvertAddress } from '../../../../utils/api/kakaoToDaum';
 
 // 테마 컬러 상수 정의
 const THEME = {

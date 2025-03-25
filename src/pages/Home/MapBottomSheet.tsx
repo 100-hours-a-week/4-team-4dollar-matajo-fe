@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../hooks/useAuth';
-import { DiscountItem, StorageItem } from '../../api/place';
+import { useAuth } from '../../hooks/auth';
+import { DiscountItem, StorageItem } from '../../services/api/modules/place';
 import Modal from '../../components/common/Modal';
 
 // 테마 컬러 상수 정의

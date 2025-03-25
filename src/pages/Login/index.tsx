@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import styled from 'styled-components';
 import { KAKAO_AUTH } from '../../constants/api';
-import { logout } from '../../utils/authUtils';
+import { logout } from '../../utils/api/authUtils';
 
 // 스타일 컴포넌트들
 const PageContainer = styled.div`

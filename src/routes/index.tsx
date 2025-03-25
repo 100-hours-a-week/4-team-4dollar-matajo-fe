@@ -1,26 +1,25 @@
 // routes/index.tsx
 import { RouteObject } from 'react-router-dom';
-import { UserRole } from '../contexts/AuthContext';
-
+import { UserRole } from '../contexts/auth';
+import MyPlace from '../pages/MyPage/subpages/MyPlacePage';
+import MyTrade from '../pages/MyPage/subpages/MyTradePage';
 // 페이지 컴포넌트 가져오기
 import HomePage from '../pages/Home';
 import LoginPage from '../pages/Login/index';
 import MyPage from '../pages/MyPage';
-import MyPlace from '../pages/MyPage/MyPlace'; // 경로 수정
-import MyTrade from '../pages/MyPage/MyTrade'; // 경로 수정
 import StorageList from '../pages/StorageList/StorageList';
-import StorageDetail from '../pages/StorageDetail/StorageDetail';
-import KeeperRegistration from '../pages/Keeper/KeeperRegistration';
-import Registration1 from '../pages/Registration/Registration1';
-import Registration2 from '../pages/Registration/Registration2';
-import Registration3 from '../pages/Registration/Registration3';
-import SearchAddress from '../pages/Map/SearchAddress';
+import StorageDetail from '../pages/MyPage/subpages/StorageDetail';
+import KeeperRegistration from '../pages/MyPage/subpages/KeeperRegistration';
+import Registration1 from '../pages/MyPage/subpages/Registration/Registration1';
+import Registration2 from '../pages/MyPage/subpages/Registration/Registration2';
+import Registration3 from '../pages/MyPage/subpages/Registration/Registration3';
+import SearchAddress from '../pages/Home/SearchAddress';
 import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
 import EditStorage from '../pages/EditStorage/EditStorage';
 import NotFoundPage from '../pages/NotFound';
 import KakaoCallback from '../pages/Login/KakaoCallback';
-import MainRedirect from '../pages/MainRedirect';
+import MainRedirect from '../pages/Home/MainRedirect';
 
 // 레이아웃 컴포넌트
 import MainLayout from '../components/layout/MainLayout';

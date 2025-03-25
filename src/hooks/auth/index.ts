@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useAuth as useAuthContext, UserRole } from '../contexts/AuthContext';
-import * as authApi from '../api/auth';
+import { useAuth as useAuthContext, UserRole } from '../../contexts/auth';
+import * as authApi from '../../services/api/modules/auth';
 
 export const useAuth = () => {
   const auth = useAuthContext();

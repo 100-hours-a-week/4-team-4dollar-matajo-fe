@@ -1,5 +1,5 @@
 import React, { createContext, useState, ReactNode } from 'react';
-import Toast from '../components/common/Toast';
+import Toast from '../../components/common/Toast';
 
 // 모달 컨텍스트 인터페이스
 interface ModalContextType {

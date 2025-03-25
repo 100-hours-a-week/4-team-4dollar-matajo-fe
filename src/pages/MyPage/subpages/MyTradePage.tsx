@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import Header from '../../components/layout/Header';
-import BottomNavigation from '../../components/layout/BottomNavigation';
+import Header from '../../../components/layout/Header';
+import BottomNavigation from '../../../components/layout/BottomNavigation';
 import { useNavigate } from 'react-router-dom';
-import { getMyTrades, TradeItem } from '../../api/user';
+import { getMyTrades, TradeItem } from '../../../services/api/modules/user';
 import moment from 'moment';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능

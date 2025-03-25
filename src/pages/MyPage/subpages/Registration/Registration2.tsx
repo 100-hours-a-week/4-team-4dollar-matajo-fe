@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Header from '../../components/layout/Header';
-import BottomNavigation from '../../components/layout/BottomNavigation';
-import { convertTagsToStrings } from '../../services/TagMappingService';
-import { DaumAddressData } from '../../utils/KakaoToDaum';
+import Header from '../../../../components/layout/Header';
+import BottomNavigation from '../../../../components/layout/BottomNavigation';
+import { convertTagsToStrings } from '../../../../services/domain/tag/TagMappingService';
+import { DaumAddressData } from '../../../../utils/api/kakaoToDaum';
 
 const RegistrationContainer = styled.div`
   width: 100%;
