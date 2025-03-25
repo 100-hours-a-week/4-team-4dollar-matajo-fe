@@ -204,11 +204,6 @@ const KeeperRegistration: React.FC = () => {
             <br />
             아래의 약관을 읽고 동의해주세요
           </InfoText>
-          <InfoText>
-            마타조 보관인은 <BoldText>하나 이상의 보관소</BoldText>를
-            <br />
-            등록해야 승인 받을 수 있어요!
-          </InfoText>
         </InfoTextContainer>
 
         <Divider />

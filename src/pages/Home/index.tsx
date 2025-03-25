@@ -430,7 +430,7 @@ const HomePage: React.FC = () => {
 
   // 마커 클릭 핸들러 - 보관소 상세 페이지로 이동
   const handleMarkerClick = (placeId: string) => {
-    navigate(`/storagedetail/${placeId}`);
+    navigate(`/storage/${placeId}`);
   };
 
   // 보관소 등록 페이지로 이동
@@ -451,7 +451,7 @@ const HomePage: React.FC = () => {
 
   // 지역 특가 상세 페이지로 이동
   const handleDiscountItemClick = (id: string) => {
-    navigate(`/storagedetail/${id}`);
+    navigate(`/storage/${id}`);
   };
 
   // 현재 위치로 이동 버튼 클릭 시 호출되는 함수

@@ -589,7 +589,7 @@ const StorageList: React.FC = () => {
 
   // 상세 페이지로 이동하는 함수
   const handleItemClick = (id: string | number) => {
-    navigate(`/storagedetail/${id}`);
+    navigate(`/storage/${id}`);
   };
 
   // 가격 포맷 함수

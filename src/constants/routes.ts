@@ -4,33 +4,37 @@
 export const ROUTES = {
   // 홈 관련
   HOME: '/',
-  MAIN: '/main', // 추가된 메인 경로
+  MAIN: 'main',
 
   // 인증 관련
-  LOGIN: '/login',
-  SIGNUP: '/signup',
-  KAKAO_CALLBACK: '/auth/kakao', // 추가된 카카오 콜백 경로
+  LOGIN: 'login',
+  SIGNUP: 'signup',
+  KAKAO_CALLBACK: 'auth/kakao',
 
   // 채팅 관련
-  CHAT_LIST: '/chat/list',
-  CHAT_DETAIL: '/chat/:id',
+  CHAT_LIST: 'chat/list',
+  CHAT: 'chat',
+  CHAT_DETAIL: 'chat/:id',
 
   // 보관소 관련
-  STORAGE: '/storage',
-  STORAGE_DETAIL: '/storagedetail/:id',
+  STORAGE: 'storage',
+  STORAGE_DETAIL: 'storage/:id',
 
   // 마이페이지 관련
-  MYPAGE: '/mypage',
-  MYTRADE: '/mytrade',
-  MYPLACE: '/myplace',
+  MYPAGE: 'mypage',
+  MYTRADE: 'mytrade',
+  MYPLACE: 'myplace',
+
+  KEEPER_REGISTRATION: 'keeper/registration',
 
   // 보관인 등록 단계
-  REGISTRATION_STEP1: '/registration/step1',
-  REGISTRATION_STEP2: '/registration/step2',
-  REGISTRATION_STEP3: '/registration/step3',
+  REGISTRATION_STEP1: 'registration/step1',
+  REGISTRATION_STEP2: 'registration/step2',
+  REGISTRATION_STEP3: 'registration/step3',
 
-  // 게시판
-  BOARD: '/board',
+  // 기타
+  SEARCH_ADDRESS: 'search-address',
+  EDIT_STORAGE: 'editstorage',
 
   // 404 페이지
   NOT_FOUND: '*',

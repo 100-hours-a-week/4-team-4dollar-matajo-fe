@@ -8,6 +8,16 @@ interface KakaoLoginData {
   role?: string;
 }
 
+// 새로운 이벤트를 정의합니다
+const AUTH_STATE_CHANGED = 'AUTH_STATE_CHANGED';
+
+/**
+ * 인증 상태 변경을 알리는 이벤트를 발생시키는 함수
+ */
+export const notifyAuthStateChange = () => {
+  window.dispatchEvent(new CustomEvent(AUTH_STATE_CHANGED));
+};
+
 /**
  * 카카오 로그인 데이터를 로컬 스토리지에 저장하는 함수
  * @param data 카카오 로그인 데이터
@@ -24,6 +34,9 @@ export const saveKakaoLoginData = (data: KakaoLoginData) => {
 
     // 닉네임은 저장하지 않음
     localStorage.removeItem('userNickname');
+
+    // 저장 후 인증 상태 변경 이벤트 발생
+    notifyAuthStateChange();
 
     console.log('로그인 데이터 저장 완료');
   } catch (error) {

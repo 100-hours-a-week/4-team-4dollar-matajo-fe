@@ -195,9 +195,9 @@ const MyPlace: React.FC<MyPlaceProps> = ({ onBack }) => {
 
   // 보관소 상세 페이지로 이동하는 함수
   const handleTradeItemClick = (id: number) => {
-    // navigate(`/storagedetail/${id}`);
+    // navigate(`/storage/${id}`);
     // 또는
-    // navigate('/storagedetail', { state: { id } });
+    // navigate('/storage', { state: { id } });
     console.log(`거래 아이템 ${id} 클릭됨, 상세 페이지로 이동`);
   };
 
