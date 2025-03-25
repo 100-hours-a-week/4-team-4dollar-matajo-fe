@@ -9,6 +9,7 @@ import { DaumAddressData, autoConvertAddress } from '../../utils/api/kakaoToDaum
 import { updateStorage, base64ToFile } from '../../services/api/modules/storage';
 import { getStorageDetail } from '../../services/api/modules/place';
 import { convertTagsToStrings } from '../../services/domain/tag/TagMappingService';
+
 // 테마 컬러 상수 정의
 const THEME = {
   primary: '#5E5CFD',

@@ -1,0 +1,50 @@
+name: Deploy React Frontend
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run linting and formatting
+        run: npm run lint-and-format
+        
+      - name: Run tests
+        run: npm test -- --watchAll=false
+        
+      - name: Build application
+        run: npm run build
+        env:
+          CI: false  # React 빌드 시 경고를 에러로 취급하지 않도록 설정
+          
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+        
+      - name: Deploy to EC2
+        run: |
+          rsync -avz --delete ./build/ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/var/www/matajo.store/
+          
+      - name: Execute post-deploy commands
+        run: |
+          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} 'sudo systemctl restart nginx'
