@@ -7,11 +7,21 @@ interface KakaoLoginData {
   role?: string;
 }
 
+// 새로운 이벤트를 정의합니다
+const AUTH_STATE_CHANGED = 'AUTH_STATE_CHANGED';
+/**
+ * 인증 상태 변경을 알리는 이벤트를 발생시키는 함수
+ */
+export const notifyAuthStateChange = () => {
+  window.dispatchEvent(new CustomEvent(AUTH_STATE_CHANGED));
+};
+
 // 사용자 역할 enum
 export enum UserRole {
   Client = '1', // 의뢰인
   Keeper = '2', // 보관인
 }
+
 
 /**
  * 카카오 로그인 데이터를 로컬 스토리지에 저장하는 함수
@@ -26,6 +36,9 @@ export const saveKakaoLoginData = (data: KakaoLoginData) => {
     if (data.role) {
       localStorage.setItem('userRole', data.role);
     }
+
+    // 저장 후 인증 상태 변경 이벤트 발생
+    notifyAuthStateChange();
 
     console.log('로그인 데이터 저장 완료');
   } catch (error) {

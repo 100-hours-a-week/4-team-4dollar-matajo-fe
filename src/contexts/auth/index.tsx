@@ -41,43 +41,51 @@ const AuthContext = createContext<AuthContextType>({
 
 // 인증 컨텍스트 프로바이더 컴포넌트
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // 기본값을 null로 설정
   const [user, setUser] = useState<User | null>(null);
-
-  // 로딩 상태
   const [loading, setLoading] = useState(true);
 
-  // 컴포넌트 마운트 시 로컬 스토리지에서 사용자 정보 불러오기
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        setLoading(true);
-        const userId = localStorage.getItem('userId');
-        const accessToken = localStorage.getItem('accessToken');
-        const refreshToken = localStorage.getItem('refreshToken');
-        const nickname = localStorage.getItem('userNickname');
-        const role = localStorage.getItem('userRole');
+  // 인증 상태를 초기화하는 함수
+  const initAuth = async () => {
+    try {
+      setLoading(true);
+      const userId = localStorage.getItem('userId');
+      const accessToken = localStorage.getItem('accessToken');
+      const refreshToken = localStorage.getItem('refreshToken');
+      const nickname = localStorage.getItem('userNickname');
+      const role = localStorage.getItem('userRole');
 
-        if (userId && accessToken) {
-          // 기본적인 유저 데이터 설정
-          setUser({
-            id: userId,
-            name: nickname || 'User',
-            role: (role as UserRole) || UserRole.Client,
-            token: accessToken,
-          });
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('인증 초기화 오류:', error);
+      if (userId && accessToken) {
+        setUser({
+          id: userId,
+          name: nickname || 'User',
+          role: (role as UserRole) || UserRole.Client,
+          token: accessToken,
+        });
+      } else {
         setUser(null);
-      } finally {
-        setLoading(false);
       }
+    } catch (error) {
+      console.error('인증 초기화 오류:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시와 AUTH_STATE_CHANGED 이벤트 발생 시 인증 상태 초기화
+  useEffect(() => {
+    initAuth();
+
+    // AUTH_STATE_CHANGED 이벤트 리스너 등록
+    const handleAuthChange = () => {
+      initAuth();
     };
 
-    initAuth();
+    window.addEventListener('AUTH_STATE_CHANGED', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('AUTH_STATE_CHANGED', handleAuthChange);
+    };
   }, []);
 
   // 로그아웃 함수

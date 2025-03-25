@@ -448,12 +448,19 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     }
   };
 
-  // 특가 아이템 클릭 핸들러
-  const handleDiscountItemClick = (id: string) => {
+
+  // 아이템 상세 페이지로 이동
+  const handleItemClick = (id: string): void => {
+    navigate(`/storage/${id}`);
+  };
+
+  // 지역 특가 아이템 클릭 핸들러
+  const handleDiscountItemClick = (id: string): void => {
+
     if (onDiscountItemClick) {
       onDiscountItemClick(id);
     } else {
-      navigate(`/storagedetail/${id}`);
+      navigate(`/storage/${id}`);
     }
   };
 

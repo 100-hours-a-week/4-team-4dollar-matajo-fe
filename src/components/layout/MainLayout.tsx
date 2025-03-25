@@ -42,7 +42,7 @@ const pathTitleMap: { [key: string]: string } = {
   '/': '홈',
   '/main': '홈', // '/main' 추가
   '/storage': '보관소',
-  '/storagedetail': '보관소 상세',
+  '/storagede': '보관소 상세',
   '/chat/list': '채팅',
   '/chat': '채팅',
   '/mypage': '마이페이지',
@@ -78,8 +78,8 @@ const MainLayout: React.FC = () => {
     // 경로의 첫 번째 부분을 추출 (예: '/chat/123' -> '/chat')
     const basePath = '/' + path.split('/')[1];
 
-    // 상세 페이지 경로 처리 (storagedetail/:id 와 같은 패턴)
-    const isDetailPath = path.includes('/storagedetail/');
+    // 상세 페이지 경로 처리 (storage/:id 와 같은 패턴)
+    const isDetailPath = path.includes('/storage/');
 
     // 현재 경로에 해당하는 타이틀 설정
     let title = pathTitleMap[path] || pathTitleMap[basePath];
@@ -102,7 +102,7 @@ const MainLayout: React.FC = () => {
     // 현재 경로에 해당하는 활성 탭 설정
     if (path === '/' || path === '/main') {
       setActiveTab('홈');
-    } else if (path.startsWith('/storage') || path.startsWith('/storagedetail')) {
+    } else if (path.startsWith('/storage') || path.startsWith('/storage')) {
       setActiveTab('보관소');
     } else if (path.startsWith('/chat')) {
       setActiveTab('채팅');
@@ -133,7 +133,7 @@ const MainLayout: React.FC = () => {
         showBackButton={location.pathname !== '/' && location.pathname !== '/main'}
         onBack={handleBack}
         showOptionButton={
-          location.pathname.startsWith('/storagedetail/') || location.pathname === '/mytrade'
+          location.pathname.startsWith('/storage/') || location.pathname === '/mytrade'
         }
         dropdownOptions={[
           {
