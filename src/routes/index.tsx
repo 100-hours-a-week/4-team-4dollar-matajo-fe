@@ -90,7 +90,6 @@ const routes: RouteObject[] = [
       { path: ROUTES.REGISTRATION_STEP3, element: <Registration3 /> },
       { path: ROUTES.EDIT_STORAGE, element: <EditStorage /> },
       { path: ROUTES.MYPLACE, element: <MyPlace /> },
-
     ],
   },
 

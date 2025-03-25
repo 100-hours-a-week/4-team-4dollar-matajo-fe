@@ -318,61 +318,10 @@ const HomePage: React.FC = () => {
     loadMapData();
   };
 
-  // 마커 클릭 핸들러
-  const handleMarkerClick = (id: string) => {
-    navigate(`/storagedetail/${id}`);
-  };
-
-
-  // 페이지 로드 시 데이터 가져오기
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log('초기 데이터 로드 시작');
-
-        // 현재 위치 가져오기 시도
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            position => {
-              const currentPos = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-              };
-              setMapCenter(currentPos);
-              fetchNearbyData(currentPos.lat, currentPos.lng);
-            },
-            error => {
-              console.error('위치 정보를 가져오는데 실패했습니다:', error);
-              // 기본 위치(여의도) 사용
-              fetchNearbyData(DEFAULT_COORDINATES.lat, DEFAULT_COORDINATES.lng);
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-          );
-        } else {
-          // 위치 정보를 지원하지 않는 경우, 기본 위치 사용
-          fetchNearbyData(DEFAULT_COORDINATES.lat, DEFAULT_COORDINATES.lng);
-        }
-      } catch (err) {
-        console.error('초기 데이터 로드 오류:', err);
-        setError('데이터를 불러오는 중 오류가 발생했습니다');
-      } finally {
-        // 데이터 로드 후 로딩 상태 업데이트
-        setTimeout(() => {
-          setLoading(false);
-          console.log('로딩 상태 업데이트: false');
-        }, 500);
-      }
-    };
-
-    loadInitialData();
-  }, []);
-
   // 마커 클릭 핸들러 - 보관소 상세 페이지로 이동
   const handleMarkerClick = (placeId: string) => {
     navigate(`/storage/${placeId}`);
-
+  };
   // 보관소 등록 핸들러
   const handleRegisterClick = () => {
     handleRegisterStorage(navigate, setShowKeeperModal);

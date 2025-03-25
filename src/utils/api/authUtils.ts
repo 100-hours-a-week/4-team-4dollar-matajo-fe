@@ -22,7 +22,6 @@ export enum UserRole {
   Keeper = '2', // 보관인
 }
 
-
 /**
  * 카카오 로그인 데이터를 로컬 스토리지에 저장하는 함수
  * @param data 카카오 로그인 데이터

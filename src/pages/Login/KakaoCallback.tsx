@@ -104,7 +104,6 @@ const KakaoCallback: React.FC = () => {
   useEffect(() => {
     if (requestSentRef.current) return;
 
-
     // 인가 코드 추출
     const code = new URLSearchParams(location.search).get('code');
 
