@@ -206,3 +206,6 @@ export const updateStorage = async (
     };
   }
 };
+
+// createStorage 함수를 registerStorage의 별칭으로 내보내기
+export const createStorage = registerStorage;

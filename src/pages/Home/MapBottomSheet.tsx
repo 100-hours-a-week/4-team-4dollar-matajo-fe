@@ -136,12 +136,12 @@ const Divider = styled.div`
   margin: 16px 0;
   opacity: 0.6;
 `;
-// 메뉴 컨테이너 - 가로 배치로 변경
+// 메뉴 컨테이너
 const MenuContainer = styled.div`
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 16px;
 `;
 
@@ -158,7 +158,7 @@ const MenuItem = styled.div`
 
 // 메뉴 제목
 const MenuTitle = styled.div`
-  font-size: 14px;
+  font-size: 13px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   margin-bottom: 4px;
@@ -166,7 +166,7 @@ const MenuTitle = styled.div`
 
 // 메뉴 설명
 const MenuDescription = styled.div`
-  font-size: 12px;
+  font-size: 10.5px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   color: ${THEME.gray500};
@@ -179,7 +179,7 @@ const MenuArrow = styled.div`
   top: 50%;
   transform: translateY(-50%);
   width: 8px;
-  height: 12px;
+  height: 8px;
 `;
 
 // 섹션 제목

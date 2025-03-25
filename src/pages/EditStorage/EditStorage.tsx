@@ -5,11 +5,10 @@ import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
-import { DaumAddressData, autoConvertAddress } from '../../utils/KakaoToDaum';
-import { updateStorage, base64ToFile } from '../../api/storage';
-import { getStorageDetail } from '../../api/place';
-import { convertTagsToStrings } from '../../services/TagMappingService';
-
+import { DaumAddressData, autoConvertAddress } from '../../utils/api/kakaoToDaum';
+import { updateStorage, base64ToFile } from '../../services/api/modules/storage';
+import { getStorageDetail } from '../../services/api/modules/place';
+import { convertTagsToStrings } from '../../services/domain/tag/TagMappingService';
 // 테마 컬러 상수 정의
 const THEME = {
   primary: '#5E5CFD',

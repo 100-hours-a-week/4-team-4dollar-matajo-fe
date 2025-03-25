@@ -1,35 +1,6 @@
-import axios from 'axios';
-import { API_BACKEND_URL, API_PATHS } from '../constants/api';
-
-// API 클라이언트 생성
-const apiClient = axios.create({
-  baseURL: API_BACKEND_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// 인터셉터 설정 - 요청에 인증 토큰 및 사용자 ID 추가
-apiClient.interceptors.request.use(
-  config => {
-    // JWT 토큰 추가
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // 사용자 ID 추가
-    const userId = localStorage.getItem('userId');
-    if (userId) {
-      config.headers['userId'] = userId;
-    }
-
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  },
-);
+import axios, { AxiosResponse } from 'axios';
+import client from '../client';
+import { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
 
 // 거래 내역 데이터 인터페이스
 export interface TradeItem {
@@ -76,7 +47,7 @@ export const getMyTrades = async (): Promise<TradeItem[]> => {
 
     if (response.data.success) {
       // 백엔드 응답 데이터를 프론트엔드 형식으로 변환
-      const trades: TradeItem[] = response.data.data.map(item => ({
+      const trades: TradeItem[] = response.data.data.map((item: BackendTradeItem) => ({
         tradeId: item.trade_id,
         keeperStatus: item.keeper_status,
         productName: item.product_name,
@@ -95,6 +66,37 @@ export const getMyTrades = async (): Promise<TradeItem[]> => {
     }
   } catch (error) {
     console.error('거래 내역 API 호출 오류:', error);
+    throw error;
+  }
+};
+
+/**
+ * 사용자 프로필 정보를 조회하는 함수
+ * @returns Promise<UserProfile> 사용자 프로필 정보를 담은 Promise
+ */
+export interface UserProfile {
+  userId: string;
+  nickname: string;
+  email: string;
+  profileImage?: string;
+  isKeeper: boolean;
+  createdAt: string;
+}
+
+export const getUserProfile = async (): Promise<UserProfile> => {
+  try {
+    const response: AxiosResponse<ApiResponse<UserProfile>> = await client.get(
+      API_PATHS.USER.PROFILE,
+    );
+
+    if (response.data.success) {
+      return response.data.data;
+    } else {
+      console.error('프로필 조회 실패:', response.data.message);
+      throw new Error(response.data.message);
+    }
+  } catch (error) {
+    console.error('프로필 API 호출 오류:', error);
     throw error;
   }
 };
