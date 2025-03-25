@@ -100,3 +100,34 @@ export const getUserProfile = async (): Promise<UserProfile> => {
     throw error;
   }
 };
+
+interface KeeperRegistrationData {
+  terms_of_service: boolean;
+  privacy_policy: boolean;
+}
+
+export const registerAsKeeper = async (termsData: {
+  terms_of_service: boolean;
+  privacy_policy: boolean;
+}) => {
+  try {
+    console.log('보관인 등록 시도');
+    const registrationData: KeeperRegistrationData = {
+      terms_of_service: termsData.terms_of_service,
+      privacy_policy: termsData.privacy_policy,
+    };
+
+    const response = await client.post(`${API_PATHS.USER.REGISTER_AS_KEEPER}`, registrationData);
+
+    // 새로운 accessToken을 로컬 스토리지에 저장
+    if (response.data.accessToken) {
+      localStorage.setItem('accessToken', response.data.accessToken);
+    }
+
+    console.log('보관인 등록 응답:', response.data);
+    return response;
+  } catch (error) {
+    console.error('보관인 등록 오류:', error);
+    throw error;
+  }
+};

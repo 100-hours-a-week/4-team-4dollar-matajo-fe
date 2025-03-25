@@ -23,7 +23,6 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   logout: () => void;
-  registerAsKeeper: () => Promise<boolean>;
   isKeeper: () => boolean;
   isClient: () => boolean;
 }
@@ -34,7 +33,6 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: false,
   logout: () => {},
-  registerAsKeeper: async () => false,
   isKeeper: () => false,
   isClient: () => false,
 });
@@ -103,33 +101,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // 보관인 등록 함수
-  const registerAsKeeper = async (): Promise<boolean> => {
-    try {
-      if (!user) {
-        return false;
-      }
-
-      // 여기서 authApi.registerAsKeeper API 호출 (이 함수는 남겨뒀으므로 그대로 사용 가능)
-      const response = await authApi.registerAsKeeper(user.id);
-
-      if (response.data && response.data.success) {
-        const updatedUser = {
-          ...user,
-          role: UserRole.Keeper,
-        };
-
-        localStorage.setItem('userRole', UserRole.Keeper);
-        setUser(updatedUser);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('보관인 등록 오류:', error);
-      return false;
-    }
-  };
-
   // 보관인 체크 함수
   const isKeeper = () => {
     return user?.role === UserRole.Keeper;
@@ -146,7 +117,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user,
     loading,
     logout,
-    registerAsKeeper,
     isKeeper,
     isClient,
   };

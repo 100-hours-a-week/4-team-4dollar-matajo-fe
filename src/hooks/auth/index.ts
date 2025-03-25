@@ -15,34 +15,6 @@ export const useAuth = () => {
   });
 
   // 일반 회원가입 함수는 제거 (카카오 로그인만 사용)
-
-  // 보관인 등록 요청
-  const registerAsKeeper = async (): Promise<boolean> => {
-    try {
-      setIsRegistering(true);
-      setError(null);
-
-      if (!auth.user?.id) {
-        setError('로그인이 필요합니다.');
-        return false;
-      }
-
-      const response = await authApi.registerAsKeeper(auth.user.id);
-
-      if (response.data && response.data.success) {
-        // AuthContext의 registerAsKeeper 함수 호출하여 상태 업데이트
-        return await auth.registerAsKeeper();
-      }
-
-      return false;
-    } catch (err) {
-      setError('보관인 등록 중 오류가 발생했습니다.');
-      return false;
-    } finally {
-      setIsRegistering(false);
-    }
-  };
-
   // 보관인 상태 확인
   const checkKeeperStatus = async () => {
     try {
@@ -66,7 +38,6 @@ export const useAuth = () => {
   return {
     ...auth,
     // register 함수 제거
-    registerAsKeeper,
     checkKeeperStatus,
     canRegisterAsKeeper,
     isRegistering,

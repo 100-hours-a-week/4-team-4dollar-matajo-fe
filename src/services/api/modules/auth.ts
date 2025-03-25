@@ -71,19 +71,6 @@ export const logout = async () => {
   }
 };
 
-// 보관인 등록 함수 (필요한 경우 유지)
-export const registerAsKeeper = async (userId: string) => {
-  try {
-    console.log('보관인 등록 시도:', userId);
-    const response = await client.post(`${API_PATHS.AUTH.REGISTER_AS_KEEPER}`, { userId });
-    console.log('보관인 등록 응답:', response.data);
-    return response;
-  } catch (error) {
-    console.error('보관인 등록 오류:', error);
-    throw error;
-  }
-};
-
 // 보관인 상태 확인 함수 (필요한 경우 유지)
 export const checkKeeperStatus = async (userId: string) => {
   try {

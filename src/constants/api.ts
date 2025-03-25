@@ -9,7 +9,6 @@ export const API_PATHS = {
   // 인증 관련
   AUTH: {
     KAKAO: '/auth/kakao',
-    REGISTER_AS_KEEPER: '/auth/register-keeper',
     KEEPER_STATUS: '/auth/keeper-status',
     LOGOUT: '/auth/logout',
   },
@@ -38,6 +37,7 @@ export const API_PATHS = {
   USER: {
     PROFILE: '/user/profile',
     UPDATE: '/user/update',
+    REGISTER_AS_KEEPER: '/api/keeper/join',
   },
 
   // 사용자 관련

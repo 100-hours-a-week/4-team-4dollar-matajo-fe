@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../../../components/layout/Header';
+import { registerAsKeeper } from '../../../services/api/modules/user';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -110,14 +111,32 @@ const Divider = styled.div`
   margin: 20px auto;
 `;
 
-// 다음 버튼
-const NextButton = styled.button<{ disabled: boolean }>`
+// 보관소 등록 버튼
+const NextButton1 = styled.button<{ disabled: boolean }>`
+  width: 349px;
+  height: 47px;
+  position: fixed;
+  left: 13px;
+  bottom: 90px;
+  background: ${props => (props.disabled ? THEME.buttonDisabled : THEME.primary)};
+  border-radius: 15px;
+  border: none;
+  color: white;
+  font-size: 14px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.01px;
+  cursor: ${props => (props.disabled ? 'not-allowed' : 'pointer')};
+`;
+
+// 메인화면 이동 버튼
+const NextButton2 = styled.button<{ disabled: boolean }>`
   width: 349px;
   height: 47px;
   position: fixed;
   left: 13px;
   bottom: 30px;
-  background: ${props => (props.disabled ? THEME.buttonDisabled : THEME.primary)};
+  background: ${THEME.buttonDisabled};
   border-radius: 15px;
   border: none;
   color: white;
@@ -176,9 +195,36 @@ const KeeperRegistration: React.FC = () => {
   };
 
   // 다음 버튼 핸들러
-  const handleNext = () => {
+  const handleNext = async () => {
     if (termsAgreed.privacy && termsAgreed.terms) {
-      navigate('/registration/step1');
+      try {
+        await registerAsKeeper({
+          terms_of_service: termsAgreed.terms,
+          privacy_policy: termsAgreed.privacy,
+        });
+
+        navigate('/registration/step1');
+      } catch (error) {
+        console.error('보관인 등록 실패:', error);
+        // 에러 처리 로직 추가
+      }
+    }
+  };
+
+  // 메인화면 이동 버튼 핸들러
+  const handleMain = async () => {
+    if (termsAgreed.privacy && termsAgreed.terms) {
+      try {
+        await registerAsKeeper({
+          terms_of_service: termsAgreed.terms,
+          privacy_policy: termsAgreed.privacy,
+        });
+
+        navigate('/main');
+      } catch (error) {
+        console.error('보관인 등록 실패:', error);
+        // 에러 처리 로직 추가
+      }
     }
   };
 
@@ -231,9 +277,12 @@ const KeeperRegistration: React.FC = () => {
         </TermsContainer>
 
         {/* 다음 버튼 */}
-        <NextButton disabled={isNextButtonDisabled} onClick={handleNext}>
-          다음
-        </NextButton>
+        <NextButton1 disabled={isNextButtonDisabled} onClick={handleNext}>
+          바로 보관소 작성하러가기
+        </NextButton1>
+        <NextButton2 disabled={isNextButtonDisabled} onClick={handleMain}>
+          보관인 동의 완료! 홈으로 이동하기기
+        </NextButton2>
       </Container>
     </>
   );

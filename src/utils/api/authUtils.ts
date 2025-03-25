@@ -1,5 +1,7 @@
 // src/utils/api/authUtils.ts
 
+import { decodeJWT, getRole, getUserId, getNickname } from '../formatting/decodeJWT';
+
 // 로그인 데이터 인터페이스
 interface KakaoLoginData {
   accessToken: string;
@@ -74,16 +76,30 @@ export const isAuthenticated = (): boolean => {
  * 사용자 ID 가져오기
  * @returns 사용자 ID 또는 null
  */
-export const getUserId = (): string | null => {
-  return localStorage.getItem('userId');
+export const getUserIdInToken = (): number | null => {
+  try {
+    const token = getToken();
+    if (!token) return null;
+    return getUserId(token);
+  } catch (error) {
+    console.error('토큰에서 역할 추출 중 오류:', error);
+    return null;
+  }
 };
 
 /**
- * 사용자 역할 가져오기
+ * JWT 토큰에서 사용자 역할 추출하기
  * @returns 사용자 역할 또는 null
  */
-export const getUserRole = (): string | null => {
-  return localStorage.getItem('userRole');
+export const getUserRoleInToken = (): string | null => {
+  try {
+    const token = getToken();
+    if (!token) return null;
+    return getRole(token);
+  } catch (error) {
+    console.error('토큰에서 역할 추출 중 오류:', error);
+    return null;
+  }
 };
 
 /**
@@ -91,7 +107,7 @@ export const getUserRole = (): string | null => {
  * @returns 보관인 여부
  */
 export const isKeeper = (): boolean => {
-  const role = getUserRole();
+  const role = getUserRoleInToken();
   return role === UserRole.Keeper;
 };
 

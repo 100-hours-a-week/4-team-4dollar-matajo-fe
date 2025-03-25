@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
-import { isAuthenticated, getUserRole } from '../utils/api/authUtils';
+import { isAuthenticated, getUserRoleInToken, isKeeper } from '../utils/api/authUtils';
 
 // UserRole 타입 정의
 export enum UserRole {
@@ -20,6 +20,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
   const navigate = useNavigate();
   const [isChecking, setIsChecking] = useState(true);
   const [isAllowed, setIsAllowed] = useState(false);
+  const [isKeeper, setIsKeeper] = useState(false);
 
   useEffect(() => {
     // 인증 상태 확인
@@ -38,7 +39,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
 
       // 특정 역할이 필요한 경우 역할 확인
       if (requiredRole) {
-        const userRole = getUserRole();
+        const userRole = getUserRoleInToken();
 
         // 사용자 역할이 필요한 역할과 일치하는지 확인
         if (userRole === requiredRole) {
