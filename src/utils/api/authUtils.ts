@@ -1,5 +1,4 @@
-// src/utils/authUtils.ts
-import { LoginResponse } from '../../services/api/modules/auth';
+// src/utils/api/authUtils.ts
 
 // 로그인 데이터 인터페이스
 interface KakaoLoginData {
@@ -10,13 +9,19 @@ interface KakaoLoginData {
 
 // 새로운 이벤트를 정의합니다
 const AUTH_STATE_CHANGED = 'AUTH_STATE_CHANGED';
-
 /**
  * 인증 상태 변경을 알리는 이벤트를 발생시키는 함수
  */
 export const notifyAuthStateChange = () => {
   window.dispatchEvent(new CustomEvent(AUTH_STATE_CHANGED));
 };
+
+// 사용자 역할 enum
+export enum UserRole {
+  Client = '1', // 의뢰인
+  Keeper = '2', // 보관인
+}
+
 
 /**
  * 카카오 로그인 데이터를 로컬 스토리지에 저장하는 함수
@@ -31,9 +36,6 @@ export const saveKakaoLoginData = (data: KakaoLoginData) => {
     if (data.role) {
       localStorage.setItem('userRole', data.role);
     }
-
-    // 닉네임은 저장하지 않음
-    localStorage.removeItem('userNickname');
 
     // 저장 후 인증 상태 변경 이벤트 발생
     notifyAuthStateChange();
@@ -59,6 +61,64 @@ export const getToken = (): string | null => {
 export const isLoggedIn = (): boolean => {
   const token = getToken();
   return !!token;
+};
+
+/**
+ * 사용자 인증 여부 확인 함수 (isLoggedIn의 별칭)
+ * @returns 인증 상태 여부
+ */
+export const isAuthenticated = (): boolean => {
+  return isLoggedIn();
+};
+
+/**
+ * 사용자 ID 가져오기
+ * @returns 사용자 ID 또는 null
+ */
+export const getUserId = (): string | null => {
+  return localStorage.getItem('userId');
+};
+
+/**
+ * 사용자 역할 가져오기
+ * @returns 사용자 역할 또는 null
+ */
+export const getUserRole = (): string | null => {
+  return localStorage.getItem('userRole');
+};
+
+/**
+ * 사용자가 보관인인지 확인
+ * @returns 보관인 여부
+ */
+export const isKeeper = (): boolean => {
+  const role = getUserRole();
+  return role === UserRole.Keeper;
+};
+
+/**
+ * 사용자 닉네임 가져오기 (임시로 하드코딩)
+ * @returns 사용자 닉네임
+ */
+export const getUserNickname = (): string => {
+  // 실제로는 서버에서 가져오거나 JWT에서 추출
+  return '타조 회원';
+};
+
+/**
+ * 인증 데이터 저장 (saveKakaoLoginData의 별칭)
+ * @param accessToken JWT 토큰
+ * @param userId 사용자 ID (선택적)
+ * @param role 사용자 역할 (선택적)
+ */
+export const saveAuthData = (accessToken: string, userId?: string, role?: string): void => {
+  const data: KakaoLoginData = {
+    accessToken,
+    userId: userId || '',
+    role,
+  };
+
+  saveKakaoLoginData(data);
 };
 
 /**
