@@ -1,8 +1,7 @@
 // routes/index.tsx
 import { RouteObject } from 'react-router-dom';
-import { UserRole } from '../contexts/auth';
-import MyPlace from '../pages/MyPage/subpages/MyPlacePage';
-import MyTrade from '../pages/MyPage/subpages/MyTradePage';
+import { UserRole } from '../utils/api/authUtils';
+
 // 페이지 컴포넌트 가져오기
 import HomePage from '../pages/Home';
 import LoginPage from '../pages/Login/index';
@@ -20,6 +19,8 @@ import EditStorage from '../pages/EditStorage/EditStorage';
 import NotFoundPage from '../pages/NotFound';
 import KakaoCallback from '../pages/Login/KakaoCallback';
 import MainRedirect from '../pages/Home/MainRedirect';
+import MyPlace from '../pages/MyPage/subpages/MyPlacePage';
+import MyTrade from '../pages/MyPage/subpages/MyTradePage';
 
 // 레이아웃 컴포넌트
 import MainLayout from '../components/layout/MainLayout';
@@ -30,11 +31,12 @@ import PublicRoute from './PublicRoute';
 
 // 라우트 정의
 const routes: RouteObject[] = [
-  // 메인 리다이렉트 라우트
+  // 메인 리다이렉트 라우트 (초기 진입점)
   {
     path: '/',
     element: <MainRedirect />,
   },
+
   // 공개 라우트 (로그인하지 않아도 접근 가능)
   {
     path: '/',
@@ -51,6 +53,7 @@ const routes: RouteObject[] = [
       },
     ],
   },
+
   // 인증된 사용자만 접근 가능한 라우트
   {
     path: '/',
@@ -63,7 +66,6 @@ const routes: RouteObject[] = [
           { path: 'main', element: <HomePage /> },
           { path: 'mypage', element: <MyPage /> },
           { path: 'mytrade', element: <MyTrade /> },
-          { path: 'myplace', element: <MyPlace /> },
           { path: 'storage', element: <StorageList /> },
           { path: 'storagedetail/:id', element: <StorageDetail /> },
           { path: 'chat/list', element: <ChatroomList /> },
@@ -72,13 +74,25 @@ const routes: RouteObject[] = [
       { path: 'chat', element: <Chat onBack={() => window.history.back()} /> },
       { path: 'chat/:id', element: <Chat onBack={() => window.history.back()} /> },
       { path: 'keeper/registration', element: <KeeperRegistration /> },
+      { path: 'search-address', element: <SearchAddress /> },
+    ],
+  },
+
+  // 보관인만 접근 가능한 라우트
+  {
+    path: '/',
+    element: <PrivateRoute requiredRole={UserRole.Keeper} />,
+    children: [
+      { path: 'myplace', element: <MyPlace /> },
+      { path: 'editstorage', element: <EditStorage /> },
+      { path: 'editstorage/:id', element: <EditStorage /> },
       { path: 'registration/step1', element: <Registration1 /> },
       { path: 'registration/step2', element: <Registration2 /> },
       { path: 'registration/step3', element: <Registration3 /> },
-      { path: 'search-address', element: <SearchAddress /> },
-      { path: 'editstorage', element: <EditStorage /> },
     ],
   },
+
+  // 존재하지 않는 경로에 대한 처리
   {
     path: '*',
     element: <NotFoundPage />,

@@ -1,9 +1,7 @@
+// src/pages/Home/LocationSearchModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { loadDongDataFromCSV, searchDongData } from '../../utils/api/csvUtils';
-
-// CSV 유틸에서 가져온 타입과 충돌을 피하기 위한 별칭 사용
-import type { DongData as DongDataType } from '../../utils/api/csvUtils';
+import { searchDongData } from '../../utils/api/csvUtils';
 
 // 모달 오버레이 - 화면 전체를 덮는 반투명 배경
 const ModalOverlay = styled.div`
@@ -63,7 +61,7 @@ const CloseButton = styled.button`
   height: 18px;
 `;
 
-// 스타일 컴포넌트
+// 검색 컨테이너
 const SearchContainer = styled.div`
   padding: 12px 16px 16px;
   width: 100%;
@@ -72,8 +70,8 @@ const SearchContainer = styled.div`
 
 const SearchInputWrapper = styled.div`
   position: relative;
-  width: 85%; /* 모달의 85%로 수정 */
-  margin: 0 auto 20px auto; /* 상하 여백 0, 좌우 auto로 중앙 정렬 */
+  width: 85%;
+  margin: 0 auto 20px auto;
 `;
 
 const SearchInput = styled.input`
@@ -114,7 +112,7 @@ const SearchResultList = styled.div`
 `;
 
 const SearchResultItem = styled.div`
-  padding: 10px 16px; /* 패딩 좌우 추가 */
+  padding: 10px 16px;
   border-bottom: 0.5px solid #b6b6b6;
   font-size: 12px;
   font-family: 'Noto Sans KR', sans-serif;
@@ -122,7 +120,6 @@ const SearchResultItem = styled.div`
   line-height: 14.09px;
   color: #6f6f6f;
   cursor: pointer;
-  /* 텍스트는 왼쪽 정렬 */
   text-align: left;
 
   &:hover {
@@ -138,6 +135,48 @@ const ErrorMessage = styled.div`
   padding: 20px;
 `;
 
+// 로딩 인디케이터
+const LoadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 0;
+`;
+
+const LoadingSpinner = styled.div`
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(94, 92, 253, 0.2);
+  border-top: 3px solid #5e5cfd;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const LoadingText = styled.p`
+  color: #5e5cfd;
+  font-size: 14px;
+  font-family: 'Noto Sans KR', sans-serif;
+`;
+
+// 위치 정보 인터페이스
+interface LocationInfo {
+  formatted_address: string;
+  display_name: string;
+  latitude: string;
+  longitude: string;
+}
+
 // 인터페이스 정의
 interface LocationSearchModalProps {
   isOpen: boolean;
@@ -145,260 +184,162 @@ interface LocationSearchModalProps {
   onSelectLocation: (location: string, latitude?: string, longitude?: string) => void;
 }
 
-// 위치 정보 인터페이스
-interface LocationItem {
-  formatted_address: string;
-  display_name: string;
-  latitude: string;
-  longitude: string;
-}
-
-// "동"으로 끝나는 한글자 동 목록
-const SINGLE_CHAR_DONGS = [
-  '화동',
-  '재동',
-  '계동',
-  '묘동',
-  '평동',
-  '다동',
-  '초동',
-  '정동',
-  '능동',
-  '묵동',
-  '번동',
-  '창동',
-  '합동',
-  '중동',
-  '목동',
-  '궁동',
-  '항동',
-  '본동',
-  '길동',
-  '우동',
-  '좌동',
-  '선동',
-  '서동',
-  '수동',
-  '전동',
-  '교동',
-  '도동',
-  '부동',
-  '내동',
-  '상동',
-  '파동',
-  '성동',
-  '장동',
-  '사동',
-  '답동',
-  '유동',
-  '경동',
-  '용동',
-  '남동',
-  '금동',
-  '학동',
-  '양동',
-  '구동',
-  '북동',
-  '임동',
-  '옥동',
-  '신동',
-  '왕동',
-  '원동',
-  '인동',
-  '효동',
-  '천동',
-  '대동',
-  '추동',
-  '직동',
-  '오동',
-  '호동',
-  '변동',
-  '세동',
-  '방동',
-  '갑동',
-  '죽동',
-  '와동',
-  '법동',
-  '동동',
-  '달동',
-  '탑동',
-  '영동',
-  '지동',
-  '하동',
-  '율동',
-  '작동',
-  '일동',
-  '이동',
-  '풍동',
-  '궐동',
-  '포동',
-  '당동',
-  '삼동',
-  '송동',
-  '역동',
-  '명동',
-  '마동',
-  '순동',
-  '국동',
-  '행동',
-  '청동',
-  '시동',
-  '덕동',
-  '배동',
-  '봉동',
-  '외동',
-  '현동',
-  '석동',
-  '두동',
-  '강동',
-  '안동',
-  '연동',
-  '저동',
-  '혈동',
-  '통동',
-];
-
 const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   isOpen,
   onClose,
   onSelectLocation,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<LocationItem[]>([]);
-  const [dongData, setDongData] = useState<DongDataType[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [searchResults, setSearchResults] = useState<LocationInfo[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 최근 검색한 지역 목록 (로컬 스토리지에서 가져오거나 기본값 사용)
-  const [recentSearches, setRecentSearches] = useState<LocationItem[]>(() => {
-    const saved = localStorage.getItem('recentLocationSearches');
-    return saved
-      ? JSON.parse(saved)
-      : [
-          {
-            formatted_address: '서울특별시 종로구 청운동',
-            display_name: '청운동, 청운효자동, 종로구, 서울특별시, 03047, 대한민국',
-            latitude: '37.58895',
-            longitude: '126.96784',
-          },
-          {
-            formatted_address: '서울특별시 종로구 신교동',
-            display_name: '신교동, 청운효자동, 종로구, 서울특별시, 03032, 대한민국',
-            latitude: '37.58416',
-            longitude: '126.96723',
-          },
-          {
-            formatted_address: '서울특별시 종로구 궁정동',
-            display_name: '궁정동, 청운효자동, 종로구, 서울특별시, 03032, 대한민국',
-            latitude: '37.5843652',
-            longitude: '126.9724327',
-          },
-        ];
-  });
-
-  // 동 데이터 로드
+  // 최근 검색 위치 가져오기
   useEffect(() => {
-    // 데이터 로드는 모달이 열릴 때만 수행
-    if (isOpen && dongData.length === 0) {
+    if (isOpen) {
       setLoading(true);
       setError(null);
 
-      // CSV 파일에서 동 데이터 로드
-      loadDongDataFromCSV('data/korea_dong_coordinates.csv')
-        .then(data => {
-          if (data.length > 0) {
-            setDongData(data);
-          } else {
-            setError('위치 데이터를 불러올 수 없습니다.');
-          }
-        })
-        .catch(error => {
-          console.error('동 데이터 로드 오류:', error);
-          setError('위치 데이터를 불러오는 중 오류가 발생했습니다.');
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      try {
+        // 최근 검색 목록 가져오기
+        const savedLocations = localStorage.getItem('recentLocationSearches');
+        const recentLocations = savedLocations
+          ? JSON.parse(savedLocations)
+          : generateDefaultLocations();
+
+        setSearchResults(recentLocations);
+        setLoading(false);
+
+        // 검색창에 포커스
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      } catch (err) {
+        console.error('최근 검색 목록 로드 오류:', err);
+        setError('최근 검색 목록을 불러올 수 없습니다.');
+        setLoading(false);
+      }
     }
-  }, [isOpen, dongData.length]);
+  }, [isOpen]);
+
+  // 기본 위치 생성
+  const generateDefaultLocations = (): LocationInfo[] => {
+    return [
+      {
+        formatted_address: '서울특별시 종로구 청운동',
+        display_name: '청운동, 청운효자동, 종로구, 서울특별시, 대한민국',
+        latitude: '37.58895',
+        longitude: '126.96784',
+      },
+      {
+        formatted_address: '서울특별시 종로구 신교동',
+        display_name: '신교동, 청운효자동, 종로구, 서울특별시, 대한민국',
+        latitude: '37.58416',
+        longitude: '126.96723',
+      },
+    ];
+  };
+
+  // 검색 타이머 ref
+  const searchTimerRef = useRef<number | null>(null);
+
+  // 검색 함수
+  const handleSearch = () => {
+    if (!searchTerm.trim()) {
+      // 검색어가 없으면 최근 검색 목록 표시
+      const savedLocations = localStorage.getItem('recentLocationSearches');
+      const recentLocations = savedLocations
+        ? JSON.parse(savedLocations)
+        : generateDefaultLocations();
+
+      setSearchResults(recentLocations);
+      return;
+    }
+
+    // 이전 타이머 취소
+    if (searchTimerRef.current !== null) {
+      window.clearTimeout(searchTimerRef.current);
+    }
+
+    setLoading(true);
+
+    // 디바운스 적용 (300ms)
+    searchTimerRef.current = window.setTimeout(() => {
+      try {
+        setError(null);
+
+        // 더미 검색 결과
+        const results: LocationInfo[] = searchDummyLocations(searchTerm);
+        setSearchResults(results);
+        setLoading(false);
+      } catch (error) {
+        console.error('검색 오류:', error);
+        setError('검색 중 오류가 발생했습니다.');
+        setLoading(false);
+      }
+    }, 300);
+  };
+
+  // 더미 검색 결과 생성
+  const searchDummyLocations = (term: string): LocationInfo[] => {
+    return [
+      {
+        formatted_address: `서울특별시 종로구 ${term}동`,
+        display_name: `${term}동, 종로구, 서울특별시, 대한민국`,
+        latitude: '37.5631',
+        longitude: '126.9847',
+      },
+      {
+        formatted_address: `서울특별시 마포구 ${term}동`,
+        display_name: `${term}동, 마포구, 서울특별시, 대한민국`,
+        latitude: '37.5536',
+        longitude: '126.9154',
+      },
+    ];
+  };
 
   // 검색어 변경 핸들러
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    setError(null);
-
-    // CSV 기반 검색
-    if (value.trim()) {
-      // 검색어 길이가 1자인 경우
-      if (value.length === 1) {
-        // 한글자 동 목록에서 시작하는 항목 필터링
-        const singleCharResults = SINGLE_CHAR_DONGS.filter(dong => dong.startsWith(value)).map(
-          dong => {
-            // 한글자 동의 경우 원래 형식을 맞춤
-            return {
-              formatted_address: `서울특별시 종로구 ${dong}`,
-              display_name: `${dong}, 종로구, 서울특별시, 대한민국`,
-              latitude: '37.5631',
-              longitude: '126.9847',
-            };
-          },
-        );
-
-        // 동 데이터에서 시/도/구 등 필터링 (1자 검색어)
-        const locationResults = dongData
-          .filter(
-            item =>
-              (item.display_name.includes('시') && item.display_name.includes(value)) ||
-              (item.display_name.includes('도') && item.display_name.includes(value)) ||
-              (item.display_name.includes('구') && item.display_name.includes(value)),
-          )
-          .map(item => ({
-            formatted_address: item.formatted_address || item.original_name,
-            display_name: item.display_name,
-            latitude: item.latitude,
-            longitude: item.longitude,
-          }));
-
-        // 결과 합치기
-        setSearchResults([...singleCharResults, ...locationResults].slice(0, 100));
-      } else {
-        // 2자 이상인 경우 display_name을 기준으로 검색 (SQL LIKE 문처럼)
-        const filteredResults = dongData
-          .filter(item => item.display_name.toLowerCase().includes(value.toLowerCase()))
-          .map(item => ({
-            formatted_address: item.original_name, // 여기서 formatted_address와 original_name이 올바른지 확인
-            display_name: item.display_name,
-            latitude: item.latitude,
-            longitude: item.longitude,
-          }));
-
-        // 결과 수가 적을 경우 최대 100개만 표시
-        setSearchResults(filteredResults.slice(0, 100));
-      }
-    } else {
-      // 검색어가 없을 경우 최근 검색 목록 표시
-      setSearchResults(recentSearches);
-    }
+    setSearchTerm(e.target.value);
+    handleSearch();
   };
 
-  // 검색 결과 아이템 클릭 핸들러
-  const handleResultClick = (location: LocationItem) => {
-    // 최근 검색 목록 업데이트 (중복 제거 및 최대 5개 유지)
-    const updatedRecentSearches = [
-      location,
-      ...recentSearches.filter(item => item.formatted_address !== location.formatted_address),
-    ].slice(0, 5);
+  // 검색 결과 클릭 핸들러
+  const handleResultClick = (location: LocationInfo) => {
+    // 선택한 위치 저장
+    saveRecentLocation(location);
 
-    setRecentSearches(updatedRecentSearches);
-
-    // 로컬 스토리지에 저장
-    localStorage.setItem('recentLocationSearches', JSON.stringify(updatedRecentSearches));
-
-    // 선택한 위치 전달 (formatted_address, latitude, longitude)
+    // 선택한 위치 전달
     onSelectLocation(location.formatted_address, location.latitude, location.longitude);
     onClose();
+  };
+
+  // 최근 검색 위치 저장
+  const saveRecentLocation = (location: LocationInfo) => {
+    try {
+      // 기존 저장된 최근 검색 가져오기
+      const savedLocations = localStorage.getItem('recentLocationSearches');
+      let recentLocations: LocationInfo[] = savedLocations ? JSON.parse(savedLocations) : [];
+
+      // 중복 제거
+      recentLocations = recentLocations.filter(
+        loc => loc.formatted_address !== location.formatted_address,
+      );
+
+      // 앞에 추가
+      recentLocations.unshift(location);
+
+      // 최대 5개까지만 저장
+      if (recentLocations.length > 5) {
+        recentLocations = recentLocations.slice(0, 5);
+      }
+
+      // 로컬 스토리지에 저장
+      localStorage.setItem('recentLocationSearches', JSON.stringify(recentLocations));
+    } catch (error) {
+      console.error('최근 위치 저장 오류:', error);
+    }
   };
 
   // 배경 클릭 시 모달 닫기
@@ -408,17 +349,12 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
     }
   };
 
-  // 모달이 열릴 때 검색 입력란에 포커스
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-
-      // 모달이 열릴 때 최근 검색 목록 표시
-      setSearchResults(recentSearches);
+  // 엔터 키 처리
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
     }
-  }, [isOpen, recentSearches]);
+  };
 
   if (!isOpen) return null;
 
@@ -438,6 +374,7 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
               placeholder="지역을 검색하세요"
               value={searchTerm}
               onChange={handleSearchChange}
+              onKeyPress={handleKeyPress}
             />
             <SearchIcon>
               <svg
@@ -466,7 +403,10 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
           </SearchInputWrapper>
 
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '20px' }}>로딩 중...</div>
+            <LoadingContainer>
+              <LoadingSpinner />
+              <LoadingText>검색 중...</LoadingText>
+            </LoadingContainer>
           ) : error ? (
             <ErrorMessage>{error}</ErrorMessage>
           ) : (

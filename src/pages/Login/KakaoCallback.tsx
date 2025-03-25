@@ -106,13 +106,17 @@ const KakaoCallback: React.FC = () => {
     if (requestSentRef.current) return;
 
     // 인가 코드 추출
-    const code = new URLSearchParams(window.location.search).get('code');
+    const code = new URLSearchParams(location.search).get('code');
     console.log('인가 코드:', code);
 
     if (!code) {
+      // 인가 코드가 없으면 즉시 로그인 페이지로 리다이렉트
+      console.error('인가 코드를 찾을 수 없습니다. 로그인 페이지로 리다이렉트합니다.');
       setError('인가 코드를 찾을 수 없습니다.');
       setLoading(false);
-      setTimeout(() => navigate('/login', { replace: true }), 2000);
+
+      // 즉시 로그인 페이지로 이동 (setTimeout 사용하지 않음)
+      navigate('/login', { replace: true });
       return;
     }
 
