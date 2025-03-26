@@ -7,6 +7,11 @@ import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
 import { useAuth } from '../../hooks/auth';
 import { logout } from '../../utils/api/authUtils';
+import KeeperRegistrationModal from '../../components/modals/KeeperRegisterationModal';
+import { useEffect } from 'react';
+import { isAuthenticated, isKeeper } from '../../utils/api/authUtils';
+import { checkKeeperRole } from '../../services/api/modules/keeper';
+import axios from '../../services/api/client';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -266,10 +271,10 @@ const MyPage: React.FC = () => {
   // const { user, logout, isKeeper, registerAsKeeper } = useAuth();
 
   // 백엔드 연동 전 임시 상수
-  const USER_STATE = {
-    isKeeper: false, // 보관인 여부 (true: 보관인, false: 의뢰인)
+  const [userState, setUserState] = useState({
+    isKeeper: isKeeper(), // 초기값은 로컬에서 확인
     userName: '타조 89389', // 사용자 이름
-  };
+  });
 
   // 모달 상태 관리
   const [isKeeperModalOpen, setIsKeeperModalOpen] = useState(false);
@@ -291,34 +296,85 @@ const MyPage: React.FC = () => {
     }, 3000);
   };
 
+  // useEffect를 사용하여 페이지 로드 시 보관인 역할 확인
+  useEffect(() => {
+    // 로그인 상태인 경우에만 보관인 역할 확인
+    if (isAuthenticated()) {
+      const checkUserInfo = async () => {
+        try {
+          // 1. 보관인 역할 확인
+          const isUserKeeper = await checkKeeperRole();
+
+          // 2. 사용자 정보 조회 (프로필 API 호출)
+          const userInfoResponse = await axios.get('/api/users/me');
+          const userNickname = userInfoResponse.data?.data?.nickname || '타조 회원';
+
+          // 상태 업데이트
+          setUserState(prev => ({
+            ...prev,
+            isKeeper: isUserKeeper,
+            userName: userNickname,
+          }));
+        } catch (error) {
+          console.error('사용자 정보 조회 실패:', error);
+        }
+      };
+
+      checkUserInfo();
+    }
+  }, []);
+
   // 내 거래내역 보기 이동 핸들러
   const moveToMyTradePage = () => {
     // 내 거래내역 페이지로 이동
     navigate('/mytrade');
   };
 
-  // 보관인 등록 핸들러
-  const handleKeeperRegistration = () => {
-    // 이미 보관인인 경우 토스트 메시지 표시
-    if (USER_STATE.isKeeper) {
-      showToast('이미 보관인으로 등록되었습니다.');
-      return;
-    }
+  // 보관인 등록 핸들러 수정
+  const handleKeeperRegistration = async () => {
+    try {
+      // 최신 상태 확인을 위해 API 호출
+      const isUserKeeper = await checkKeeperRole();
 
-    // 의뢰인인 경우 모달 표시
-    setIsKeeperModalOpen(true);
+      // 이미 보관인인 경우 토스트 메시지 표시
+      if (isUserKeeper) {
+        showToast('이미 보관인으로 등록되었습니다.');
+        // 상태 업데이트
+        setUserState(prev => ({
+          ...prev,
+          isKeeper: true,
+        }));
+        return;
+      }
+
+      // 의뢰인인 경우 모달 표시
+      setIsKeeperModalOpen(true);
+    } catch (error) {
+      console.error('보관인 역할 확인 실패:', error);
+      // 오류 발생 시 기본적으로 모달 표시
+      setIsKeeperModalOpen(true);
+    }
   };
 
-  // 내 보관소 조회 핸들러
-  const moveToMyPlacePage = () => {
-    // 보관인이 아닌 경우 보관인 등록 모달 표시
-    if (!USER_STATE.isKeeper) {
-      setIsKeeperModalOpen(true);
-      return;
-    }
+  // 내 보관소 조회 핸들러 수정
+  const moveToMyPlacePage = async () => {
+    try {
+      // 최신 상태 확인을 위해 API 호출
+      const isUserKeeper = await checkKeeperRole();
 
-    // 보관인인 경우 내 보관소 페이지로 이동
-    navigate('/myplace');
+      // 보관인이 아닌 경우 보관인 등록 모달 표시
+      if (!isUserKeeper) {
+        setIsKeeperModalOpen(true);
+        return;
+      }
+
+      // 보관인인 경우 내 보관소 페이지로 이동
+      navigate('/myplace');
+    } catch (error) {
+      console.error('보관인 역할 확인 실패:', error);
+      // 오류 발생 시 일단 모달 표시
+      setIsKeeperModalOpen(true);
+    }
   };
 
   // 개인정보 약관 이동 핸들러
@@ -467,14 +523,14 @@ const MyPage: React.FC = () => {
           <ProfileImage src="https://placehold.co/58x59" />
         </ProfileImageContainer>
         <HelperText>헬퍼텍스트입니다</HelperText>
-        <UserName>{USER_STATE.userName}</UserName>
+        <UserName>{userState.userName}</UserName>
         <ProfileDivider />
 
         <BadgeContainer>
           <BadgeText>의뢰인</BadgeText>
         </BadgeContainer>
 
-        {USER_STATE.isKeeper && (
+        {userState.isKeeper && (
           <BadgeContainer style={{ left: '130px' }}>
             <BadgeText>보관인</BadgeText>
           </BadgeContainer>

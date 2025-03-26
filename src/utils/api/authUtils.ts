@@ -141,3 +141,21 @@ export const logout = (): void => {
     console.error('로그아웃 중 오류:', error);
   }
 };
+
+/**
+ * 보관인 역할 업데이트 - 새 토큰으로 저장
+ * @param accessToken 새 접근 토큰 (새 역할 정보가 포함된)
+ */
+export const updateUserRole = (accessToken: string): void => {
+  try {
+    // 기존 토큰 대체
+    localStorage.setItem('accessToken', accessToken);
+
+    // 인증 상태 변경 알림
+    notifyAuthStateChange();
+
+    console.log('사용자 역할 업데이트 완료');
+  } catch (error) {
+    console.error('역할 업데이트 중 오류:', error);
+  }
+};
