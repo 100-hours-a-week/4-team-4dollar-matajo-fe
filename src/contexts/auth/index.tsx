@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as authApi from '../../services/api/modules/auth';
+import { decodeJWT } from '../../utils/formatting/decodeJWT';
 
 // 사용자 역할 타입 정의
 export enum UserRole {
@@ -46,19 +47,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const initAuth = async () => {
     try {
       setLoading(true);
-      const userId = localStorage.getItem('userId');
       const accessToken = localStorage.getItem('accessToken');
-      const refreshToken = localStorage.getItem('refreshToken');
-      const nickname = localStorage.getItem('userNickname');
-      const role = localStorage.getItem('userRole');
 
-      if (userId && accessToken) {
-        setUser({
-          id: userId,
-          name: nickname || 'User',
-          role: (role as UserRole) || UserRole.Client,
-          token: accessToken,
-        });
+      if (accessToken) {
+        // JWT 토큰에서 정보 추출
+        const decoded = decodeJWT(accessToken);
+        if (decoded) {
+          setUser({
+            id: decoded.userId.toString(),
+            name: decoded.nickname || 'User',
+            role: (decoded.role as UserRole) || UserRole.Client,
+            token: accessToken,
+          });
+        } else {
+          setUser(null);
+        }
       } else {
         setUser(null);
       }
@@ -89,13 +92,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 로그아웃 함수
   const logout = () => {
     try {
-      // API 호출은 제거하고 로컬 스토리지만 정리
-      localStorage.removeItem('userId');
+      // accessToken만 제거
       localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userNickname');
-      localStorage.removeItem('userRole');
       setUser(null);
+
+      // 인증 상태 변경 알림 (authUtils의 함수 사용)
+      window.dispatchEvent(new CustomEvent('AUTH_STATE_CHANGED'));
     } catch (error) {
       console.error('로그아웃 오류:', error);
     }
