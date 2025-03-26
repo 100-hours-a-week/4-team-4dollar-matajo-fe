@@ -1,5 +1,4 @@
 // src/services/LocationService.ts
-import { DongData } from '../utils/api/csvUtils';
 
 // Location data interface
 export interface LocationInfo {

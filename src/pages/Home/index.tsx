@@ -7,7 +7,7 @@ import BottomNavigation from '../../components/layout/BottomNavigation';
 import MapBottomSheet from './MapBottomSheet';
 import KakaoMap from '../../components/feature/map/KakaoMap';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
-import { loadDongDataFromCSV } from '../../utils/api/csvUtils';
+
 import LocationSearchModal from './LocationSearchModal';
 import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet';
 

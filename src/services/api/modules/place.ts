@@ -14,6 +14,13 @@ export interface Place {
   isPopular: boolean;
 }
 
+// 동 검색 결과 타입 정의 (추가)
+export interface DongSearchResult {
+  id: number;
+  dong: string;
+  formatted_address: string;
+}
+
 // 특가 아이템 타입 정의
 export interface DiscountItem {
   id: string;
@@ -74,6 +81,27 @@ export const searchPlaces = async (keyword: string) => {
   } catch (error) {
     console.error('장소 검색 오류:', error);
     throw error;
+  }
+};
+
+// 동 검색 함수 (추가)
+export const searchDong = async (keyword: string): Promise<DongSearchResult[]> => {
+  try {
+    if (!keyword.trim()) return [];
+
+    const response = await client.get(API_PATHS.PLACE.LOCATIONS.SEARCH, {
+      params: { dong: keyword },
+    });
+
+    // API 응답 구조가 { success: true, message: string, data: DongSearchResult[] } 형태
+    if (response.data?.success && Array.isArray(response.data.data)) {
+      return response.data.data;
+    }
+
+    return [];
+  } catch (error) {
+    console.error('동 검색 오류:', error);
+    return [];
   }
 };
 

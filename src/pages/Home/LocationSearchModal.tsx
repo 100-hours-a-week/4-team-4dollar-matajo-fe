@@ -1,7 +1,6 @@
 // src/pages/Home/LocationSearchModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { searchDongData } from '../../utils/api/csvUtils';
 
 // 모달 오버레이 - 화면 전체를 덮는 반투명 배경
 const ModalOverlay = styled.div`
