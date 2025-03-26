@@ -1,4 +1,5 @@
 // src/services/LocationService.ts
+import { getLocationId } from './api/modules/place';
 
 // Location data interface
 export interface LocationInfo {
@@ -6,6 +7,13 @@ export interface LocationInfo {
   display_name: string;
   latitude: string;
   longitude: string;
+}
+
+// 위치 ID 정보 인터페이스
+export interface LocationIdInfo {
+  id: number;
+  dong: string;
+  formatted_address: string;
 }
 
 // Default location - will be overridden with actual location when available
@@ -17,8 +25,7 @@ class LocationService {
   private static instance: LocationService;
   private recentLocations: LocationInfo[] = [];
   private currentLocation: LocationInfo | null = null;
-  private dongData: DongData[] = [];
-  private isInitialized = false;
+  private currentLocationId: LocationIdInfo | null = null;
 
   private constructor() {
     // Load recent locations from localStorage
@@ -30,12 +37,6 @@ class LocationService {
       LocationService.instance = new LocationService();
     }
     return LocationService.instance;
-  }
-
-  // Initialize with dong data
-  public initialize(dongData: DongData[]): void {
-    this.dongData = dongData;
-    this.isInitialized = true;
   }
 
   // Get user's current location
@@ -55,16 +56,24 @@ class LocationService {
         async position => {
           const { latitude, longitude } = position.coords;
 
-          // Find nearest location in dongData
-          const location = await this.reverseGeocode(latitude, longitude);
-          if (location) {
+          try {
+            // 역지오코딩 API 호출 (실제 앱에서는 Kakao API 호출)
+            // 여기서는 테스트용으로 기본 위치 값을 사용합니다
+            const location: LocationInfo = {
+              formatted_address: DEFAULT_LOCATION,
+              display_name: '여의도동',
+              latitude: latitude.toString(),
+              longitude: longitude.toString(),
+            };
+
             this.currentLocation = location;
             resolve(location);
-          } else {
-            // Fallback to default location if reverse geocoding fails
+          } catch (error) {
+            console.error('역지오코딩 오류:', error);
+            // 오류 시 기본 위치 사용
             const defaultLocation: LocationInfo = {
               formatted_address: DEFAULT_LOCATION,
-              display_name: DEFAULT_LOCATION,
+              display_name: '여의도동',
               latitude: DEFAULT_COORDINATES.lat.toString(),
               longitude: DEFAULT_COORDINATES.lng.toString(),
             };
@@ -80,68 +89,32 @@ class LocationService {
     });
   }
 
-  // Reverse geocode coordinates to location name
-  private async reverseGeocode(latitude: number, longitude: number): Promise<LocationInfo | null> {
-    // In a real app, this would use Kakao Maps or another geocoding service
-    // For now, find the closest matching location in dongData
-    if (!this.isInitialized || this.dongData.length === 0) {
+  // 주소 기반 위치 ID 조회 및 저장
+  public async getLocationIdByAddress(formattedAddress: string): Promise<LocationIdInfo | null> {
+    try {
+      // place.ts의 getLocationId API 호출
+      const locationId = await getLocationId(formattedAddress);
+
+      if (locationId) {
+        this.currentLocationId = locationId;
+        return locationId;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('위치 ID 조회 오류:', error);
       return null;
     }
-
-    let closestLocation: DongData | null = null;
-    let minDistance = Number.MAX_VALUE;
-
-    for (const dong of this.dongData) {
-      if (!dong || !dong.latitude || !dong.longitude) {
-        continue;
-      }
-
-      const dongLat = parseFloat(dong.latitude);
-      const dongLng = parseFloat(dong.longitude);
-
-      if (isNaN(dongLat) || isNaN(dongLng)) {
-        continue;
-      }
-
-      const distance = this.calculateDistance(latitude, longitude, dongLat, dongLng);
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestLocation = dong;
-      }
-    }
-
-    if (closestLocation) {
-      // Here we correctly access the properties that we confirmed exist in the CSV
-      return {
-        formatted_address: closestLocation.formatted_address || DEFAULT_LOCATION,
-        display_name: closestLocation.display_name || DEFAULT_LOCATION,
-        latitude: closestLocation.latitude || DEFAULT_COORDINATES.lat.toString(),
-        longitude: closestLocation.longitude || DEFAULT_COORDINATES.lng.toString(),
-      };
-    }
-
-    return null;
   }
 
-  // Simple distance calculation using Haversine formula
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // Radius of the earth in km
-    const dLat = this.deg2rad(lat2 - lat1);
-    const dLon = this.deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.deg2rad(lat1)) *
-        Math.cos(this.deg2rad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; // Distance in km
-    return d;
+  // 현재 위치 ID 조회
+  public getCurrentLocationId(): LocationIdInfo | null {
+    return this.currentLocationId;
   }
 
-  private deg2rad(deg: number): number {
-    return deg * (Math.PI / 180);
+  // 위치 ID 저장
+  public setCurrentLocationId(locationId: LocationIdInfo): void {
+    this.currentLocationId = locationId;
   }
 
   // Add a location to recent searches

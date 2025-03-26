@@ -21,7 +21,8 @@ export const API_PATHS = {
     DISCOUNT_ITEMS: '/api/places/discount-items',
     RECENT_ITEMS: '/api/places/recent-items',
     LOCATIONS: {
-      SEARCH: '/api/locations/search', // 동 검색 API 추가
+      AUTOCOMPLETE: '/api/locations/autocomplete', // 검색어로 동검색 (이름 변경됨)
+      INFO: '/api/locations/info', // 동 테이블 id값 반환 (이름 변경됨)
     },
   },
   STORAGE: {
@@ -30,6 +31,9 @@ export const API_PATHS = {
     REGISTER: '/api/storage/register',
     UPDATE: '/api/storage/:postId',
     DELETE: '/api/storage/:postId',
+  },
+  POSTS: {
+    BY_LOCATION: '/api/posts/location', // 위치 ID 기반 게시글 조회
   },
   CHAT: {
     ROOMS: '/api/chat/rooms',

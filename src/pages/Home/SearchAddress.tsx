@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import { initializeKakaoMaps } from '../../services/KakaoMapService';
-import { searchDong, DongSearchResult } from '../../services/api/modules/place';
+import { searchDong } from '../../services/api/modules/place';
 
 // 스타일드 컴포넌트 정의 (기존 코드와 동일)
 const Container = styled.div`
@@ -136,7 +136,11 @@ const LoadingContainer = styled.div`
 const LoadingSpinner = styled.div`
   width: 30px;
   height: 30px;
-  border: 3px solid rgba(94, 92, 253, 0.2);
+  border: 3px solid rgba(94, 92, 253, 0.2  );
+};
+
+export default SearchAddress;
+
   border-top: 3px solid #5e5cfd;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -187,16 +191,9 @@ const DropdownItem = styled.div`
   }
 `;
 
-const DongName = styled.p`
-  color: #010048;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 2px;
-`;
-
 const AddressText = styled.p`
   color: #868686;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
 `;
 
@@ -226,7 +223,7 @@ const SearchAddress: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<SearchAddress[]>([]);
-  const [dongResults, setDongResults] = useState<DongSearchResult[]>([]);
+  const [dongResults, setDongResults] = useState<string[]>([]);
   const [isSearched, setIsSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isDongLoading, setIsDongLoading] = useState(false);
@@ -309,14 +306,18 @@ const SearchAddress: React.FC = () => {
   };
 
   // 동 검색 결과 항목 클릭 핸들러
-  const handleDongSelect = (result: DongSearchResult) => {
+  const handleDongSelect = (address: string) => {
+    // 주소에서 동 이름 추출 (마지막 부분)
+    const parts = address.split(' ');
+    const dongName = parts[parts.length - 1]; // 마지막 부분이 동 이름으로 가정
+
     // 선택된 동을 가지고 Registration1 페이지로 돌아가기
     navigate('/registration/step1', {
       state: {
         selectedAddress: {
-          address: result.formatted_address,
-          roadAddress: result.formatted_address, // 도로명 주소가 없으면 동일하게 설정
-          place: result.dong,
+          address: address, // 전체 주소
+          roadAddress: address, // 도로명 주소가 없으면 동일하게 설정
+          place: dongName, // 동 이름
           latitude: '', // API로부터 받은 데이터에 좌표가 없으므로 빈 값으로 설정
           longitude: '',
         },
@@ -486,10 +487,9 @@ const SearchAddress: React.FC = () => {
                   <LoadingText>검색 중...</LoadingText>
                 </LoadingContainer>
               ) : dongResults.length > 0 ? (
-                dongResults.map(result => (
-                  <DropdownItem key={result.id} onClick={() => handleDongSelect(result)}>
-                    <DongName>{result.dong}</DongName>
-                    <AddressText>{result.formatted_address}</AddressText>
+                dongResults.map((address, index) => (
+                  <DropdownItem key={index} onClick={() => handleDongSelect(address)}>
+                    <AddressText>{address}</AddressText>
                   </DropdownItem>
                 ))
               ) : (
@@ -572,5 +572,3 @@ const SearchAddress: React.FC = () => {
     </>
   );
 };
-
-export default SearchAddress;
