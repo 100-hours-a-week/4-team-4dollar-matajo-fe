@@ -5,7 +5,6 @@ on:
     branches:
       - dev
       - main
-      - feat/s3 # 나중에 지우기. 테스트용이라 임시로 추가함.
   workflow_dispatch:
 
 jobs:
@@ -38,6 +37,9 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: matajo
           SENTRY_PROJECT: matajo-s3-test
+          REACT_APP_API_BACKEND_URL: ${{ secrets.REACT_APP_API_BACKEND_URL }}
+          REACT_APP_KAKAO_REST_API_KEY: ${{ secrets.REACT_APP_KAKAO_REST_API_KEY }}
+          REACT_APP_KAKAO_REDIRECT_URI: ${{ secrets.REACT_APP_KAKAO_REDIRECT_URI }}
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1

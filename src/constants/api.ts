@@ -1,8 +1,7 @@
 // src/constants/api.ts
 
 // API 기본 URL 설정
-export const API_BACKEND_URL =
-  process.env.REACT_APP_API_BACKEND_URL || 'http://15.164.251.118:8080/';
+export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL || 'http://43.201.83.7:8080';
 
 // API 경로 정의
 export const API_PATHS = {
@@ -62,13 +61,10 @@ export const API_PATHS = {
   },
 };
 
-// API 기본 URL
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://15.164.251.118:8080/';
-
 // 카카오 인증 관련 상수
 export const KAKAO_AUTH = {
-  REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY || '244abed4cb1b567f33d22e14fc58a2c5',
-  REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao',
+  REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY || '9655a3f1781523203be3afb00ad486e4',
+  REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'https://matajo.store/auth/kakao',
   getLoginUrl: () => {
     return `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_AUTH.REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
   },
