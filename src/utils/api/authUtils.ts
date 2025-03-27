@@ -6,7 +6,7 @@ import { UserRole } from '../../contexts/auth';
 // 로그인 데이터 인터페이스
 interface KakaoLoginData {
   accessToken: string;
-  userId: string;
+  userId?: string;
   role?: string;
 }
 
@@ -23,9 +23,10 @@ export const notifyAuthStateChange = () => {
  * 카카오 로그인 데이터를 로컬 스토리지에 저장하는 함수
  * @param data 카카오 로그인 데이터
  */
+// saveKakaoLoginData 함수 수정
 export const saveKakaoLoginData = (data: KakaoLoginData) => {
   try {
-    // accessToken만 저장하도록 수정
+    // accessToken만 저장
     localStorage.setItem('accessToken', data.accessToken);
 
     // 저장 후 인증 상태 변경 이벤트 발생

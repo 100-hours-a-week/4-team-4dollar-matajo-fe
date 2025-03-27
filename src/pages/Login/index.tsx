@@ -1,168 +1,132 @@
 // src/pages/Login/index.tsx
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { KAKAO_AUTH } from '../../constants/api';
-import { logout } from '../../utils/api/authUtils';
 
-// 스타일 컴포넌트들
-const PageContainer = styled.div`
-  width: 375px;
-  height: 812px;
-  position: relative;
-  background: white;
-  overflow: hidden;
-  margin: 0 auto;
-`;
-
-const TeamName = styled.span`
-  color: rgba(0, 93.65, 79.6, 0.45);
-  font-size: 14px;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.01px;
-  word-wrap: break-word;
-  position: absolute;
-  top: 20px;
-  left: 20px;
-`;
-
-const LogoText = styled.span`
-  color: black;
-  font-size: 42px;
-  font-family: 'Hakgyoansim Allimjang OTF', sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.04px;
-  word-wrap: break-word;
-  position: absolute;
-  top: 140px;
-  left: 130px;
-`;
-
-const Slogan = styled.p`
-  position: absolute;
-  top: 200px;
-  left: 85px;
-`;
-
-const SlightText = styled.span`
-  color: #a0a0a0;
-  font-size: 14px;
-  font-family: 'Gmarket Sans TTF', sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.01px;
-  word-wrap: break-word;
-`;
-
-const BoldText = styled.span`
-  color: black;
-  font-size: 14px;
-  font-family: 'Gmarket Sans TTF', sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.01px;
-  word-wrap: break-word;
-`;
-
-const KakaoLoginButton = styled.div`
-  height: 45px;
-  padding-left: 14px;
-  padding-right: 14px;
-  position: absolute;
-  left: 42px;
-  right: 42px;
-  top: 576px;
-  background: #fee500;
-  border-radius: 6px;
+// 스타일 컴포넌트
+const LoginContainer = styled.div`
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  cursor: pointer;
-  width: calc(100% - 84px);
+  justify-content: center;
+  height: 100vh;
+  background-color: white;
 `;
 
-const KakaoIconWrapper = styled.div`
-  width: 18px;
-  height: 17px;
-  margin-right: 8px;
-`;
-
-const KakaoText = styled.span`
-  color: rgba(0, 0, 0, 0.85);
-  font-size: 15px;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 400;
-  line-height: 22.5px;
-  word-wrap: break-word;
-`;
-
-const LogoImage = styled.div`
-  width: 205px;
-  height: 204px;
-  position: absolute;
-  left: 85px;
-  top: 260px;
+const Logo = styled.div`
+  width: 120px;
+  height: 120px;
   background-image: url('/tajo-logo.png');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
+  margin-bottom: 40px;
 `;
 
-const LoginPage: React.FC = () => {
-  // 로그인 페이지 마운트 시 로그아웃 처리
+const Title = styled.h1`
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 40px;
+  color: #333;
+  text-align: center;
+  font-family: 'Noto Sans KR', sans-serif;
+`;
+
+const KakaoButton = styled.button`
+  background-color: #fee500;
+  width: 300px;
+  height: 50px;
+  border: none;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 20px;
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
+const KakaoText = styled.span`
+  font-size: 16px;
+  font-weight: bold;
+  color: #000000;
+  font-family: 'Noto Sans KR', sans-serif;
+`;
+
+const KakaoIcon = styled.div`
+  width: 24px;
+  height: 24px;
+  background-image: url('https://cdn.icon-icons.com/icons2/2699/PNG/512/kakaotalk_logo_icon_168557.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin-right: 8px;
+`;
+
+const LoginInfoText = styled.p`
+  font-size: 14px;
+  color: #666;
+  margin-top: 20px;
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.5;
+  font-family: 'Noto Sans KR', sans-serif;
+`;
+
+/**
+ * 로그인 페이지 컴포넌트
+ */
+const Login: React.FC = () => {
+  const navigate = useNavigate();
+
   useEffect(() => {
-    // 로그아웃 함수 호출로 로컬 스토리지 정리
-    logout();
-
-    // 모든 쿠키 삭제
-    document.cookie.split(';').forEach(cookie => {
-      const name = cookie.split('=')[0].trim();
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    });
-
-    console.log('로그인 페이지 마운트: 로그아웃 및 쿠키 정리 완료');
-  }, []);
+    // 이미 로그인되어 있는 경우 메인 페이지로 리다이렉트
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      navigate('/main', { replace: true });
+    }
+  }, [navigate]);
 
   // 카카오 로그인 처리 함수
   const handleKakaoLogin = () => {
-    // 콘스탄트 파일에서 정의된 함수 사용
-    const kakaoAuthUrl = KAKAO_AUTH.getLoginUrl();
-    console.log('카카오 로그인 시작:', kakaoAuthUrl);
-    window.location.href = kakaoAuthUrl;
+    try {
+      console.log('카카오 로그인 시도...');
+
+      // 카카오 로그인 URL 생성 및 이동
+      const kakaoLoginUrl = KAKAO_AUTH.getLoginUrl();
+      console.log('카카오 로그인 URL:', kakaoLoginUrl);
+
+      // 현재 창에서 카카오 로그인 페이지로 이동
+      window.location.href = kakaoLoginUrl;
+    } catch (error) {
+      console.error('카카오 로그인 오류:', error);
+    }
   };
 
   return (
-    <PageContainer>
-      <TeamName>TEAM 4 DOLLAR</TeamName>
-      <LogoText>MATAJO</LogoText>
-      <Slogan>
-        <SlightText>짐 보관하기 어려울 때, </SlightText>
-        <BoldText>마타조</BoldText>
-      </Slogan>
+    <LoginContainer>
+      <Logo />
+      <Title>마타조에 오신 것을 환영합니다!</Title>
 
-      {/* 로고 이미지 */}
-      <LogoImage />
+      <KakaoButton onClick={handleKakaoLogin}>
+        <KakaoIcon />
+        <KakaoText>카카오로 시작하기</KakaoText>
+      </KakaoButton>
 
-      {/* 카카오 로그인 버튼 */}
-      <KakaoLoginButton onClick={handleKakaoLogin}>
-        <KakaoIconWrapper>
-          <svg
-            width="18"
-            height="17"
-            viewBox="0 0 18 17"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M9.00002 0.0996094C4.02917 0.0996094 0 3.21257 0 7.05189C0 9.43963 1.5584 11.5446 3.93152 12.7966L2.93303 16.4441C2.84481 16.7664 3.21341 17.0233 3.49646 16.8365L7.87334 13.9478C8.2427 13.9835 8.61808 14.0043 9.00002 14.0043C13.9705 14.0043 17.9999 10.8914 17.9999 7.05189C17.9999 3.21257 13.9705 0.0996094 9.00002 0.0996094Z"
-              fill="black"
-            />
-          </svg>
-        </KakaoIconWrapper>
-        <KakaoText>카카오 로그인</KakaoText>
-      </KakaoLoginButton>
-    </PageContainer>
+      <LoginInfoText>
+        카카오 계정을 통해 간편하게 로그인하고 <br></br>마타조 서비스의 모든 기능을 이용하세요.
+      </LoginInfoText>
+    </LoginContainer>
   );
 };
 
-export default LoginPage;
+export default Login;

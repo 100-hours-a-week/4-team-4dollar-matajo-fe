@@ -1,12 +1,17 @@
 // constants/api.ts
 
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
-export const API_BACKEND_URL = API_BASE_URL; // API_BASE_URL과 동일하게 설정
+// .env 파일에 있는 환경 변수에 맞게 이름 수정
+export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL || 'http://43.201.83.7:8080';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://43.201.83.7:8080';
+export const API_BASE_URL = API_BACKEND_URL; // 이전 코드와의 호환성을 위해 추가
 
 export const KAKAO_AUTH = {
   REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY || '244abed4cb1b567f33d22e14fc58a2c5',
   REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao',
   getLoginUrl: () => {
+    console.log(
+      `카카오 로그인 URL 생성: REST_API_KEY=${KAKAO_AUTH.REST_API_KEY}, REDIRECT_URI=${KAKAO_AUTH.REDIRECT_URI}`,
+    );
     return `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_AUTH.REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
   },
 };
@@ -14,17 +19,19 @@ export const KAKAO_AUTH = {
 export const API_PATHS = {
   AUTH: {
     LOGIN: '/api/auth/login',
-    LOGOUT: '/api/auth/logout',
-    REFRESH: '/api/auth/refresh',
-    KAKAO: '/api/auth/kakao',
-    KAKAO_CALLBACK: '/api/auth/kakao/callback',
+    LOGOUT: '/auth/logout', // 명세서에 맞춰 수정
+    REFRESH: '/auth/refresh', // 명세서에 맞춰 수정
+    KAKAO: '/auth/kakao', // 명세서에 맞춰 수정
     VERIFY: '/api/auth/verify',
-    KEEPER_STATUS: '/api/auth/keeper-status', // 추가
+    KEEPER_STATUS: '/api/auth/keeper-status',
   },
   USER: {
     ME: '/api/users/me',
     PROFILE: '/api/users/profile',
     UPDATE: '/api/users/profile',
+    REGISTER_AS_KEEPER: '/api/users/register-as-keeper',
+    NICKNAME: '/api/users/nickname', // 명세서에 맞게 추가
+    DELETE: '/api/users', // 명세서에 맞게 추가
   },
   PLACE: {
     NEARBY: '/api/places/nearby',
@@ -32,8 +39,8 @@ export const API_PATHS = {
     DISCOUNT_ITEMS: '/api/places/discount-items',
     RECENT_ITEMS: '/api/places/recent-items',
     LOCATIONS: {
-      AUTOCOMPLETE: '/api/locations/autocomplete', // 검색어로 동검색 (이름 변경됨)
-      INFO: '/api/locations/info', // 동 테이블 id값 반환 (이름 변경됨)
+      AUTOCOMPLETE: '/api/locations/autocomplete',
+      INFO: '/api/locations/info',
     },
   },
   STORAGE: {
@@ -42,28 +49,34 @@ export const API_PATHS = {
     REGISTER: '/api/storage/register',
     UPDATE: '/api/storage/:postId',
     DELETE: '/api/storage/:postId',
-    CREATE: '/api/storage/list', // CREATE 속성 추가 (LIST와 동일한 엔드포인트 사용)
+    CREATE: '/api/storage/list',
   },
   POSTS: {
-    BY_LOCATION: '/api/posts/location', // 위치 ID 기반 게시글 조회
+    BY_LOCATION: '/api/posts/location',
   },
   CHAT: {
     ROOMS: '/api/chat/rooms',
     MESSAGES: '/api/chat/rooms/:roomId/messages',
     SEND: '/api/chat/rooms/:roomId/send',
     CREATE: '/api/chat/rooms/create',
+    TRADE_INFO: '/api/chat/trade',
   },
   KEEPER: {
     REGISTER: '/api/keeper/register',
     PROFILE: '/api/keeper/profile',
     UPDATE: '/api/keeper/profile',
   },
+  MYPAGE: {
+    TRADE: '/api/mypage/trades',
+    STORAGE: '/api/mypage/storage',
+  },
 };
 
-// 추가: 기본 내보내기
+// 기본 내보내기
 const api = {
   API_BASE_URL,
   API_BACKEND_URL,
+  API_URL,
   KAKAO_AUTH,
   API_PATHS,
 };
