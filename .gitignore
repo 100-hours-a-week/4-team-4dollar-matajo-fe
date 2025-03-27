@@ -171,4 +171,8 @@ sketch
 temp
 backup
 .config
+build
 # End of https://www.toptal.com/developers/gitignore/api/react,node,git
+
+# Sentry Config File
+.sentryclirc

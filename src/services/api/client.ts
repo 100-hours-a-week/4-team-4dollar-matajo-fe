@@ -1,12 +1,10 @@
 // src/api/client.ts
 import axios from 'axios';
 import { getToken, logout } from '../../utils/api/authUtils';
-import { API_BASE_URL } from '../../constants/api';
-
-// API_BASE_URL은 이제 constants/api.ts에서 가져옴
+import { API_BACKEND_URL } from '../../constants/api';
 
 const client = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
