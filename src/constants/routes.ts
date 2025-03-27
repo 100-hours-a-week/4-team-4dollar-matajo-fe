@@ -25,12 +25,19 @@ export const ROUTES = {
   MYTRADE: 'mytrade',
   MYPLACE: 'myplace',
 
-  KEEPER_REGISTRATION: 'keeper/registration',
+  // 보관인 등록
+  KEEPER_REGISTRATION: 'keeper-registration',
 
-  // 보관인 등록 단계
+  // 보관소 등록 단계
   REGISTRATION_STEP1: 'registration/step1',
   REGISTRATION_STEP2: 'registration/step2',
   REGISTRATION_STEP3: 'registration/step3',
+
+  // 전체 경로
+  MYPAGE_REGISTRATION: 'mypage/registration',
+  MYPAGE_REGISTRATION_STEP1: 'mypage/registration/step1',
+  MYPAGE_REGISTRATION_STEP2: 'mypage/registration/step2',
+  MYPAGE_REGISTRATION_STEP3: 'mypage/registration/step3',
 
   // 기타
   SEARCH_ADDRESS: 'search-address',

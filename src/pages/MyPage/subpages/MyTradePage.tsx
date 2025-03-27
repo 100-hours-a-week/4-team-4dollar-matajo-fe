@@ -5,6 +5,7 @@ import BottomNavigation from '../../../components/layout/BottomNavigation';
 import { useNavigate } from 'react-router-dom';
 import { getMyTrades, TradeItem } from '../../../services/api/modules/user';
 import moment from 'moment';
+import { ROUTES } from '../../../constants/routes';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -177,7 +178,11 @@ const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
 
   // 뒤로가기 핸들러 함수 - MyPage로 이동
   const handleBackClick = () => {
-    navigate('/mypage');
+    if (onBack) {
+      onBack();
+    } else {
+      navigate(`/${ROUTES.MYPAGE}`);
+    }
   };
 
   // 날짜 형식 변환 - '2025-03-18' -> '2025.03.18'

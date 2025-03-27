@@ -518,7 +518,7 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
                 onChange={handleEndDateChange}
                 dateFormat="yyyy.MM.dd"
                 locale={ko}
-                minDate={startDate}
+                minDate={startDate ? startDate : undefined}
               />
             </StyledDatePickerContainer>
           </DateInputContainer>

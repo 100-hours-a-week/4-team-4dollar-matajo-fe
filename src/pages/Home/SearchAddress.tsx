@@ -2,10 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
-import { initializeKakaoMaps } from '../../services/KakaoMapService';
-import { searchDong } from '../../services/api/modules/place';
 import { LocationInfo } from '../../services/LocationService';
-import { debounce } from 'lodash';
 
 // 스타일드 컴포넌트 정의 (기존 코드와 동일)
 const Container = styled.div`
@@ -35,6 +32,8 @@ const SearchInput = styled.input`
   font-size: 14px;
   font-family: 'Noto Sans KR', sans-serif;
   outline: none;
+  background-color: #f8f8f8;
+  cursor: pointer;
 
   &::placeholder {
     color: #9e9e9e;
@@ -97,127 +96,11 @@ const ExampleText = styled.p`
   margin-left: 10px;
 `;
 
-const SearchResultContainer = styled.div`
-  padding: 0 20px;
-`;
-
-const SearchResultItem = styled.div`
-  padding: 15px 10px;
-  border-bottom: 1px solid #efefef;
-  cursor: pointer;
-
-  &:hover {
-    background-color: #f5f5ff;
-  }
-`;
-
-const ResultMainText = styled.p`
-  color: #010048;
-  font-size: 14px;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 500;
-  margin-bottom: 5px;
-`;
-
-const ResultSubText = styled.p`
-  color: #868686;
-  font-size: 12px;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 400;
-`;
-
-// 로딩 인디케이터
-const LoadingContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 30px 0;
-`;
-
-const LoadingSpinner = styled.div`
-  width: 30px;
-  height: 30px;
-  border: 3px solid rgba(94, 92, 253, 0.2  );
-};
-
-export default SearchAddress;
-
-  border-top: 3px solid #5e5cfd;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 10px;
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-`;
-
-const LoadingText = styled.p`
-  color: #5e5cfd;
-  font-size: 14px;
-  font-family: 'Noto Sans KR', sans-serif;
-`;
-
-// 드롭다운 컴포넌트 스타일 추가
-const DropdownContainer = styled.div`
-  position: absolute;
-  top: 55px;
-  left: 0;
-  width: 100%;
-  max-height: 300px;
-  overflow-y: auto;
-  background-color: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 5px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-`;
-
-const DropdownItem = styled.div`
-  padding: 12px 15px;
-  cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &:hover {
-    background-color: #f5f5ff;
-  }
-`;
-
-const AddressText = styled.p`
-  color: #868686;
-  font-size: 14px;
-  font-weight: 400;
-`;
-
-const NoResultsText = styled.p`
-  padding: 15px;
-  text-align: center;
-  color: #868686;
-  font-size: 14px;
-`;
-
-interface SearchAddress {
-  address_name: string;
-  road_address_name: string;
-  place_name?: string;
-  x: string; // longitude
-  y: string; // latitude
-}
-
 // Kakao 전역 타입 정의
 declare global {
   interface Window {
     kakao: any;
+    daum: any;
   }
 }
 
@@ -227,145 +110,81 @@ interface SearchAddressProps {
   recentLocations?: LocationInfo[];
 }
 
-// 검색 결과 아이템 인터페이스 정의
-interface SearchResult {
-  dong: string;
-  formatted_address: string;
-  latitude?: string;
-  longitude?: string;
-}
-
 const SearchAddress: React.FC<SearchAddressProps> = ({
   onSelectLocation,
   recentLocations = [],
 }) => {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [showDongDropdown, setShowDongDropdown] = useState(false);
-  const [apiReady, setApiReady] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const initializingRef = useRef(false);
 
-  // 카카오맵 API 초기화 - 이제 공통 서비스를 활용
-  useEffect(() => {
-    // 중복 초기화 방지
-    if (initializingRef.current) return;
-    initializingRef.current = true;
+  // 다음 우편번호 검색 열기
+  const openDaumPostcode = () => {
+    console.log('다음 우편번호 검색 열기');
 
-    const initKakaoAPI = async () => {
-      try {
-        setIsLoading(true);
-
-        // 새로운 서비스를 통해 카카오맵 초기화
-        await initializeKakaoMaps();
-
-        setApiReady(true);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('카카오맵 초기화 실패:', error);
-        setIsLoading(false);
-        alert('카카오맵 API 초기화에 실패했습니다. 페이지를 새로고침해주세요.');
-      }
-    };
-
-    // 함수 호출
-    initKakaoAPI();
-
-    return () => {
-      initializingRef.current = false;
-    };
-  }, []);
-
-  // 검색 디바운스를 위한 타이머 참조
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // 검색어 변경 핸들러 (디바운스 적용)
-  const debouncedSearch = useRef(
-    debounce(async (term: string) => {
-      if (!term.trim()) {
-        setSearchResults([]);
-        setHasSearched(false);
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        // 동 검색 API 호출
-        const results = await searchDong(term);
-
-        // 검색 결과 가공
-        const formattedResults: SearchResult[] = results.map(dong => ({
-          dong,
-          formatted_address: dong, // API 결과가 단순 문자열인 경우 formatted_address도 동일하게 설정
-        }));
-
-        setSearchResults(formattedResults);
-        setHasSearched(true);
-      } catch (error) {
-        console.error('동 검색 중 오류 발생:', error);
-        setSearchResults([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300), // 300ms 디바운스
-  ).current;
-
-  // 검색어 변경 시 디바운스 검색 실행
-  useEffect(() => {
-    debouncedSearch(searchTerm);
-
-    // 컴포넌트 언마운트 시 디바운스 취소
-    return () => {
-      debouncedSearch.cancel();
-    };
-  }, [searchTerm, debouncedSearch]);
-
-  // 검색어 입력 핸들러
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
+    // 다음 우편번호 검색 스크립트가 로드되었는지 확인
+    if (!window.daum || !window.daum.Postcode) {
+      const script = document.createElement('script');
+      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+      script.async = true;
+      script.onload = () => {
+        // 스크립트 로드 후 우편번호 검색 실행
+        openDaumAddressSearch();
+      };
+      document.head.appendChild(script);
+    } else {
+      openDaumAddressSearch();
+    }
   };
 
-  // 결과 항목 선택 핸들러
-  const handleSelectResult = (result: SearchResult) => {
-    onSelectLocation(result.formatted_address, result.latitude, result.longitude);
-    setSearchTerm('');
-    setSearchResults([]);
+  // 다음 주소 검색 팝업 열기
+  const openDaumAddressSearch = () => {
+    new window.daum.Postcode({
+      oncomplete: function (data: any) {
+        console.log('선택한 주소 데이터:', data);
+
+        // 전체 주소 구성
+        let fullAddress = data.address;
+        let extraAddress = '';
+
+        // 법정동이 있을 경우 추가
+        if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
+          extraAddress += data.bname;
+        }
+
+        // 건물명이 있고, 공동주택일 경우 추가
+        if (data.buildingName !== '' && data.apartment === 'Y') {
+          extraAddress += extraAddress !== '' ? ', ' + data.buildingName : data.buildingName;
+        }
+
+        // 조합형 주소 완성
+        if (extraAddress !== '') {
+          fullAddress += ' (' + extraAddress + ')';
+        }
+
+        // 상태 업데이트
+        setSelectedAddress(fullAddress);
+
+        // 좌표 정보 없이 주소만 전달
+        onSelectLocation(fullAddress);
+
+        // 이전 페이지로 돌아가기
+        navigate(-1);
+      },
+      width: '100%',
+      height: '100%',
+      maxSuggestItems: 5,
+    }).open();
   };
-
-  // 최근 위치 선택 핸들러
-  const handleSelectRecent = (location: LocationInfo) => {
-    onSelectLocation(location.formatted_address, location.latitude, location.longitude);
-    setSearchTerm('');
-    setSearchResults([]);
-  };
-
-  // 드롭다운 외부 클릭 감지를 위한 이벤트 리스너
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        !searchInputRef.current?.contains(event.target as Node)
-      ) {
-        setShowDongDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   // 뒤로가기 핸들러
   const handleBack = () => {
-    navigate('/registration/step1');
+    navigate(-1);
+  };
+
+  // 입력창 클릭 시 바로 다음 우편번호 검색 열기
+  const handleInputClick = () => {
+    openDaumPostcode();
   };
 
   return (
@@ -377,41 +196,15 @@ const SearchAddress: React.FC<SearchAddressProps> = ({
           <SearchInput
             ref={searchInputRef}
             type="text"
-            placeholder="주소를 입력해주세요"
-            value={searchTerm}
-            onChange={handleSearchChange}
+            placeholder="주소를 검색하려면 클릭하세요"
+            value={selectedAddress}
+            onClick={handleInputClick}
+            readOnly
           />
-          <SearchIcon onClick={() => {}} />
-
-          {/* 동 검색 드롭다운 */}
-          {showDongDropdown && (
-            <DropdownContainer ref={dropdownRef}>
-              {isLoading ? (
-                <LoadingContainer>
-                  <LoadingSpinner />
-                  <LoadingText>검색 중...</LoadingText>
-                </LoadingContainer>
-              ) : searchResults.length > 0 ? (
-                searchResults.map((result, index) => (
-                  <DropdownItem key={index} onClick={() => handleSelectResult(result)}>
-                    <AddressText>{result.formatted_address}</AddressText>
-                  </DropdownItem>
-                ))
-              ) : (
-                <NoResultsText>검색 결과가 없습니다</NoResultsText>
-              )}
-            </DropdownContainer>
-          )}
+          <SearchIcon onClick={openDaumPostcode} />
         </SearchInputContainer>
 
-        {isLoading && !showDongDropdown && (
-          <LoadingContainer>
-            <LoadingSpinner />
-            <LoadingText>{apiReady ? '주소 검색 중...' : '카카오맵 API 초기화 중...'}</LoadingText>
-          </LoadingContainer>
-        )}
-
-        {!hasSearched && !isLoading && (
+        {!selectedAddress && (
           <SearchHelpSection>
             <SearchHelpTitle>이렇게 검색해보세요</SearchHelpTitle>
 
@@ -435,31 +228,7 @@ const SearchAddress: React.FC<SearchAddressProps> = ({
               </HelpText>
               <ExampleText>예: 타조빌라</ExampleText>
             </HelpItem>
-
-            <HelpItem>
-              <HelpText>
-                <strong>동 이름만 입력하기</strong>
-              </HelpText>
-              <ExampleText>예: 여의도동, 공덕동, 역삼동</ExampleText>
-            </HelpItem>
           </SearchHelpSection>
-        )}
-
-        {hasSearched && !isLoading && (
-          <SearchResultContainer>
-            {searchResults.length > 0 ? (
-              searchResults.map((result, index) => (
-                <SearchResultItem key={index} onClick={() => handleSelectResult(result)}>
-                  <ResultMainText>{result.formatted_address}</ResultMainText>
-                  <ResultSubText>{result.formatted_address}</ResultSubText>
-                </SearchResultItem>
-              ))
-            ) : (
-              <div style={{ padding: '30px 0', textAlign: 'center', color: '#868686' }}>
-                검색 결과가 없습니다.
-              </div>
-            )}
-          </SearchResultContainer>
         )}
       </Container>
     </>

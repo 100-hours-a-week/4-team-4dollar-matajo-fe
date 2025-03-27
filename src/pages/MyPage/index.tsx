@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { isAuthenticated, isKeeper } from '../../utils/api/authUtils';
 import { checkKeeperRole } from '../../services/api/modules/keeper';
 import axios from '../../services/api/client';
+import { ROUTES } from '../../constants/routes';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -285,6 +286,11 @@ const MyPage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [isToastVisible, setIsToastVisible] = useState(false);
 
+  // 모달 관련 상태 추가
+  const [modalSource, setModalSource] = useState<'keeper_registration' | 'my_place'>(
+    'keeper_registration',
+  );
+
   // 토스트 메시지 표시 함수
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -302,25 +308,59 @@ const MyPage: React.FC = () => {
     if (isAuthenticated()) {
       const checkUserInfo = async () => {
         try {
-          // 1. 보관인 역할 확인
-          const isUserKeeper = await checkKeeperRole();
+          // 1. 로컬에서 먼저 보관인 여부 확인
+          const isKeeperLocal = isKeeper();
+          console.log('로컬 보관인 여부 확인:', isKeeperLocal);
 
-          // 2. 사용자 정보 조회 (프로필 API 호출)
+          // 2. API로 보관인 역할 확인 (최신 정보)
+          const isUserKeeper = await checkKeeperRole();
+          console.log('API 보관인 여부 확인:', isUserKeeper);
+
+          // 3. 사용자 정보 조회 (프로필 API 호출)
           const userInfoResponse = await axios.get('/api/users/me');
           const userNickname = userInfoResponse.data?.data?.nickname || '타조 회원';
+
+          // 둘 중 하나라도 true면 보관인으로 처리
+          const finalKeeperStatus = isKeeperLocal || isUserKeeper;
 
           // 상태 업데이트
           setUserState(prev => ({
             ...prev,
-            isKeeper: isUserKeeper,
+            isKeeper: finalKeeperStatus,
             userName: userNickname,
           }));
+
+          console.log('마이페이지 사용자 상태 업데이트:', {
+            isKeeper: finalKeeperStatus,
+            userName: userNickname,
+          });
         } catch (error) {
           console.error('사용자 정보 조회 실패:', error);
+
+          // API 호출 실패 시 로컬 정보만으로 상태 설정
+          setUserState(prev => ({
+            ...prev,
+            isKeeper: isKeeper(),
+          }));
         }
       };
 
       checkUserInfo();
+
+      // USER_ROLE_CHANGED 이벤트 리스너 등록
+      const handleRoleChange = () => {
+        console.log('역할 변경 감지됨, 상태 업데이트');
+        setUserState(prev => ({
+          ...prev,
+          isKeeper: isKeeper(),
+        }));
+      };
+
+      window.addEventListener('USER_ROLE_CHANGED', handleRoleChange);
+
+      return () => {
+        window.removeEventListener('USER_ROLE_CHANGED', handleRoleChange);
+      };
     }
   }, []);
 
@@ -330,49 +370,92 @@ const MyPage: React.FC = () => {
     navigate('/mytrade');
   };
 
-  // 보관인 등록 핸들러 수정
+  // 보관인 등록 핸들러
   const handleKeeperRegistration = async () => {
     try {
+      // 로컬 상태에서 먼저 체크 (API 호출 전에)
+      if (userState.isKeeper) {
+        console.log('이미 보관인으로 등록되었습니다. 보관소 등록 페이지로 이동합니다.');
+        navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+        return;
+      }
+
       // 최신 상태 확인을 위해 API 호출
       const isUserKeeper = await checkKeeperRole();
 
-      // 이미 보관인인 경우 토스트 메시지 표시
+      // 이미 보관인인 경우 보관소 등록 페이지로 리다이렉트
       if (isUserKeeper) {
-        showToast('이미 보관인으로 등록되었습니다.');
+        console.log('이미 보관인으로 등록되었습니다. 보관소 등록 페이지로 이동합니다.');
         // 상태 업데이트
         setUserState(prev => ({
           ...prev,
           isKeeper: true,
         }));
+
+        navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
         return;
       }
 
       // 의뢰인인 경우 모달 표시
+      setModalSource('keeper_registration');
       setIsKeeperModalOpen(true);
     } catch (error) {
       console.error('보관인 역할 확인 실패:', error);
-      // 오류 발생 시 기본적으로 모달 표시
+
+      // 오류 발생 시 기본적으로 로컬 상태 확인
+      if (userState.isKeeper) {
+        navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+        return;
+      }
+
+      // 그래도 확인이 안 되면 모달 표시
+      setModalSource('keeper_registration');
       setIsKeeperModalOpen(true);
     }
   };
 
-  // 내 보관소 조회 핸들러 수정
+  // 내 보관소 조회 핸들러
   const moveToMyPlacePage = async () => {
     try {
-      // 최신 상태 확인을 위해 API 호출
-      const isUserKeeper = await checkKeeperRole();
-
-      // 보관인이 아닌 경우 보관인 등록 모달 표시
-      if (!isUserKeeper) {
-        setIsKeeperModalOpen(true);
+      // 로컬 상태에서 먼저 체크
+      if (userState.isKeeper) {
+        console.log('보관인 역할 확인됨, 내 보관소 페이지로 이동합니다.');
+        navigate('/myplace');
         return;
       }
 
+      // 최신 상태 확인을 위해 API 호출
+      const isUserKeeper = await checkKeeperRole();
+
       // 보관인인 경우 내 보관소 페이지로 이동
-      navigate('/myplace');
+      if (isUserKeeper) {
+        console.log('API 호출로 보관인 역할 확인됨, 내 보관소 페이지로 이동합니다.');
+
+        // 상태 업데이트
+        setUserState(prev => ({
+          ...prev,
+          isKeeper: true,
+        }));
+
+        navigate('/myplace');
+        return;
+      }
+
+      // 보관인이 아닌 경우 보관인 등록 모달 표시
+      console.log('보관인 역할이 없음, 보관인 등록 모달을 표시합니다.');
+      setModalSource('my_place');
+      setIsKeeperModalOpen(true);
     } catch (error) {
       console.error('보관인 역할 확인 실패:', error);
-      // 오류 발생 시 일단 모달 표시
+
+      // 오류 발생 시 로컬 상태 확인
+      if (userState.isKeeper) {
+        navigate('/myplace');
+        return;
+      }
+
+      // 확인이 안 되면 모달 표시
+      setModalSource('my_place');
       setIsKeeperModalOpen(true);
     }
   };
@@ -407,9 +490,12 @@ const MyPage: React.FC = () => {
 
   // 보관인 등록 확인 처리
   const handleKeeperConfirm = () => {
+    // 모달 닫기
+    setIsKeeperModalOpen(false);
+
     // 보관인 등록 페이지로 이동
-    // 실제 구현 시에는 API 호출 및 정보 검증 로직 추가
-    navigate('/keeper/registration');
+    console.log('보관인 등록 페이지로 이동합니다.');
+    navigate(`/${ROUTES.MYPAGE}/${ROUTES.KEEPER_REGISTRATION}`);
   };
 
   // 보관인 등록 취소 처리
@@ -445,16 +531,31 @@ const MyPage: React.FC = () => {
   };
 
   // 모달 내용 컴포넌트 - 보관인 등록
-  const keeperRegistrationContent = (
-    <>
-      <GrayText>
-        보관인 미등록 계정입니다.
-        <br />
-      </GrayText>
-      <HighlightText>보관인 등록</HighlightText>
-      <GrayText>하시겠습니까?</GrayText>
-    </>
-  );
+  const keeperRegistrationContent = (() => {
+    if (modalSource === 'my_place') {
+      return (
+        <>
+          <GrayText>
+            보관소를 조회하려면
+            <br />
+          </GrayText>
+          <HighlightText>보관인 등록</HighlightText>
+          <GrayText>이 필요합니다. 등록하시겠습니까?</GrayText>
+        </>
+      );
+    }
+    // 기본 등록 모달
+    return (
+      <>
+        <GrayText>
+          보관인 미등록 계정입니다.
+          <br />
+        </GrayText>
+        <HighlightText>보관인 등록</HighlightText>
+        <GrayText>하시겠습니까?</GrayText>
+      </>
+    );
+  })();
 
   // 모달 내용 컴포넌트 - 회원 탈퇴
   const cancelMembershipContent = (
@@ -552,7 +653,7 @@ const MyPage: React.FC = () => {
 
         <Divider />
         <MenuItemWrapper onClick={handleKeeperRegistration}>
-          <MenuItem>보관인 등록</MenuItem>
+          <MenuItem>보관장소 등록</MenuItem>
           <ChevronIcon />
         </MenuItemWrapper>
 

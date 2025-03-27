@@ -5,6 +5,7 @@ import Header from '../../../../components/layout/Header';
 import BottomNavigation from '../../../../components/layout/BottomNavigation';
 import { convertTagsToStrings } from '../../../../services/domain/tag/TagMappingService';
 import { DaumAddressData } from '../../../../utils/api/kakaoToDaum';
+import { transformKeysToCamel } from '../../../../utils/dataTransformers';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -292,7 +293,7 @@ const Registration2: React.FC = () => {
   // 뒤로가기 핸들러
   const handleBack = () => {
     // 변경 사항은 로컬 스토리지에 자동 저장 상태이므로 바로 이전 페이지로 이동
-    navigate('/registration/step1');
+    navigate('/mypage/registration/step1');
   };
 
   // 폼 제출 핸들러
@@ -337,16 +338,16 @@ const Registration2: React.FC = () => {
       postTags: tagStrings, // 문자열 태그 배열로 저장
     };
 
-    // 모든 단계 데이터 통합
-    const combinedData = {
+    // 모든 단계 데이터 통합 및 카멜케이스 유지
+    const combinedData = transformKeysToCamel({
       ...prevFormData,
       ...step2Data,
-    };
+    });
 
     // 다음 단계로 이동
     console.log('다음 단계로 이동, 통합 데이터:', combinedData);
     console.log('태그 문자열 배열:', tagStrings);
-    navigate('/registration/step3', { state: combinedData });
+    navigate('/mypage/registration/step3', { state: combinedData });
   };
 
   return (

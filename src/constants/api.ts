@@ -29,7 +29,7 @@ export const API_PATHS = {
     ME: '/api/users/me',
     PROFILE: '/api/users/profile',
     UPDATE: '/api/users/profile',
-    REGISTER_AS_KEEPER: '/api/users/register-as-keeper',
+    REGISTER_AS_KEEPER: '/api/users/keeper',
     NICKNAME: '/api/users/nickname', // 명세서에 맞게 추가
     DELETE: '/api/users', // 명세서에 맞게 추가
   },
@@ -53,6 +53,8 @@ export const API_PATHS = {
   },
   POSTS: {
     BY_LOCATION: '/api/posts/location',
+    CREATE: '/api/posts',
+    MY_POSTS: '/api/posts/my-posts',
   },
   CHAT: {
     ROOMS: '/api/chat/rooms',

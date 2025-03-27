@@ -6,6 +6,7 @@ import Modal from '../../components/common/Modal';
 import client from '../../services/api/client';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import { ROUTES } from '../../constants/routes';
 
 interface JwtPayload {
   role?: number;
@@ -477,9 +478,12 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
     // 보관인이면 바로 보관소 등록 페이지로 이동
     if (isKeeperUser) {
-      navigate('/mypage/registration');
+      console.log('보관인으로 로그인되어 있어 바로 보관소 등록 페이지로 이동합니다.');
+      console.log('경로:', `/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+      navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
     } else {
       // 의뢰인이면 보관인 등록 확인 모달 표시
+      console.log('의뢰인으로 로그인되어 있어 보관인 등록 모달을 표시합니다.');
       setShowKeeperModal(true);
     }
 
@@ -491,8 +495,9 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
   // 보관인 등록 확인 클릭 핸들러
   const handleKeeperConfirm = () => {
+    console.log('보관인 등록 페이지로 이동합니다.');
     setShowKeeperModal(false);
-    navigate('/mypage/keeper-registration');
+    navigate(`/${ROUTES.MYPAGE}/${ROUTES.KEEPER_REGISTRATION}`);
   };
 
   // 게시판 이동 핸들러

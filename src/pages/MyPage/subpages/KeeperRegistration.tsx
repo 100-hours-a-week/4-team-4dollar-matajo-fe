@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../../../components/layout/Header';
 import { registerKeeperTerms } from '../../../services/api/modules/keeper';
 import Toast from '../../../components/common/Toast';
-import { updateUserRole } from '../../../utils/formatting/decodeJWT';
+import { updateUserRole, getRole } from '../../../utils/formatting/decodeJWT';
+import { ROUTES } from '../../../constants/routes';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -225,6 +226,47 @@ const KeeperRegistration: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [isToastVisible, setIsToastVisible] = useState(false);
 
+  // 페이지 접근 시 토큰 확인 및 역할 확인
+  useEffect(() => {
+    checkUserRole();
+
+    // 토큰 변경 리스너 등록
+    const handleTokenChange = () => {
+      console.log('토큰 또는 역할 변경 감지됨. 사용자 역할 재확인');
+      checkUserRole();
+    };
+
+    // 역할 변경 이벤트 리스너 등록
+    window.addEventListener('USER_ROLE_CHANGED', handleTokenChange);
+
+    return () => {
+      window.removeEventListener('USER_ROLE_CHANGED', handleTokenChange);
+    };
+  }, []);
+
+  // 사용자 역할 확인 함수
+  const checkUserRole = () => {
+    try {
+      // 로컬 스토리지에서 토큰 가져오기
+      const token = localStorage.getItem('accessToken');
+
+      if (token) {
+        // 토큰에서 역할 정보 추출
+        const role = getRole(token);
+
+        console.log('현재 사용자 역할:', role);
+
+        // 이미 보관인(role === "2")인 경우 보관소 등록 페이지로 리다이렉트
+        if (role === '2') {
+          console.log('이미 보관인 역할을 가진 사용자입니다. 보관소 등록 페이지로 이동합니다.');
+          navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+        }
+      }
+    } catch (error) {
+      console.error('사용자 역할 확인 중 오류:', error);
+    }
+  };
+
   // 토스트 메시지 표시 함수
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -283,23 +325,42 @@ const KeeperRegistration: React.FC = () => {
         privacy_policy: termsAgreed.privacy,
       };
 
+      console.log('보관인 등록 요청 시작', termsData);
+
       // 보관인 등록 API 호출
       const response = await registerKeeperTerms(termsData);
 
+      console.log('보관인 등록 응답 성공:', response);
+      console.log('새 토큰이 있는지 확인:', !!response.data?.accessToken);
+
       if (response.success) {
+        // 토큰이 성공적으로 저장되었는지 확인
+        const savedToken = localStorage.getItem('accessToken');
+        console.log(
+          '저장된 토큰 확인 (앞부분):',
+          savedToken ? savedToken.substring(0, 20) + '...' : '없음',
+        );
+
         // 토스트 메시지 표시
         showToast('보관인 등록이 완료되었습니다.');
 
-        // 새 액세스 토큰이 있으면 저장은 API 함수 내에서 자동으로 처리됨
         // 보관소 등록 페이지로 이동
         setTimeout(() => {
-          navigate('/mypage/registration');
+          console.log('보관소 등록 페이지로 이동합니다.');
+          navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
         }, 1000);
       } else {
         showToast(response.message || '보관인 등록에 실패했습니다.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('보관인 등록 처리 오류:', error);
+
+      // 상세 에러 정보 출력
+      if (error.response) {
+        console.error('오류 응답 데이터:', error.response.data);
+        console.error('오류 상태 코드:', error.response.status);
+      }
+
       showToast('보관인 등록 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
@@ -322,23 +383,42 @@ const KeeperRegistration: React.FC = () => {
         privacy_policy: termsAgreed.privacy,
       };
 
+      console.log('보관인 등록 요청 시작 (홈으로 이동)', termsData);
+
       // 보관인 등록 API 호출
       const response = await registerKeeperTerms(termsData);
 
+      console.log('보관인 등록 응답 성공 (홈으로 이동):', response);
+      console.log('새 토큰이 있는지 확인:', !!response.data?.accessToken);
+
       if (response.success) {
+        // 토큰이 성공적으로 저장되었는지 확인
+        const savedToken = localStorage.getItem('accessToken');
+        console.log(
+          '저장된 토큰 확인 (앞부분):',
+          savedToken ? savedToken.substring(0, 20) + '...' : '없음',
+        );
+
         // 토스트 메시지 표시
         showToast('보관인 등록이 완료되었습니다.');
 
-        // 새 액세스 토큰이 있으면 저장은 API 함수 내에서 자동으로 처리됨
         // 홈으로 이동
         setTimeout(() => {
+          console.log('홈 페이지로 이동합니다.');
           navigate('/');
         }, 1000);
       } else {
         showToast(response.message || '보관인 등록에 실패했습니다.');
       }
-    } catch (error) {
-      console.error('보관인 등록 처리 오류:', error);
+    } catch (error: any) {
+      console.error('보관인 등록 처리 오류 (홈으로 이동):', error);
+
+      // 상세 에러 정보 출력
+      if (error.response) {
+        console.error('오류 응답 데이터:', error.response.data);
+        console.error('오류 상태 코드:', error.response.status);
+      }
+
       showToast('보관인 등록 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);

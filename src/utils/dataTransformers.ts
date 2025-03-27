@@ -6,6 +6,13 @@ export function snakeToCamel(str: string): string {
 }
 
 /**
+ * Transform camelCase keys to snake_case
+ */
+export function camelToSnake(str: string): string {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+}
+
+/**
  * Recursively transform object keys from snake_case to camelCase
  */
 export function transformKeysToCamel(obj: any): any {
@@ -25,6 +32,28 @@ export function transformKeysToCamel(obj: any): any {
   });
 
   return camelObj;
+}
+
+/**
+ * Recursively transform object keys from camelCase to snake_case
+ */
+export function transformKeysToSnake(obj: any): any {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(transformKeysToSnake);
+  }
+
+  const snakeObj: Record<string, any> = {};
+
+  Object.keys(obj).forEach(key => {
+    const snakeKey = camelToSnake(key);
+    snakeObj[snakeKey] = transformKeysToSnake(obj[key]);
+  });
+
+  return snakeObj;
 }
 
 /**

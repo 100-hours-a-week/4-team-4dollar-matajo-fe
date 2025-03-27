@@ -2,6 +2,7 @@ import client from '../client';
 import api, { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
 import axios from 'axios';
 import { DaumAddressData } from '../../../utils/api/kakaoToDaum';
+import { transformKeysToSnake } from '../../../utils/dataTransformers';
 import { response } from 'express';
 
 // 보관소 등록 요청 인터페이스
@@ -56,18 +57,13 @@ export const registerStorage = async (
     // FormData 객체 생성
     const formData = new FormData();
 
-    // postData 객체를 문자열로 직렬화하여 추가
-    // 이때 postAddressData도 이미 객체 내부에 포함되어 있음
-    const postDataStr = JSON.stringify({
-      post_title: postData.postTitle,
-      post_content: postData.postContent,
-      post_address_data: postData.postAddressData,
-      prefer_price: postData.preferPrice,
-      post_tags: postData.postTags,
-    });
+    // postData 객체를 스네이크 케이스로 변환
+    const snakeCaseData = transformKeysToSnake(postData);
+    console.log('전송할 postData(스네이크 케이스):', snakeCaseData);
 
     // 서버가 처리할 수 있는 방식으로 postData 추가
-    // 일반 텍스트 필드로 전송
+    const postDataStr = JSON.stringify(snakeCaseData);
+    // Blob 객체로 변환하여 추가 (application/json 타입으로)
     formData.append('postData', new Blob([postDataStr], { type: 'application/json' }));
 
     // 이미지 파일 추가
@@ -79,31 +75,47 @@ export const registerStorage = async (
     });
 
     console.log('전송하는 데이터 구조:', {
-      postData: JSON.parse(postDataStr),
+      postData: snakeCaseData,
       mainImage: mainImage.name,
       detailImages: detailImages.map(f => f.name),
     });
 
     // API 호출
-    const response = await client.post(API_PATHS.STORAGE.CREATE, formData, {
+    const response = await client.post(API_PATHS.POSTS.CREATE, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
       withCredentials: true,
     });
 
-    return {
-      id: response.data.data.post_id,
-      success: response.data.success,
-      message: response.data.message,
-    };
+    console.log('보관소 등록 응답:', response.data);
+
+    // 응답 데이터 구조 검사
+    if (response.data.success) {
+      return {
+        id: response.data.data?.post_id || '0',
+        success: true,
+        message: response.data.message || 'write_post_success',
+      };
+    } else {
+      console.error('서버가 success: false를 반환했습니다:', response.data);
+      return {
+        id: '',
+        success: false,
+        message: response.data.message || '보관소 등록에 실패했습니다.',
+      };
+    }
   } catch (error) {
     console.error('보관소 등록 실패:', error);
 
     if (axios.isAxiosError(error) && error.response) {
+      console.error('서버 응답 에러:', error.response.data);
+      console.error('에러 상태 코드:', error.response.status);
+      console.error('에러 헤더:', error.response.headers);
+
       return {
         id: '',
-        success: error.response.data.success,
+        success: false,
         message: error.response.data.message || '보관소 등록에 실패했습니다.',
       };
     }
@@ -166,17 +178,17 @@ export const updateStorage = async (
     // FormData 객체 생성
     const formData = new FormData();
 
-    // postData 객체를 JSON 문자열로 직렬화
-    const postDataStr = JSON.stringify({
-      post_id: id,
-      post_title: postData.postTitle,
-      post_content: postData.postContent,
-      post_address_data: postData.postAddressData,
-      prefer_price: postData.preferPrice,
-      post_tags: postData.postTags,
-    });
+    // postData 객체에 id 추가 및 스네이크 케이스로 변환
+    const updatedPostData = {
+      ...postData,
+      id: id,
+    };
 
-    // 데이터 추가
+    const snakeCaseData = transformKeysToSnake(updatedPostData);
+    console.log('전송할 postData(스네이크 케이스):', snakeCaseData);
+
+    // 데이터 추가 - Blob 객체로 변환하여 추가
+    const postDataStr = JSON.stringify(snakeCaseData);
     formData.append('postData', new Blob([postDataStr], { type: 'application/json' }));
 
     // 이미지 파일 추가
@@ -188,7 +200,7 @@ export const updateStorage = async (
     });
 
     console.log('보관소 수정 데이터:', {
-      postData: JSON.parse(postDataStr),
+      postData: snakeCaseData,
       mainImage: mainImage.name,
       detailImages: detailImages.map(f => f.name),
     });
@@ -280,5 +292,55 @@ export const getLocationPosts = async (locationInfoId: string): Promise<Location
     };
   }
 };
+
 // createStorage 함수를 registerStorage의 별칭으로 내보내기
 export const createStorage = registerStorage;
+
+/**
+ * 내 보관소/거래 목록을 가져오는 인터페이스
+ */
+export interface MyTradeItem {
+  trade_id: number;
+  keeper_status: boolean;
+  trade_name: string;
+  user_id: number;
+  post_address: string;
+  trade_date: string;
+  start_date: string;
+  storage_period: number;
+  trade_price: number;
+}
+
+/**
+ * 내 보관소 응답 인터페이스
+ */
+export interface MyTradeResponse {
+  success: boolean;
+  message: string;
+  data: MyTradeItem[];
+}
+
+/**
+ * 내 보관소 목록을 가져오는 함수
+ *
+ * @returns 내 보관소 목록
+ */
+export const getMyStorages = async (): Promise<MyTradeItem[]> => {
+  try {
+    const response = await client.get<MyTradeResponse>(API_PATHS.POSTS.MY_POSTS, {
+      withCredentials: true,
+    });
+
+    console.log('API 응답:', response.data);
+
+    if (response.data.success) {
+      return response.data.data || [];
+    } else {
+      console.error('서버가 success: false를 반환했습니다:', response.data);
+      return [];
+    }
+  } catch (error) {
+    console.error('내 보관소 목록 조회 실패:', error);
+    throw error;
+  }
+};

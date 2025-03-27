@@ -1,6 +1,7 @@
 // routes/index.tsx
-import { RouteObject } from 'react-router-dom';
+import { RouteObject, Navigate } from 'react-router-dom';
 import { UserRole } from '../contexts/auth';
+import styled from 'styled-components';
 
 // 페이지 컴포넌트 가져오기
 import HomePage from '../pages/Home';
@@ -75,8 +76,18 @@ const routes: RouteObject[] = [
       },
       { path: ROUTES.CHAT, element: <Chat onBack={() => window.history.back()} /> },
       { path: ROUTES.CHAT_DETAIL, element: <Chat onBack={() => window.history.back()} /> },
-      { path: ROUTES.KEEPER_REGISTRATION, element: <KeeperRegistration /> },
-      { path: ROUTES.SEARCH_ADDRESS, element: <SearchAddress /> },
+      {
+        path: `${ROUTES.MYPAGE}/${ROUTES.KEEPER_REGISTRATION}`,
+        element: <KeeperRegistration />,
+      },
+      {
+        path: ROUTES.SEARCH_ADDRESS,
+        element: (
+          <SearchAddress
+            onSelectLocation={location => console.log('Selected location:', location)}
+          />
+        ),
+      },
     ],
   },
 
@@ -85,9 +96,23 @@ const routes: RouteObject[] = [
     path: '/',
     element: <PrivateRoute requiredRole={UserRole.Keeper} />,
     children: [
-      { path: ROUTES.REGISTRATION_STEP1, element: <Registration1 /> },
-      { path: ROUTES.REGISTRATION_STEP2, element: <Registration2 /> },
-      { path: ROUTES.REGISTRATION_STEP3, element: <Registration3 /> },
+      // 'mypage/registration'에서 'mypage/registration/step1'로 리다이렉트
+      {
+        path: ROUTES.MYPAGE_REGISTRATION,
+        element: <Navigate to={ROUTES.MYPAGE_REGISTRATION_STEP1} replace />,
+      },
+      {
+        path: ROUTES.MYPAGE_REGISTRATION_STEP1,
+        element: <Registration1 />,
+      },
+      {
+        path: ROUTES.MYPAGE_REGISTRATION_STEP2,
+        element: <Registration2 />,
+      },
+      {
+        path: ROUTES.MYPAGE_REGISTRATION_STEP3,
+        element: <Registration3 />,
+      },
       { path: ROUTES.EDIT_STORAGE, element: <EditStorage /> },
       { path: ROUTES.MYPLACE, element: <MyPlace /> },
     ],

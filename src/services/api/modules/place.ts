@@ -98,17 +98,27 @@ export const searchPlaces = async (keyword: string) => {
 // 동 검색 함수 (업데이트됨)
 export const searchDong = async (keyword: string): Promise<string[]> => {
   try {
-    if (!keyword.trim()) return [];
+    console.log(`동 검색 API 호출 시작 - 키워드: "${keyword}"`);
 
+    if (!keyword.trim()) {
+      console.log('키워드가 비어있어 검색 중단');
+      return [];
+    }
+
+    console.log('API 호출 경로:', API_PATHS.PLACE.LOCATIONS.AUTOCOMPLETE);
     const response = await client.get(API_PATHS.PLACE.LOCATIONS.AUTOCOMPLETE, {
       params: { dong: keyword },
     });
 
+    console.log('동 검색 API 응답:', response.data);
+
     // API 응답 구조가 { success: true, message: string, data: string[] } 형태
     if (response.data?.success && Array.isArray(response.data.data)) {
+      console.log(`검색 결과 ${response.data.data.length}개 반환`);
       return response.data.data;
     }
 
+    console.log('유효한 검색 결과가 없습니다');
     return [];
   } catch (error) {
     console.error('동 검색 오류:', error);
