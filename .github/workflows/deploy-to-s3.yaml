@@ -35,6 +35,7 @@ jobs:
         run: npm run build
         env:
           CI: false  # 경고를 에러로 취급하지 않도록 설정
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
