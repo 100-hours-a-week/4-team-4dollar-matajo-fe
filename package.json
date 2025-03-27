@@ -95,7 +95,7 @@
     "prestart": "npm run lint-and-format",
     "start": "react-scripts start",
     "prepare": "husky",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org matajo --project javascript-react-s0 ./build && sentry-cli sourcemaps upload --org matajo --project javascript-react-s0 ./build"
+    "sentry:sourcemaps": "set SENTRY_LOG_LEVEL=debug && sentry-cli sourcemaps inject --org matajo --project matajo-s3-test ./build && sentry-cli sourcemaps upload --org matajo --project matajo-s3-test ./build"
   },
   "eslintConfig": {
     "extends": [
