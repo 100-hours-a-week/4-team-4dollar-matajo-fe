@@ -10,17 +10,18 @@ export const API_PATHS = {
   AUTH: {
     KAKAO: '/auth/kakao',
     KEEPER_STATUS: '/auth/keeper-status',
+    REFRESH: '/auth/refresh',
     LOGOUT: '/auth/logout',
   },
 
   // 채팅 관련
   CHAT: {
-    ROOMS: '/api/chat', // '/api/chat/rooms'에서 '/api/chat'으로 수정
-    MESSAGES: '/api/chat/:roomId/message', // 기존대로 유지
-    READ: '/api/chat/:roomId/read', // 기존대로 유지
-    LEAVE: '/api/chat/:roomId', // '/api/chat/:roomId/leave'에서 수정 (DELETE 메서드 사용)
-    UPLOAD_IMAGE: '/api/chat/images/upload', // 기존대로 유지
-    TRADE_INFO: '/api/trade',
+    ROOMS: '/api/chats', // '/api/chat/rooms'에서 '/api/chat'으로 수정
+    MESSAGES: '/api/chats/:roomId/message', // 기존대로 유지
+    READ: '/api/chats/:roomId/read', // 기존대로 유지
+    LEAVE: '/api/chats/:roomId', // '/api/chat/:roomId/leave'에서 수정 (DELETE 메서드 사용)
+    UPLOAD_IMAGE: '/api/chats/images/upload', // 기존대로 유지
+    TRADE_INFO: '/api/trades',
   },
 
   // 보관소 관련
@@ -35,14 +36,14 @@ export const API_PATHS = {
 
   // 사용자 관련
   USER: {
-    PROFILE: '/user/profile',
-    UPDATE: '/user/update',
-    REGISTER_AS_KEEPER: '/api/keeper/join',
+    PROFILE: '/api/users/nickname',
+    UPDATE: '/api/users/nickname',
+    REGISTER_AS_KEEPER: '/api/users/keeper',
   },
 
   // 사용자 관련
   MYPAGE: {
-    TRADE: '/api/my/trade',
+    TRADE: '/api/my/trades',
     PLACE: '/api/my/posts',
   },
 

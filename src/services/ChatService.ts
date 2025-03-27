@@ -1,5 +1,6 @@
 import SockJS from 'sockjs-client';
 import { Client, IFrame, IMessage, StompSubscription } from '@stomp/stompjs';
+import { getToken, logout } from '../utils/api/authUtils';
 import client from '../services/api/client';
 import { API_BACKEND_URL, API_PATHS } from '../constants/api';
 
@@ -130,18 +131,30 @@ class ChatService {
 
         // userId 가져오기
         const userId = localStorage.getItem('userId') || '1';
+        const token = getToken();
+        if (!token) {
+          throw new Error('인증 토큰이 없습니다.');
+        }
 
         // STOMP 클라이언트 생성
         this.stompClient = new Client({
-          webSocketFactory: () => new SockJS(`${API_BACKEND_URL}/ws-chat`, null, sockJSOptions),
+          webSocketFactory: () => {
+            const socket = new SockJS(
+              `${API_BACKEND_URL}/ws-chat?userId=${userId}&token=${encodeURIComponent(token)}`,
+              null,
+              sockJSOptions,
+            );
+
+            return socket;
+          },
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
           connectHeaders: {
             'X-Requested-With': 'XMLHttpRequest',
-            userId: userId, // WebSocket 연결 시 userId 헤더 추가
+            userId: userId,
+            Authorization: `Bearer ${token}`,
           },
-
           debug: msg => {
             if (process.env.NODE_ENV === 'development') {
               console.log('STOMP Debug:', msg);
@@ -383,6 +396,7 @@ class ChatService {
         body: JSON.stringify(backendMessage),
         headers: {
           'content-type': 'application/json',
+          userId: userId,
         },
       });
 
