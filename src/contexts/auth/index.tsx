@@ -62,8 +62,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else {
           setUser(null);
         }
-      } else {
-        setUser(null);
       }
     } catch (error) {
       console.error('인증 초기화 오류:', error);
