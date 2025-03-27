@@ -95,11 +95,13 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   } | null>(null);
   const [locationPosts, setLocationPosts] = useState<LocationPost[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [lastFetchedLocationId, setLastFetchedLocationId] = useState<string | null>(null);
 
-  // 지도 초기화
+  // 지도 초기화 - 최초 한 번만 실행
   useEffect(() => {
     if (!mapRef.current) return;
 
+    console.log('카카오맵 초기화 시작');
     const options = {
       center: new window.kakao.maps.LatLng(center.lat, center.lng),
       level: level,
@@ -109,6 +111,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
     const map = new window.kakao.maps.Map(mapRef.current, options);
     setKakaoMap(map);
+    console.log('카카오맵 인스턴스 생성 완료');
 
     // 상세 페이지 모드인 경우 지도 컨트롤러 숨기기
     if (detailMode) {
@@ -137,7 +140,20 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           setCurrentUserLocation({ lat: userLat, lng: userLng });
 
           // 사용자 위치에 특별한 마커 추가
-          addUserLocationMarker(map, userLat, userLng);
+          const imageSrc =
+            'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png';
+          const imageSize = new window.kakao.maps.Size(24, 35);
+          const imageOption = { offset: new window.kakao.maps.Point(12, 35) };
+          const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+
+          const marker = new window.kakao.maps.Marker({
+            position: new window.kakao.maps.LatLng(userLat, userLng),
+            map: map,
+            image: markerImage,
+            zIndex: 10,
+          });
+
+          setUserLocationMarker(marker);
         },
         error => {
           console.error('사용자 위치를 가져오는데 실패했습니다:', error);
@@ -145,78 +161,43 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       );
     }
 
+    // 정리 함수
     return () => {
-      // 정리 작업
+      console.log('카카오맵 컴포넌트 언마운트');
+      // 필요시 정리 작업 추가
     };
-  }, []);
+  }, []); // 빈 의존성 배열로 최초 한 번만 실행
 
-  // 위치 기반 게시글 조회 함수
-  const fetchLocationPosts = useCallback(async () => {
-    if (!locationInfoId) return;
-
-    setIsLoading(true);
-    try {
-      const response = await getLocationPosts(locationInfoId);
-      if (response.success && response.data.posts) {
-        setLocationPosts(response.data.posts);
-
-        // 게시글 데이터를 마커로 변환
-        const newMarkers = response.data.posts.map(post => ({
-          id: post.id.toString(),
-          name: post.title,
-          latitude: post.latitude,
-          longitude: post.longitude,
-          address: '', // API에서 제공하지 않는 경우 빈 문자열로 설정
-        }));
-
-        // 마커 업데이트
-        if (kakaoMap) {
-          updateKakaoMapMarkers(newMarkers);
-        }
-      } else {
-        console.error('위치 기반 게시글 조회 실패:', response.message);
+  // 사용자 위치 마커 추가 함수 - 의존성 문제 해결
+  const addUserLocationMarker = useCallback(
+    (map: any, lat: number, lng: number) => {
+      // 기존 사용자 위치 마커가 있으면 제거
+      if (userLocationMarker) {
+        userLocationMarker.setMap(null);
       }
-    } catch (error) {
-      console.error('위치 기반 게시글 조회 중 오류:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [locationInfoId, kakaoMap]);
 
-  // 위치 정보 ID 변경 시 API 호출
-  useEffect(() => {
-    if (locationInfoId) {
-      fetchLocationPosts();
-    }
-  }, [locationInfoId, fetchLocationPosts]);
+      // 사용자 위치 마커 이미지 설정 (보라색 별 아이콘)
+      const imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png';
+      const imageSize = new window.kakao.maps.Size(24, 35);
+      const imageOption = { offset: new window.kakao.maps.Point(12, 35) };
+      const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
 
-  // 사용자 위치 마커 추가 함수
-  const addUserLocationMarker = (map: any, lat: number, lng: number) => {
-    // 기존 사용자 위치 마커가 있으면 제거
-    if (userLocationMarker) {
-      userLocationMarker.setMap(null);
-    }
+      // 사용자 위치 마커 생성
+      const marker = new window.kakao.maps.Marker({
+        position: new window.kakao.maps.LatLng(lat, lng),
+        map: map,
+        image: markerImage,
+        zIndex: 10,
+      });
 
-    // 사용자 위치 마커 이미지 설정 (보라색 별 아이콘)
-    const imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png';
-    const imageSize = new window.kakao.maps.Size(24, 35);
-    const imageOption = { offset: new window.kakao.maps.Point(12, 35) };
-    const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+      // 마커 저장
+      setUserLocationMarker(marker);
+    },
+    [userLocationMarker],
+  ); // userLocationMarker만 의존성에 포함
 
-    // 사용자 위치 마커 생성
-    const marker = new window.kakao.maps.Marker({
-      position: new window.kakao.maps.LatLng(lat, lng),
-      map: map,
-      image: markerImage,
-      zIndex: 10,
-    });
-
-    // 마커 저장
-    setUserLocationMarker(marker);
-  };
-
-  // 현재 위치로 이동하는 함수
-  const moveToUserLocation = () => {
+  // 현재 위치로 이동하는 함수 - useCallback으로 메모이제이션
+  const moveToUserLocation = useCallback(() => {
     if (kakaoMap && currentUserLocation) {
       kakaoMap.setCenter(
         new window.kakao.maps.LatLng(currentUserLocation.lat, currentUserLocation.lng),
@@ -264,7 +245,13 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
         alert('이 브라우저에서는 위치 정보를 지원하지 않습니다.');
       }
     }
-  };
+  }, [
+    kakaoMap,
+    currentUserLocation,
+    onCenterChanged,
+    onCurrentLocationClick,
+    addUserLocationMarker,
+  ]);
 
   // 중심 위치 변경 시 지도 업데이트
   useEffect(() => {
@@ -272,12 +259,13 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       const newCenter = new window.kakao.maps.LatLng(center.lat, center.lng);
       kakaoMap.setCenter(newCenter);
     }
-  }, [center, kakaoMap]);
+  }, [center.lat, center.lng, kakaoMap]);
 
-  // 마커 업데이트 함수
+  // 마커 업데이트 함수 - markers를 의존성 배열에서 제거하여 무한 루프 방지
   const updateKakaoMapMarkers = useCallback(
     (newStorageMarkers: Marker[]) => {
       if (!kakaoMap) return;
+      console.log('마커 업데이트 시작:', newStorageMarkers.length);
 
       // 기존 마커 제거
       markers.forEach(marker => marker.setMap(null));
@@ -318,36 +306,69 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       });
 
       setMarkers(newMarkers);
+      console.log('마커 업데이트 완료:', newMarkers.length);
     },
-    [kakaoMap, markers, onMarkerClick],
+    [kakaoMap, onMarkerClick], // markers를 의존성 배열에서 제거
   );
 
-  // 기본 마커 업데이트 (기존 storageMarkers 프롭스 사용)
+  // 위치 기반 게시글 조회 함수 - 중복 요청 방지 로직 추가
+  const fetchLocationPosts = useCallback(async () => {
+    if (!locationInfoId || !kakaoMap) return;
+
+    // 이미 가져온 위치 정보인 경우 스킵
+    if (locationInfoId === lastFetchedLocationId) {
+      console.log('이미 로드된 위치 정보:', locationInfoId);
+      return;
+    }
+
+    console.log('위치 기반 게시글 조회 시작:', locationInfoId);
+    setIsLoading(true);
+    try {
+      const response = await getLocationPosts(locationInfoId);
+      if (response.success && response.data.posts) {
+        console.log('위치 기반 게시글 조회 성공:', response.data.posts.length);
+        setLocationPosts(response.data.posts);
+        setLastFetchedLocationId(locationInfoId);
+
+        // 게시글 데이터를 마커로 변환
+        const newMarkers = response.data.posts.map(post => ({
+          id: post.id.toString(),
+          name: post.title,
+          latitude: post.latitude,
+          longitude: post.longitude,
+          address: '', // API에서 제공하지 않는 경우 빈 문자열로 설정
+        }));
+
+        // 마커 업데이트 - 이미 메모이제이션된 함수를 사용
+        updateKakaoMapMarkers(newMarkers);
+      } else {
+        console.error('위치 기반 게시글 조회 실패:', response.message);
+      }
+    } catch (error) {
+      console.error('위치 기반 게시글 조회 중 오류:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [locationInfoId, kakaoMap, updateKakaoMapMarkers, lastFetchedLocationId]);
+
+  // locationInfoId 변경 시 API 호출 - 중복 요청 방지 조건 추가
+  useEffect(() => {
+    if (locationInfoId && kakaoMap && locationInfoId !== lastFetchedLocationId) {
+      console.log('위치 정보 ID 변경 감지:', locationInfoId);
+      fetchLocationPosts();
+    }
+  }, [locationInfoId, fetchLocationPosts, kakaoMap, lastFetchedLocationId]);
+
+  // 기본 마커 업데이트 - 조건부 실행 로직 개선
   useEffect(() => {
     if (!kakaoMap) return;
 
     // 위치 기반 게시글 마커가 없을 때만 기본 마커 사용
-    if (locationPosts.length === 0) {
+    if (locationPosts.length === 0 && storageMarkers.length > 0) {
+      console.log('기본 보관소 마커 사용:', storageMarkers.length);
       updateKakaoMapMarkers(storageMarkers);
     }
-
-    // 모달이 열려 있을 때는 지도 이벤트 막기
-    if (isLocationModalOpen) {
-      kakaoMap.setDraggable(false);
-      kakaoMap.setZoomable(false);
-    } else {
-      kakaoMap.setDraggable(draggable);
-      kakaoMap.setZoomable(zoomable);
-    }
-  }, [
-    kakaoMap,
-    storageMarkers,
-    updateKakaoMapMarkers,
-    isLocationModalOpen,
-    draggable,
-    zoomable,
-    locationPosts.length,
-  ]);
+  }, [kakaoMap, storageMarkers, updateKakaoMapMarkers, locationPosts.length]);
 
   // 모달 상태가 변경될 때 지도 드래그/줌 기능 업데이트
   useEffect(() => {

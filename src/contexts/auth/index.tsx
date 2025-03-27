@@ -1,5 +1,5 @@
+// src/contexts/auth/index.tsx (Updated)
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import * as authApi from '../../services/api/modules/auth';
 import { decodeJWT } from '../../utils/formatting/decodeJWT';
 
 // 사용자 역할 타입 정의
@@ -15,7 +15,6 @@ export interface User {
   name: string;
   role: UserRole;
   email?: string;
-  token?: string;
 }
 
 // 인증 컨텍스트 타입 정의
@@ -57,11 +56,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: decoded.userId.toString(),
             name: decoded.nickname || 'User',
             role: (decoded.role as UserRole) || UserRole.Client,
-            token: accessToken,
           });
         } else {
           setUser(null);
         }
+      } else {
+        setUser(null);
       }
     } catch (error) {
       console.error('인증 초기화 오류:', error);
@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('accessToken');
       setUser(null);
 
-      // 인증 상태 변경 알림 (authUtils의 함수 사용)
+      // 인증 상태 변경 알림
       window.dispatchEvent(new CustomEvent('AUTH_STATE_CHANGED'));
     } catch (error) {
       console.error('로그아웃 오류:', error);

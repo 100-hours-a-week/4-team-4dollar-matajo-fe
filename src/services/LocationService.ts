@@ -18,7 +18,7 @@ export interface LocationIdInfo {
 
 // Default location - will be overridden with actual location when available
 export const DEFAULT_COORDINATES = { lat: 37.5244, lng: 126.9231 };
-export const DEFAULT_LOCATION = '서울특별시 영등포구 여의도동';
+export const DEFAULT_LOCATION = '서울특별시 영등포구도동';
 
 // Store recently used locations
 class LocationService {
