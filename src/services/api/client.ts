@@ -1,67 +1,82 @@
 // src/services/api/client.ts
 import axios from 'axios';
-import { getToken, logout } from '../../utils/api/authUtils';
 import { API_BACKEND_URL } from '../../constants/api';
 
-// 디버그용 로그
-console.log('API 클라이언트 초기화: API_BACKEND_URL =', API_BACKEND_URL);
-
-// axios 인스턴스 생성
+// 공통 설정의 Axios 인스턴스 생성
 const client = axios.create({
   baseURL: API_BACKEND_URL,
+  timeout: 10000, // 10초 타임아웃
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // 쿠키, 인증 헤더 등 자격 증명 정보 포함
 });
 
-// 인터셉터 설정 - 요청에 JWT 토큰 포함
+// 요청 인터셉터 설정
 client.interceptors.request.use(
   config => {
-    const token = getToken();
-    if (token) {
-      console.log('API 요청에 토큰 추가:', token.substring(0, 10) + '...');
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.log('API 요청에 토큰 없음');
-    }
+    // 로컬 스토리지에서 액세스 토큰 가져오기
+    const accessToken = localStorage.getItem('accessToken');
 
-    // 요청 디버깅을 위한 로그
-    console.log(`API 요청: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    // 토큰이 있으면 Authorization 헤더에 추가
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
 
     return config;
   },
   error => {
-    console.error('API 요청 인터셉터 오류:', error);
+    console.error('API 요청 전 오류 발생:', error);
     return Promise.reject(error);
   },
 );
 
-// 응답 인터셉터 - 오류 처리
+// 응답 인터셉터 설정
 client.interceptors.response.use(
   response => {
-    console.log(`API 응답: ${response.status} ${response.config.url}`);
     return response;
   },
-  error => {
-    // 상세한 오류 로깅
-    if (error.response) {
-      console.error(`API 오류: ${error.response.status} ${error.config?.url}`, error.response.data);
+  async error => {
+    // 에러 응답이 있는 경우
+    const originalRequest = error.config;
 
-      // 401 Unauthorized 오류 처리 (토큰 만료 등)
-      if (error.response.status === 401) {
-        console.warn('인증 오류 발생: 로그아웃 처리');
-        logout();
+    // 401 Unauthorized 에러이고 재시도하지 않은 경우
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // 리프레시 토큰 가져오기
+        const refreshToken = localStorage.getItem('refreshToken');
+
+        if (!refreshToken) {
+          // 리프레시 토큰이 없으면 로그아웃 처리
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          return Promise.reject(error);
+        }
+
+        // 토큰 리프레시 요청
+        const response = await axios.post(`${API_BACKEND_URL}/auth/refresh`, {
+          refreshToken,
+        });
+
+        if (response.data.accessToken) {
+          // 새 액세스 토큰 저장
+          localStorage.setItem('accessToken', response.data.accessToken);
+
+          // 새 토큰으로 원래 요청 재시도
+          originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
+          return axios(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error('토큰 갱신 실패:', refreshError);
+        // 로그아웃 처리
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
       }
-    } else if (error.request) {
-      console.error('API 응답 없음:', error.request);
-    } else {
-      console.error('API 요청 설정 오류:', error.message);
     }
 
     return Promise.reject(error);
   },
 );
 
-// client를 기본 내보내기로 설정
 export default client;

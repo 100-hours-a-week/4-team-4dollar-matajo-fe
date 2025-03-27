@@ -1,9 +1,29 @@
-// src/pages/Home/MapBottomSheet.tsx
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import Modal from '../../components/common/Modal';
+import client from '../../services/api/client';
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+
+interface JwtPayload {
+  role?: number;
+  // 다른 필요한 jwt 페이로드 속성들
+}
+
+// 사용자 역할 업데이트 함수를 분리하여 내보내기
+export const updateUserRole = (token: string): void => {
+  try {
+    const decoded = jwtDecode<JwtPayload>(token);
+
+    if (decoded.role !== undefined) {
+      localStorage.setItem('userRole', decoded.role.toString());
+    }
+  } catch (error) {
+    console.error('토큰 디코딩 중 오류:', error);
+  }
+};
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -158,7 +178,7 @@ const MenuItem = styled.div`
 
 // 메뉴 제목
 const MenuTitle = styled.div`
-  font-size: 14px;
+  font-size: 13px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   margin-bottom: 4px;
@@ -166,7 +186,7 @@ const MenuTitle = styled.div`
 
 // 메뉴 설명
 const MenuDescription = styled.div`
-  font-size: 12px;
+  font-size: 10.5px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   color: ${THEME.gray500};
@@ -466,6 +486,60 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   const handleEditLocation = () => {
     if (onEditLocation) {
       onEditLocation();
+    }
+  };
+
+  interface KeeperRegistrationData {
+    terms_of_service: boolean;
+    privacy_policy: boolean;
+  }
+
+  interface KeeperRegistrationResponse {
+    success: boolean;
+    message: string;
+    data: {
+      accessToken?: string;
+    };
+  }
+
+  /**
+   * 보관인 등록 API 함수
+   * @param termsData 약관 동의 정보
+   * @returns 등록 응답
+   */
+
+  const registerAsKeeper = async (termsData: {
+    terms_of_service: boolean;
+    privacy_policy: boolean;
+  }): Promise<KeeperRegistrationResponse> => {
+    try {
+      console.log('보관인 등록 시도');
+      const registrationData: KeeperRegistrationData = {
+        terms_of_service: termsData.terms_of_service,
+        privacy_policy: termsData.privacy_policy,
+      };
+
+      // 변경된 API 경로 사용 (API 명세에 맞게 수정)
+      const response = await client.post('/api/users/keeper', registrationData);
+
+      console.log('보관인 등록 응답:', response.data);
+
+      // 새로운 accessToken을 로컬 스토리지에 저장
+      if (response.data?.data?.accessToken) {
+        localStorage.setItem('accessToken', response.data.data.accessToken);
+
+        // 사용자 역할 업데이트
+        try {
+          updateUserRole(response.data.data.accessToken);
+        } catch (error) {
+          console.error('사용자 역할 업데이트 실패:', error);
+        }
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('보관인 등록 오류:', error);
+      throw error;
     }
   };
 

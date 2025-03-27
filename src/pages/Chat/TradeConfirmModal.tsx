@@ -266,6 +266,10 @@ export interface TradeData {
   endDate: string;
   storagePeriod: number;
   price: number;
+  // 서버 전송용 필드 추가
+  product_name?: string;
+  start_date?: string;
+  trade_price?: number;
 }
 
 const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, onConfirm }) => {
@@ -355,8 +359,8 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, 
     const formattedStartDate = format(startDateObj, 'yyyy-MM-dd');
     const formattedEndDate = format(endDateObj, 'yyyy-MM-dd');
 
-    // 데이터 전송 - 단일 선택이지만 API 호환성을 위해 배열로 변환
-    onConfirm({
+    // 제출할 데이터 생성
+    const tradeData: TradeData = {
       itemName,
       itemTypes: [selectedItemType], // 배열로 변환하여 전달
       category: selectedItemType,
@@ -364,7 +368,16 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, 
       endDate: formattedEndDate,
       storagePeriod: storagePeriod,
       price: Number(price),
-    });
+      // 서버 전송용 필드 추가
+      product_name: itemName,
+      start_date: formattedStartDate,
+      trade_price: Number(price),
+    };
+
+    console.log('거래 정보 제출:', tradeData);
+
+    // 콜백 함수 호출
+    onConfirm(tradeData);
 
     // 모달 닫기
     onClose();

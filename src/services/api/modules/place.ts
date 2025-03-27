@@ -54,8 +54,10 @@ export interface StorageItem {
 // 위치 ID 응답 타입 정의
 export interface LocationIdResponse {
   id: number;
-  dong: string;
-  formatted_address: string;
+  dong?: string;
+  formatted_address?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 // 위치 ID 캐시 객체 (동일 주소 재검색 시 API 호출 최소화)
@@ -115,6 +117,7 @@ export const searchDong = async (keyword: string): Promise<string[]> => {
 };
 
 // 주소 기반 위치 ID 조회 함수 (추가)
+// 주소 기반 위치 ID 조회 함수
 export const getLocationId = async (
   formattedAddress: string,
 ): Promise<LocationIdResponse | null> => {
@@ -131,13 +134,22 @@ export const getLocationId = async (
     });
 
     // 응답 성공 여부 확인
-    if (response.data?.success && response.data.data) {
+    if (
+      response.data?.status === 'success' &&
+      Array.isArray(response.data.data) &&
+      response.data.data.length > 0
+    ) {
+      // 첫 번째 데이터 항목 사용
+      const locationData: LocationIdResponse = response.data.data[0];
+
       // 응답 데이터 캐싱
-      const locationData = response.data.data;
       locationIdCache[formattedAddress] = locationData;
+
+      console.log('위치 ID 조회 성공:', locationData);
       return locationData;
     }
 
+    console.warn('위치 ID 데이터가 없습니다:', response.data);
     return null;
   } catch (error) {
     console.error('위치 ID 조회 오류:', error);

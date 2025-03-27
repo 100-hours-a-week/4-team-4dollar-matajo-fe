@@ -285,11 +285,14 @@ const SearchAddress: React.FC = () => {
     // 300ms 디바운스 적용
     dongSearchTimerRef.current = window.setTimeout(async () => {
       try {
+        console.log('동 검색 API 요청:', value);
         const results = await searchDong(value);
+        console.log('동 검색 결과:', results);
         setDongResults(results);
         setShowDongDropdown(results.length > 0);
       } catch (error) {
         console.error('동 검색 오류:', error);
+        setDongResults([]);
       } finally {
         setIsDongLoading(false);
       }
