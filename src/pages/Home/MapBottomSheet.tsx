@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
@@ -19,6 +19,10 @@ export const updateUserRole = (token: string): void => {
 
     if (decoded.role !== undefined) {
       localStorage.setItem('userRole', decoded.role.toString());
+      // 역할 변경 이벤트 발생
+      window.dispatchEvent(
+        new CustomEvent('USER_ROLE_CHANGED', { detail: { role: decoded.role } }),
+      );
     }
   } catch (error) {
     console.error('토큰 디코딩 중 오류:', error);
@@ -369,24 +373,27 @@ export const handleRegisterStorage = (
   navigate: ReturnType<typeof useNavigate>,
   setShowKeeperModal: (show: boolean) => void,
 ): void => {
-  // 인증 확인
-  if (!isLoggedIn()) {
-    // 로그인 페이지로 이동
-    navigate('/login');
-    return;
-  }
+  try {
+    // 로그인 체크
+    if (!isLoggedIn()) {
+      navigate('/login');
+      return;
+    }
 
-  // 보관인 여부 확인
-  if (isKeeper()) {
-    // 보관인이면 보관소 등록 페이지로 이동
-    navigate('/registration/step1');
-  } else {
-    // 일반 사용자면 보관인 등록 모달 표시
-    setShowKeeperModal(true);
+    // 보관인 여부 확인
+    if (isKeeper()) {
+      // 보관인이면 바로 보관소 등록 페이지로 이동
+      navigate('/mypage/registration');
+    } else {
+      // 의뢰인이면 보관인 등록 모달 표시
+      setShowKeeperModal(true);
+    }
+  } catch (error) {
+    console.error('보관소 등록 처리 중 오류:', error);
   }
 };
 
-// KeeperRegistrationModal 컴포넌트
+// 보관인 등록 모달 컴포넌트
 export const KeeperRegistrationModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -396,10 +403,14 @@ export const KeeperRegistrationModal: React.FC<{
   const keeperRegistrationContent = (
     <>
       <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>
-        보관인 미등록 계정입니다.
+        보관인으로 등록되지 않은 계정입니다.
+        <br />
+        보관소를 등록하려면 먼저 보관인 등록이 필요합니다.
         <br />
       </span>
-      <span style={{ color: '#010048', fontSize: '16px', fontWeight: 700 }}>보관인 등록</span>
+      <span style={{ color: '#010048', fontSize: '16px', fontWeight: 700 }}>
+        보관인 등록 페이지로 이동
+      </span>
       <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>하시겠습니까?</span>
     </>
   );
@@ -410,7 +421,7 @@ export const KeeperRegistrationModal: React.FC<{
       onClose={onClose}
       content={keeperRegistrationContent}
       cancelText="취소"
-      confirmText="등록"
+      confirmText="등록하기"
       onCancel={onClose}
       onConfirm={onConfirm}
     />
@@ -440,23 +451,48 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   onEditLocation,
 }) => {
   const navigate = useNavigate();
-  const [showKeeperModal, setShowKeeperModal] = useState(false);
   const [sheetState, setSheetState] = useState<BottomSheetState>('half-expanded');
-  const [currentY, setCurrentY] = useState(window.innerHeight / 2);
+  const [showKeeperModal, setShowKeeperModal] = useState<boolean>(false);
+  const [isKeeperUser, setIsKeeperUser] = useState<boolean>(isKeeper());
 
-  // 보관소 등록 핸들러
+  // 역할 변경 이벤트 리스너 추가
+  useEffect(() => {
+    const handleRoleChange = () => {
+      setIsKeeperUser(isKeeper());
+    };
+
+    window.addEventListener('USER_ROLE_CHANGED', handleRoleChange);
+
+    return () => {
+      window.removeEventListener('USER_ROLE_CHANGED', handleRoleChange);
+    };
+  }, []);
+
+  // 보관소 등록 클릭 핸들러
   const handleRegisterClick = () => {
+    if (!isLoggedIn()) {
+      navigate('/login');
+      return;
+    }
+
+    // 보관인이면 바로 보관소 등록 페이지로 이동
+    if (isKeeperUser) {
+      navigate('/mypage/registration');
+    } else {
+      // 의뢰인이면 보관인 등록 확인 모달 표시
+      setShowKeeperModal(true);
+    }
+
+    // 부모 컴포넌트 핸들러 호출
     if (onRegisterStorage) {
       onRegisterStorage();
-    } else {
-      handleRegisterStorage(navigate, setShowKeeperModal);
     }
   };
 
-  // 보관인 등록 확인 핸들러
+  // 보관인 등록 확인 클릭 핸들러
   const handleKeeperConfirm = () => {
     setShowKeeperModal(false);
-    navigate('/keeper/registration');
+    navigate('/mypage/keeper-registration');
   };
 
   // 게시판 이동 핸들러
@@ -478,6 +514,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     if (onDiscountItemClick) {
       onDiscountItemClick(id);
     } else {
+      // 특가 아이템 클릭 시 보관소 상세 페이지로 이동
       navigate(`/storage/${id}`);
     }
   };
@@ -551,8 +588,9 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
       <BottomSheet
         style={{
-          top: `${currentY}px`,
-          height: `${window.innerHeight - 100}px`,
+          height: sheetState === 'closed' ? '60px' : sheetState === 'half-expanded' ? '40%' : '80%',
+          bottom: 0,
+          transition: 'height 0.3s ease-out',
         }}
       >
         <DragHandleContainer>
@@ -579,14 +617,16 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
           <MenuContainer>
             <MenuItem onClick={handleRegisterClick}>
-              <MenuTitle>보관장소 등록하기</MenuTitle>
-              <MenuDescription>보관인이 되어 장소를 등록해요</MenuDescription>
-              <MenuArrow>›</MenuArrow>
+              <MenuTitle>보관소 등록하기</MenuTitle>
+              <MenuDescription>
+                {isKeeperUser ? '내 보관소를 등록해보세요' : '보관인 등록 후 이용 가능해요'}
+              </MenuDescription>
+              <MenuArrow as="span">›</MenuArrow>
             </MenuItem>
             <MenuItem onClick={handleGoToBoard}>
-              <MenuTitle>게시판 둘러보기</MenuTitle>
-              <MenuDescription>게시판을 구경해보세요</MenuDescription>
-              <MenuArrow>›</MenuArrow>
+              <MenuTitle>보관소 게시판</MenuTitle>
+              <MenuDescription>내 주변 보관소를 확인하세요</MenuDescription>
+              <MenuArrow as="span">›</MenuArrow>
             </MenuItem>
           </MenuContainer>
 

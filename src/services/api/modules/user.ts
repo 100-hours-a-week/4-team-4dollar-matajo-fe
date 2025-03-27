@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from 'axios';
 import client from '../client';
 import { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
+import { registerKeeperTerms } from './keeper';
 
 // 거래 내역 데이터 인터페이스
 export interface TradeItem {
@@ -106,28 +107,16 @@ interface KeeperRegistrationData {
   privacy_policy: boolean;
 }
 
+/**
+ * 보관인 등록 함수 (keeper.ts의 registerKeeperTerms 함수 사용)
+ * @deprecated - keeper.ts의 registerKeeperTerms 함수를 사용하세요.
+ */
 export const registerAsKeeper = async (termsData: {
   terms_of_service: boolean;
   privacy_policy: boolean;
 }) => {
-  try {
-    console.log('보관인 등록 시도');
-    const registrationData: KeeperRegistrationData = {
-      terms_of_service: termsData.terms_of_service,
-      privacy_policy: termsData.privacy_policy,
-    };
-
-    const response = await client.post(`${API_PATHS.USER.REGISTER_AS_KEEPER}`, registrationData);
-
-    // 새로운 accessToken을 로컬 스토리지에 저장
-    if (response.data.accessToken) {
-      localStorage.setItem('accessToken', response.data.accessToken);
-    }
-
-    console.log('보관인 등록 응답:', response.data);
-    return response;
-  } catch (error) {
-    console.error('보관인 등록 오류:', error);
-    throw error;
-  }
+  console.warn(
+    'registerAsKeeper 함수는 deprecated 되었습니다. keeper.ts의 registerKeeperTerms 함수를 사용해주세요.',
+  );
+  return registerKeeperTerms(termsData);
 };

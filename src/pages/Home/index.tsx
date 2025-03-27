@@ -12,7 +12,7 @@ import LocationService, {
   DEFAULT_COORDINATES,
   DEFAULT_LOCATION,
 } from '../../services/LocationService';
-import { getPostsByLocation } from '../../services/api/modules/place';
+import { getPostsByLocation, getLocationId } from '../../services/api/modules/place';
 
 import LocationSearchModal from './LocationSearchModal';
 import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet';
@@ -138,39 +138,39 @@ const HomePage: React.FC = () => {
   const [mapLevel] = useState(4); // 초기 지도 레벨은 4로 설정
 
   // 지도 마커 및 데이터 로드
-  const loadMapData = () => {
+  const loadMapData = async () => {
     try {
       // 마커 배열 초기화
       let newMarkers: StorageMarker[] = [];
 
       // 위치 ID가 있을 경우 API 호출
       if (locationId) {
-        // 위치 ID 기반 게시글 조회 (비동기 호출을 동기적으로 처리)
-        getPostsByLocation(locationId)
-          .then(postsData => {
-            // 게시글 데이터를 마커 형식으로 변환
-            newMarkers = postsData.map((post, index) => ({
-              id: post.post_id.toString(),
-              name: `보관소 ${index + 1}`, // 실제 이름이 없으므로 임시 이름 사용
-              latitude: mapCenter.lat + (Math.random() * 0.01 - 0.005), // 임시 좌표 (실제로는 API에서 제공하는 좌표 사용)
-              longitude: mapCenter.lng + (Math.random() * 0.01 - 0.005), // 임시 좌표 (실제로는 API에서 제공하는 좌표 사용)
-              address: post.address,
-            }));
+        try {
+          // 위치 ID 기반 게시글 조회
+          const postsData = await getPostsByLocation(locationId);
 
-            setMarkers(newMarkers);
-          })
-          .catch(err => {
-            console.error('게시글 조회 오류:', err);
-            // 오류 시 기본 마커 제공
-            const defaultMarker = {
-              id: 'default-1',
-              name: '기본 보관소',
-              latitude: mapCenter.lat,
-              longitude: mapCenter.lng,
-              address: location,
-            };
-            setMarkers([defaultMarker]);
-          });
+          // 게시글 데이터를 마커 형식으로 변환
+          newMarkers = postsData.map((post, index) => ({
+            id: post.post_id.toString(),
+            name: `보관소 ${index + 1}`, // 실제 이름이 없으므로 임시 이름 사용
+            latitude: mapCenter.lat + (Math.random() * 0.01 - 0.005), // 임시 좌표 (실제로는 API에서 제공하는 좌표 사용)
+            longitude: mapCenter.lng + (Math.random() * 0.01 - 0.005), // 임시 좌표 (실제로는 API에서 제공하는 좌표 사용)
+            address: post.address,
+          }));
+
+          setMarkers(newMarkers);
+        } catch (err) {
+          console.error('게시글 조회 오류:', err);
+          // 오류 시 기본 마커 제공
+          const defaultMarker = {
+            id: 'default-1',
+            name: '기본 보관소',
+            latitude: mapCenter.lat,
+            longitude: mapCenter.lng,
+            address: location,
+          };
+          setMarkers([defaultMarker]);
+        }
       } else {
         // 위치 ID가 없으면 기본 마커 생성
         const defaultMarker = {
@@ -242,96 +242,104 @@ const HomePage: React.FC = () => {
       return;
     }
 
-    const initializeApp = () => {
+    const initializeApp = async () => {
       try {
         setLoading(true);
         setError(null);
 
         // 현재 위치 가져오기
-        locationService
-          .getCurrentLocation()
-          .then(currentLocation => {
-            if (currentLocation) {
-              setLocation(currentLocation.formatted_address);
+        await getCurrentLocation();
 
-              // 위치 정보로 ID 조회
-              return locationService.getLocationIdByAddress(currentLocation.formatted_address);
-            }
-            return null;
-          })
-          .then(locationIdInfo => {
-            if (locationIdInfo) {
-              setLocationId(locationIdInfo.id);
+        // 위치 정보가 변경되면 LocationId 조회
+        if (location !== DEFAULT_LOCATION) {
+          await fetchLocationId(location);
+        } else {
+          // 기본 위치에 대한 LocationId 조회 시도
+          await fetchLocationId(DEFAULT_LOCATION);
+        }
 
-              // 지도 좌표 설정 (API 응답에 좌표가 있으면 사용)
-              if (locationIdInfo.latitude && locationIdInfo.longitude) {
-                setMapCenter({
-                  lat: locationIdInfo.latitude,
-                  lng: locationIdInfo.longitude,
-                });
-              }
-            }
-
-            // 지도 마커 및 데이터 초기화
-            loadMapData();
-          })
-          .catch(err => {
-            console.error('초기 데이터 로드 실패:', err);
-            setError('데이터를 불러오는 중 오류가 발생했습니다');
-            setLoading(false);
-          });
+        // 지도 데이터 로드
+        await loadMapData();
       } catch (error) {
-        console.error('초기 데이터 로드 실패:', error);
-        setError('데이터를 불러오는 중 오류가 발생했습니다');
+        console.error('앱 초기화 오류:', error);
+        setError('앱을 초기화하는 중 오류가 발생했습니다');
         setLoading(false);
       }
     };
 
     initializeApp();
-  }, [navigate]);
+  }, []);
+
+  // LocationId가 변경될 때마다 지도 데이터 다시 로드
+  useEffect(() => {
+    if (locationId !== null) {
+      loadMapData();
+    }
+  }, [locationId]);
+
+  // 위치 정보 ID 조회 함수
+  const fetchLocationId = async (address: string) => {
+    try {
+      if (!address) return;
+
+      console.log('위치 ID 조회 중:', address);
+      const response = await getLocationId(address);
+
+      if (response && response.id) {
+        console.log('위치 ID 조회 성공:', response.id);
+        setLocationId(response.id);
+
+        // 위치 정보를 전역 상태로 저장 (localStorage)
+        localStorage.setItem('currentLocationId', response.id.toString());
+
+        // 추가 위치 정보가 있으면 저장
+        if (response.latitude && response.longitude) {
+          setMapCenter({ lat: response.latitude, lng: response.longitude });
+        }
+
+        return response.id;
+      } else {
+        console.warn('위치 ID 조회 실패, 기본값 사용');
+        setLocationId(null);
+        localStorage.removeItem('currentLocationId');
+        return null;
+      }
+    } catch (error) {
+      console.error('위치 ID 조회 오류:', error);
+      setLocationId(null);
+      localStorage.removeItem('currentLocationId');
+      return null;
+    }
+  };
 
   // 현재 위치 가져오기
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          // 현재 위치로 지도 중심 설정
-          const { latitude, longitude } = position.coords;
-          setMapCenter({
-            lat: latitude,
-            lng: longitude,
-          });
+  const getCurrentLocation = async () => {
+    try {
+      const currentLocation = await locationService.getCurrentLocation();
 
-          // 현재 위치 정보 가져오기
-          locationService
-            .getCurrentLocation()
-            .then(currentLocation => {
-              if (currentLocation) {
-                setLocation(currentLocation.formatted_address);
+      if (currentLocation) {
+        const formattedAddress = currentLocation.formatted_address;
+        setLocation(formattedAddress);
 
-                // 위치 정보로 ID 조회
-                return locationService.getLocationIdByAddress(currentLocation.formatted_address);
-              }
-              return null;
-            })
-            .then(locationIdInfo => {
-              if (locationIdInfo) {
-                setLocationId(locationIdInfo.id);
-              }
+        // 위치 변경 시 해당 위치의 LocationId 조회
+        await fetchLocationId(formattedAddress);
 
-              // 지도 데이터 다시 로드
-              loadMapData();
-            })
-            .catch(err => {
-              console.error('위치 정보 로드 실패:', err);
-            });
-        },
-        error => {
-          console.error('위치 정보를 가져오는데 실패했습니다:', error);
-          // 기본 위치 사용
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-      );
+        const lat = parseFloat(currentLocation.latitude);
+        const lng = parseFloat(currentLocation.longitude);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+          setMapCenter({ lat, lng });
+        }
+      } else {
+        // 현재 위치를 가져올 수 없는 경우 기본 위치 사용
+        console.warn('현재 위치 정보를 가져올 수 없어 기본 위치를 사용합니다.');
+        setLocation(DEFAULT_LOCATION);
+        await fetchLocationId(DEFAULT_LOCATION);
+      }
+    } catch (error) {
+      console.error('위치 정보 조회 오류:', error);
+      setLocation(DEFAULT_LOCATION);
+      await fetchLocationId(DEFAULT_LOCATION);
     }
   };
 
@@ -340,82 +348,68 @@ const HomePage: React.FC = () => {
     setMapCenter({ lat, lng });
   };
 
-  // 선택한 위치로 이동
-  const handleSelectLocation = (
+  // 위치 선택 핸들러
+  const handleSelectLocation = async (
     selectedLocation: string,
     latitude?: string,
     longitude?: string,
   ) => {
-    setLocation(selectedLocation);
+    try {
+      setLocation(selectedLocation);
+      setIsLocationModalOpen(false);
 
-    // 주소로 위치 ID 조회
-    locationService
-      .getLocationIdByAddress(selectedLocation)
-      .then(locationIdInfo => {
-        if (locationIdInfo) {
-          setLocationId(locationIdInfo.id);
-
-          // 위치 정보를 LocationInfo 형태로 생성하여 최근 위치에 추가
-          const locationInfo: LocationInfo = {
-            formatted_address: selectedLocation, // 선택된 주소 사용
-            display_name: selectedLocation.split(' ').pop() || '', // 동 이름 추출
-            latitude: latitude || DEFAULT_COORDINATES.lat.toString(), // 제공된 좌표 또는 기본값 사용
-            longitude: longitude || DEFAULT_COORDINATES.lng.toString(), // 제공된 좌표 또는 기본값 사용
-          };
-
-          // 최근 위치에 추가
-          locationService.addRecentLocation(locationInfo);
-        } else {
-          console.warn('위치 ID를 찾을 수 없습니다.');
-          setLocationId(null);
+      // 위치 정보 업데이트
+      if (latitude && longitude) {
+        const lat = parseFloat(latitude);
+        const lng = parseFloat(longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          setMapCenter({ lat, lng });
         }
 
-        // 위도/경도가 제공된 경우 해당 좌표로 이동
-        if (latitude && longitude) {
-          const lat = parseFloat(latitude);
-          const lng = parseFloat(longitude);
+        // 위치 정보 저장
+        locationService.setCurrentLocation({
+          formatted_address: selectedLocation,
+          display_name: selectedLocation.split(' ').pop() || '',
+          latitude,
+          longitude,
+        });
+      }
 
-          if (!isNaN(lat) && !isNaN(lng)) {
-            setMapCenter({ lat, lng });
-          }
-        }
+      // 위치 변경 시 LocationId 조회
+      await fetchLocationId(selectedLocation);
 
-        // 지도 데이터 새로 로드
-        loadMapData();
-
-        // 위치 모달 닫기
-        setIsLocationModalOpen(false);
-      })
-      .catch(err => {
-        console.error('위치 정보 로드 실패:', err);
-        setIsLocationModalOpen(false);
-      });
+      // 지도 데이터 다시 로드
+      await loadMapData();
+    } catch (error) {
+      console.error('위치 선택 처리 오류:', error);
+      setError('위치 정보를 처리하는 중 오류가 발생했습니다');
+    }
   };
 
-  // 현재 위치로 이동
+  // 현재 위치 버튼 클릭 핸들러
   const handleCurrentLocationClick = () => {
     getCurrentLocation();
   };
 
-  // 마커 클릭 핸들러 - 보관소 상세 페이지로 이동
+  // 마커 클릭 핸들러
   const handleMarkerClick = (placeId: string) => {
     navigate(`/storage/${placeId}`);
   };
 
-  // 보관소 등록 핸들러
+  // 보관소 등록 버튼 클릭 핸들러
   const handleRegisterClick = () => {
     handleRegisterStorage(navigate, setShowKeeperModal);
   };
 
   // 보관인 등록 확인 핸들러
   const handleKeeperConfirm = () => {
+    navigate('/mypage/keeper-registration');
     setShowKeeperModal(false);
-    navigate('/keeper/registration');
   };
 
   // 게시판 이동 핸들러
   const handleGoToBoard = () => {
-    navigate('/storage');
+    navigate('/storage-list');
   };
 
   // 특가 아이템 클릭 핸들러
@@ -423,65 +417,55 @@ const HomePage: React.FC = () => {
     navigate(`/storage/${id}`);
   };
 
-  // 오류 발생 시 재시도 버튼
+  // 재시도 핸들러
   const handleRetry = () => {
     setLoading(true);
     setError(null);
-    loadMapData();
+    getCurrentLocation();
   };
 
+  // 로딩 중일 때
   if (loading) {
     return (
       <Container>
-        <HeaderWrapper>
-          <Header title="마타조" />
-        </HeaderWrapper>
-        <LoadingIndicator>로딩 중...</LoadingIndicator>
-        <BottomNavigation activeTab="홈" />
+        <LoadingIndicator>위치 정보를 불러오는 중...</LoadingIndicator>
       </Container>
     );
   }
 
+  // 에러 발생 시
   if (error) {
     return (
       <Container>
-        <HeaderWrapper>
-          <Header title="마타조" />
-        </HeaderWrapper>
         <ErrorMessage>
-          <h3>오류가 발생했습니다</h3>
+          <h3>오류 발생</h3>
           <p>{error}</p>
-          <button onClick={handleRetry}>다시 시도</button>
+          <button onClick={handleRetry}>재시도</button>
         </ErrorMessage>
-        <BottomNavigation activeTab="홈" />
       </Container>
     );
   }
 
   return (
     <Container>
-      {/* 맵 컨테이너 */}
+      <HeaderWrapper>
+        <Header title="메인" showBackButton={false} />
+      </HeaderWrapper>
+
       <MapWrapper>
         <KakaoMap
           center={mapCenter}
           level={mapLevel}
           storageMarkers={markers}
           onMarkerClick={handleMarkerClick}
-          draggable={true}
-          zoomable={true}
           onCenterChanged={handleCenterChanged}
           isLocationModalOpen={isLocationModalOpen}
           showCurrentLocation={true}
           onCurrentLocationClick={handleCurrentLocationClick}
+          locationInfoId={locationId?.toString()}
         />
       </MapWrapper>
 
-      {/* 헤더 */}
-      <HeaderWrapper>
-        <Header title="마타조" />
-      </HeaderWrapper>
-
-      {/* 바텀시트 */}
       <MapBottomSheet
         location={location}
         onRegisterStorage={handleRegisterClick}
@@ -492,22 +476,19 @@ const HomePage: React.FC = () => {
         onEditLocation={() => setIsLocationModalOpen(true)}
       />
 
-      {/* 지역 검색 모달 */}
+      <BottomNavigation activeTab="home" />
+
       <LocationSearchModal
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
         onSelectLocation={handleSelectLocation}
       />
 
-      {/* 보관인 등록 모달 */}
       <KeeperRegistrationModal
         isOpen={showKeeperModal}
         onClose={() => setShowKeeperModal(false)}
         onConfirm={handleKeeperConfirm}
       />
-
-      {/* 하단 네비게이션 */}
-      <BottomNavigation activeTab="홈" />
     </Container>
   );
 };

@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import { initializeKakaoMaps } from '../../services/KakaoMapService';
 import { searchDong } from '../../services/api/modules/place';
+import { LocationInfo } from '../../services/LocationService';
+import { debounce } from 'lodash';
 
 // 스타일드 컴포넌트 정의 (기존 코드와 동일)
 const Container = styled.div`
@@ -219,14 +221,29 @@ declare global {
   }
 }
 
-const SearchAddress: React.FC = () => {
+// 검색 주소 컴포넌트 인터페이스 정의
+interface SearchAddressProps {
+  onSelectLocation: (location: string, lat?: string, lng?: string) => void;
+  recentLocations?: LocationInfo[];
+}
+
+// 검색 결과 아이템 인터페이스 정의
+interface SearchResult {
+  dong: string;
+  formatted_address: string;
+  latitude?: string;
+  longitude?: string;
+}
+
+const SearchAddress: React.FC<SearchAddressProps> = ({
+  onSelectLocation,
+  recentLocations = [],
+}) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchAddress[]>([]);
-  const [dongResults, setDongResults] = useState<string[]>([]);
-  const [isSearched, setIsSearched] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDongLoading, setIsDongLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [showDongDropdown, setShowDongDropdown] = useState(false);
   const [apiReady, setApiReady] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -263,183 +280,69 @@ const SearchAddress: React.FC = () => {
     };
   }, []);
 
-  // 디바운스를 위한 타이머 ref
-  const searchTimerRef = useRef<number | null>(null);
-  const dongSearchTimerRef = useRef<number | null>(null);
+  // 검색 디바운스를 위한 타이머 참조
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 동 검색 디바운스 함수
-  const searchDongWithDebounce = async (value: string) => {
-    if (!value.trim()) {
-      setDongResults([]);
-      setShowDongDropdown(false);
-      return;
-    }
-
-    // 이전 타이머가 있다면 제거
-    if (dongSearchTimerRef.current !== null) {
-      window.clearTimeout(dongSearchTimerRef.current);
-    }
-
-    setIsDongLoading(true);
-
-    // 300ms 디바운스 적용
-    dongSearchTimerRef.current = window.setTimeout(async () => {
-      try {
-        console.log('동 검색 API 요청:', value);
-        const results = await searchDong(value);
-        console.log('동 검색 결과:', results);
-        setDongResults(results);
-        setShowDongDropdown(results.length > 0);
-      } catch (error) {
-        console.error('동 검색 오류:', error);
-        setDongResults([]);
-      } finally {
-        setIsDongLoading(false);
+  // 검색어 변경 핸들러 (디바운스 적용)
+  const debouncedSearch = useRef(
+    debounce(async (term: string) => {
+      if (!term.trim()) {
+        setSearchResults([]);
+        setHasSearched(false);
+        setIsLoading(false);
+        return;
       }
-    }, 300);
-  };
 
-  // 검색어 변경 핸들러
+      setIsLoading(true);
+      try {
+        // 동 검색 API 호출
+        const results = await searchDong(term);
+
+        // 검색 결과 가공
+        const formattedResults: SearchResult[] = results.map(dong => ({
+          dong,
+          formatted_address: dong, // API 결과가 단순 문자열인 경우 formatted_address도 동일하게 설정
+        }));
+
+        setSearchResults(formattedResults);
+        setHasSearched(true);
+      } catch (error) {
+        console.error('동 검색 중 오류 발생:', error);
+        setSearchResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300), // 300ms 디바운스
+  ).current;
+
+  // 검색어 변경 시 디바운스 검색 실행
+  useEffect(() => {
+    debouncedSearch(searchTerm);
+
+    // 컴포넌트 언마운트 시 디바운스 취소
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [searchTerm, debouncedSearch]);
+
+  // 검색어 입력 핸들러
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-
-    // 동 검색 API 호출
-    searchDongWithDebounce(value);
   };
 
-  // 동 검색 결과 항목 클릭 핸들러
-  const handleDongSelect = (address: string) => {
-    // 주소에서 동 이름 추출 (마지막 부분)
-    const parts = address.split(' ');
-    const dongName = parts[parts.length - 1]; // 마지막 부분이 동 이름으로 가정
-
-    // 선택된 동을 가지고 Registration1 페이지로 돌아가기
-    navigate('/registration/step1', {
-      state: {
-        selectedAddress: {
-          address: address, // 전체 주소
-          roadAddress: address, // 도로명 주소가 없으면 동일하게 설정
-          place: dongName, // 동 이름
-          latitude: '', // API로부터 받은 데이터에 좌표가 없으므로 빈 값으로 설정
-          longitude: '',
-        },
-      },
-    });
+  // 결과 항목 선택 핸들러
+  const handleSelectResult = (result: SearchResult) => {
+    onSelectLocation(result.formatted_address, result.latitude, result.longitude);
+    setSearchTerm('');
+    setSearchResults([]);
   };
 
-  // 디바운스 적용된 주소 검색 함수 (기존 카카오맵 검색)
-  const searchAddress = () => {
-    if (!searchTerm.trim()) return;
-
-    // API가 준비되지 않았다면 알림
-    if (!apiReady) {
-      alert('카카오맵 API가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.');
-      return;
-    }
-
-    // 이전 타이머가 있다면 제거
-    if (searchTimerRef.current !== null) {
-      window.clearTimeout(searchTimerRef.current);
-    }
-
-    setIsLoading(true);
-    setIsSearched(true);
-    setShowDongDropdown(false); // 검색 시작 시 드롭다운 닫기
-
-    // 디바운스 적용 (300ms)
-    searchTimerRef.current = window.setTimeout(() => {
-      try {
-        console.log('Starting search with:', searchTerm);
-
-        // Place 검색
-        const places = new window.kakao.maps.services.Places();
-        const geocoder = new window.kakao.maps.services.Geocoder();
-
-        // 장소 검색 (키워드 검색)
-        places.keywordSearch(searchTerm, (placesResult: any, placesStatus: any) => {
-          console.log('Places search result:', placesStatus);
-
-          let formattedPlacesResults: SearchAddress[] = [];
-
-          if (placesStatus === window.kakao.maps.services.Status.OK) {
-            formattedPlacesResults = placesResult.map((item: any) => ({
-              address_name: item.address_name,
-              road_address_name: item.road_address_name || '도로명 주소 없음',
-              place_name: item.place_name,
-              x: item.x,
-              y: item.y,
-            }));
-          }
-
-          // 주소 검색
-          geocoder.addressSearch(searchTerm, (addrResult: any, addrStatus: any) => {
-            console.log('Address search result:', addrStatus);
-
-            let formattedAddrResults: SearchAddress[] = [];
-
-            if (addrStatus === window.kakao.maps.services.Status.OK) {
-              formattedAddrResults = addrResult.map((item: any) => ({
-                address_name: item.address_name || '',
-                road_address_name: item.road_address
-                  ? item.road_address.address_name
-                  : '도로명 주소 없음',
-                x: item.x,
-                y: item.y,
-              }));
-            }
-
-            // 모든 결과 병합
-            const allResults = [...formattedPlacesResults, ...formattedAddrResults];
-
-            // 중복 제거 (좌표 기준)
-            const uniqueResults: SearchAddress[] = [];
-            const seenCoords = new Set();
-
-            allResults.forEach(item => {
-              const coordKey = `${item.x},${item.y}`;
-              if (!seenCoords.has(coordKey)) {
-                seenCoords.add(coordKey);
-                uniqueResults.push(item);
-              }
-            });
-
-            console.log('Final results count:', uniqueResults.length);
-
-            // 최종 결과 설정
-            setSearchResults(uniqueResults);
-            setIsLoading(false);
-          });
-        });
-      } catch (error) {
-        console.error('Error during search:', error);
-        setIsLoading(false);
-        alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
-      }
-    }, 300); // 300ms 디바운스
-  };
-
-  // 검색 결과 항목 클릭 핸들러
-  const handleResultClick = (result: SearchAddress) => {
-    // 선택된 주소를 가지고 Registration1 페이지로 돌아가기
-    navigate('/registration/step1', {
-      state: {
-        selectedAddress: {
-          address: result.address_name,
-          roadAddress: result.road_address_name,
-          place: result.place_name,
-          latitude: result.y,
-          longitude: result.x,
-        },
-      },
-    });
-  };
-
-  // 키보드 엔터 검색 핸들러 (디바운스 적용)
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      searchAddress();
-    }
+  // 최근 위치 선택 핸들러
+  const handleSelectRecent = (location: LocationInfo) => {
+    onSelectLocation(location.formatted_address, location.latitude, location.longitude);
+    setSearchTerm('');
+    setSearchResults([]);
   };
 
   // 드롭다운 외부 클릭 감지를 위한 이벤트 리스너
@@ -477,22 +380,21 @@ const SearchAddress: React.FC = () => {
             placeholder="주소를 입력해주세요"
             value={searchTerm}
             onChange={handleSearchChange}
-            onKeyPress={handleKeyPress}
           />
-          <SearchIcon onClick={searchAddress} />
+          <SearchIcon onClick={() => {}} />
 
           {/* 동 검색 드롭다운 */}
           {showDongDropdown && (
             <DropdownContainer ref={dropdownRef}>
-              {isDongLoading ? (
+              {isLoading ? (
                 <LoadingContainer>
                   <LoadingSpinner />
                   <LoadingText>검색 중...</LoadingText>
                 </LoadingContainer>
-              ) : dongResults.length > 0 ? (
-                dongResults.map((address, index) => (
-                  <DropdownItem key={index} onClick={() => handleDongSelect(address)}>
-                    <AddressText>{address}</AddressText>
+              ) : searchResults.length > 0 ? (
+                searchResults.map((result, index) => (
+                  <DropdownItem key={index} onClick={() => handleSelectResult(result)}>
+                    <AddressText>{result.formatted_address}</AddressText>
                   </DropdownItem>
                 ))
               ) : (
@@ -502,14 +404,14 @@ const SearchAddress: React.FC = () => {
           )}
         </SearchInputContainer>
 
-        {isLoading && !isDongLoading && (
+        {isLoading && !showDongDropdown && (
           <LoadingContainer>
             <LoadingSpinner />
             <LoadingText>{apiReady ? '주소 검색 중...' : '카카오맵 API 초기화 중...'}</LoadingText>
           </LoadingContainer>
         )}
 
-        {!isSearched && !isLoading && (
+        {!hasSearched && !isLoading && (
           <SearchHelpSection>
             <SearchHelpTitle>이렇게 검색해보세요</SearchHelpTitle>
 
@@ -543,25 +445,13 @@ const SearchAddress: React.FC = () => {
           </SearchHelpSection>
         )}
 
-        {isSearched && !isLoading && (
+        {hasSearched && !isLoading && (
           <SearchResultContainer>
             {searchResults.length > 0 ? (
               searchResults.map((result, index) => (
-                <SearchResultItem key={index} onClick={() => handleResultClick(result)}>
-                  <ResultMainText>
-                    {result.place_name
-                      ? `${result.place_name}`
-                      : result.road_address_name !== '도로명 주소 없음'
-                        ? result.road_address_name
-                        : result.address_name}
-                  </ResultMainText>
-                  <ResultSubText>
-                    {result.place_name
-                      ? result.road_address_name !== '도로명 주소 없음'
-                        ? result.road_address_name
-                        : result.address_name
-                      : result.address_name}
-                  </ResultSubText>
+                <SearchResultItem key={index} onClick={() => handleSelectResult(result)}>
+                  <ResultMainText>{result.formatted_address}</ResultMainText>
+                  <ResultSubText>{result.formatted_address}</ResultSubText>
                 </SearchResultItem>
               ))
             ) : (
