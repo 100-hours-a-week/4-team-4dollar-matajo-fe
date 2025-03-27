@@ -43,15 +43,42 @@ export const createTrade = async (data: CreateTradeRequest): Promise<CreateTrade
 };
 
 /**
+ * 내 거래 내역 조회 API 인터페이스
+ */
+export interface TradeItem {
+  trade_id: number;
+  keeper_status: boolean;
+  product_name: string;
+  user_id: number;
+  post_address: string;
+  trade_date: string;
+  start_date: string;
+  storage_period: number;
+  trade_price: number;
+}
+
+export interface MyTradesResponse {
+  success: boolean;
+  message: string;
+  data: TradeItem[];
+}
+
+/**
  * 내 거래 내역 조회 API
- * @param statusFilter 거래 상태 필터 (진행중/완료/취소)
  * @returns 거래 내역 목록
  */
-export const getMyTrades = async (statusFilter?: string) => {
+export const getMyTrades = async (): Promise<TradeItem[]> => {
   try {
-    const params = statusFilter ? { status: statusFilter } : {};
-    const response = await client.get(API_PATHS.MYPAGE.TRADE, { params });
-    return response.data;
+    // 올바른 API 경로 사용 (API_PATHS.TRADES.MY_TRADES)
+    const response = await client.get<MyTradesResponse>('/api/trades/my-trades');
+
+    if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      console.log('거래 내역 조회 성공:', response.data);
+      return response.data.data;
+    }
+
+    console.warn('거래 내역 응답 형식 오류:', response.data);
+    return [];
   } catch (error) {
     console.error('거래 내역 조회 실패:', error);
     throw error;

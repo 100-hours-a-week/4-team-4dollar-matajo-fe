@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../../components/layout/Header';
 import BottomNavigation from '../../../components/layout/BottomNavigation';
 import { ROUTES } from '../../../constants/routes';
-import { getMyStorages, MyTradeItem } from '../../../services/api/modules/storage';
+import { getMyStorages } from '../../../services/api/modules/storage';
 
 // 스타일 상수
 const THEME = {
@@ -150,34 +150,46 @@ const NoDataMessage = styled.div`
   font-family: 'Noto Sans KR';
 `;
 
+interface StorageItem {
+  trade_id: number;
+  keeper_status: boolean;
+  trade_name: string;
+  user_id: number;
+  post_address: string;
+  trade_date: string;
+  start_date: string;
+  storage_period: number;
+  trade_price: number;
+}
+
 interface MyPlaceProps {
   onBack?: () => void;
 }
 
 const MyPlace: React.FC<MyPlaceProps> = ({ onBack }) => {
   const navigate = useNavigate();
-  const [trades, setTrades] = useState<MyTradeItem[]>([]);
+  const [trades, setTrades] = useState<StorageItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchTrades = async () => {
+    const fetchStorages = async () => {
       try {
         setLoading(true);
         setError(null);
 
         const data = await getMyStorages();
-        console.log('내 거래 목록:', data);
+        console.log('내 보관소 목록:', data);
         setTrades(data);
       } catch (err) {
-        console.error('내 거래 목록 조회 실패:', err);
-        setError('거래 목록을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.');
+        console.error('내 보관소 목록 조회 실패:', err);
+        setError('보관소 목록을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTrades();
+    fetchStorages();
   }, []);
 
   const handleBack = () => {
@@ -189,8 +201,8 @@ const MyPlace: React.FC<MyPlaceProps> = ({ onBack }) => {
   };
 
   const handleTradeItemClick = (id: number) => {
-    navigate(`/storage/${id}`);
-    console.log(`거래 ${id} 클릭됨, 상세 페이지로 이동`);
+    navigate(`/trade/${id}`);
+    console.log(`거래 ${id} 클릭됨, 거래 내역 상세 페이지로 이동`);
   };
 
   const renderArrowIcon = () => (
@@ -212,19 +224,19 @@ const MyPlace: React.FC<MyPlaceProps> = ({ onBack }) => {
 
       <Content>
         {loading ? (
-          <LoadingContainer>거래 목록을 불러오는 중...</LoadingContainer>
+          <LoadingContainer>보관소 목록을 불러오는 중...</LoadingContainer>
         ) : error ? (
           <ErrorMessage>{error}</ErrorMessage>
         ) : trades.length === 0 ? (
-          <NoDataMessage>등록된 거래가 없습니다.</NoDataMessage>
+          <NoDataMessage>등록된 보관소가 없습니다.</NoDataMessage>
         ) : (
-          trades.map((trade, index) => (
+          trades.map((storage, index) => (
             <TradeItemCard
-              key={trade.trade_id}
-              onClick={() => handleTradeItemClick(trade.trade_id)}
+              key={storage.trade_id}
+              onClick={() => handleTradeItemClick(storage.trade_id)}
             >
               <TradeImage>
-                {trade.trade_name && (
+                {storage.trade_name && (
                   <ImagePlaceholder>
                     장소
                     <br />
@@ -234,11 +246,11 @@ const MyPlace: React.FC<MyPlaceProps> = ({ onBack }) => {
               </TradeImage>
 
               <TradeInfo>
-                <StatusTag isPublic={trade.keeper_status}>
-                  {trade.keeper_status ? '공개' : '비공개'}
+                <StatusTag isPublic={storage.keeper_status}>
+                  {storage.keeper_status ? '공개' : '비공개'}
                 </StatusTag>
-                <TradeTitle>{trade.trade_name}</TradeTitle>
-                <TradeLocation>{trade.post_address}</TradeLocation>
+                <TradeTitle>{storage.trade_name}</TradeTitle>
+                <TradeLocation>{storage.post_address}</TradeLocation>
               </TradeInfo>
 
               <ArrowIcon>{renderArrowIcon()}</ArrowIcon>

@@ -297,9 +297,9 @@ export const getLocationPosts = async (locationInfoId: string): Promise<Location
 export const createStorage = registerStorage;
 
 /**
- * 내 보관소/거래 목록을 가져오는 인터페이스
+ * 내 보관소 정보 인터페이스
  */
-export interface MyTradeItem {
+export interface StorageItem {
   trade_id: number;
   keeper_status: boolean;
   trade_name: string;
@@ -314,10 +314,10 @@ export interface MyTradeItem {
 /**
  * 내 보관소 응답 인터페이스
  */
-export interface MyTradeResponse {
+export interface MyStorageResponse {
   success: boolean;
   message: string;
-  data: MyTradeItem[];
+  data: StorageItem[];
 }
 
 /**
@@ -325,9 +325,9 @@ export interface MyTradeResponse {
  *
  * @returns 내 보관소 목록
  */
-export const getMyStorages = async (): Promise<MyTradeItem[]> => {
+export const getMyStorages = async (): Promise<any[]> => {
   try {
-    const response = await client.get<MyTradeResponse>(API_PATHS.POSTS.MY_POSTS, {
+    const response = await client.get(API_PATHS.POSTS.MY_POSTS, {
       withCredentials: true,
     });
 

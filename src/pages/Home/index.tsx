@@ -16,6 +16,7 @@ import { getPostsByLocation, getLocationId } from '../../services/api/modules/pl
 
 import LocationSearchModal from './LocationSearchModal';
 import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet';
+import { ROUTES } from '../../constants/routes';
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
@@ -398,18 +399,31 @@ const HomePage: React.FC = () => {
 
   // 보관소 등록 버튼 클릭 핸들러
   const handleRegisterClick = () => {
-    handleRegisterStorage(navigate, setShowKeeperModal);
+    // 로그인 체크
+    if (!isLoggedIn()) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    // 보관인 여부 확인
+    if (isKeeper()) {
+      console.log('보관인으로 로그인되어 있어 바로 보관소 등록 step1 페이지로 이동합니다.');
+      navigate('/' + ROUTES.MYPAGE_REGISTRATION_STEP1, { replace: true });
+    } else {
+      console.log('의뢰인으로 로그인되어 있어 보관인 등록 모달을 표시합니다.');
+      setShowKeeperModal(true);
+    }
   };
 
   // 보관인 등록 확인 핸들러
   const handleKeeperConfirm = () => {
-    navigate('/mypage/keeper-registration');
+    navigate('/mypage/keeper-registration', { replace: true });
     setShowKeeperModal(false);
   };
 
   // 게시판 이동 핸들러
   const handleGoToBoard = () => {
-    navigate('/storage-list');
+    navigate('/storage');
   };
 
   // 특가 아이템 클릭 핸들러

@@ -120,3 +120,31 @@ export const registerAsKeeper = async (termsData: {
   );
   return registerKeeperTerms(termsData);
 };
+
+export interface PlaceItem {
+  post_id: number;
+  post_title: string;
+  post_address: string;
+  post_main_image: string;
+  hidden_status: boolean;
+  prefer_price: number;
+  created_at: string;
+}
+
+export const getUserPlaces = async (): Promise<PlaceItem[]> => {
+  // 임시 목업 데이터
+  const mockData: PlaceItem[] = [
+    {
+      post_id: 13,
+      post_title: '케아네집',
+      post_address: '부산 부산진구 신천대로 241',
+      post_main_image:
+        'https://matajo-image.s3.ap-northeast-2.amazonaws.com/post/2e807462-62eb-44cd-8939-1651734adc15.jpg',
+      hidden_status: false,
+      prefer_price: 32324,
+      created_at: '2025.03.27 13:26:27',
+    },
+  ];
+
+  return Promise.resolve(mockData);
+};

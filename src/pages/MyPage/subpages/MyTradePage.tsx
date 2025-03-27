@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import Header from '../../../components/layout/Header';
 import BottomNavigation from '../../../components/layout/BottomNavigation';
 import { useNavigate } from 'react-router-dom';
-import { getMyTrades, TradeItem } from '../../../services/api/modules/user';
+import { getUserPlaces, PlaceItem } from '../../../services/api/modules/user';
 import moment from 'moment';
 import { ROUTES } from '../../../constants/routes';
 
@@ -36,85 +36,78 @@ const Container = styled.div`
   align-items: center;
 `;
 
-// 트랜잭션 카드 스타일 - 중앙 정렬 개선
-const TransactionCard = styled.div`
-  width: 300px;
-  height: 130px;
+// 장소 카드 스타일
+const PlaceCard = styled.div`
+  width: 326px;
+  height: 96px;
   margin: 15px auto;
   background: rgba(217, 217, 217, 0);
   border-radius: 10px;
-  border: 2px ${THEME.borderColor} solid;
+  border: 1px ${THEME.borderColor} solid;
   position: relative;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-`;
-
-// 상단 정보 영역
-const CardHeader = styled.div`
+  padding: 15px;
   display: flex;
   align-items: center;
-  margin-bottom: 6px;
+  cursor: pointer;
 `;
 
-const TransactionType = styled.span<{ isDeposit?: boolean }>`
-  color: ${props => (props.isDeposit ? THEME.primaryAlpha : THEME.darkText)};
-  font-size: 18px;
-  font-family: 'Noto Sans KR';
-  font-weight: 700;
-  letter-spacing: 0.02px;
-  margin-right: 10px;
+// 장소 이미지
+const PlaceImage = styled.img`
+  width: 69px;
+  height: 66px;
+  border-radius: 2px;
+  object-fit: cover;
 `;
 
-const ItemName = styled.span`
+// 장소 정보 영역
+const PlaceInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  margin-left: 15px;
+  flex: 1;
+`;
+
+// 장소 제목
+const PlaceTitle = styled.div`
   color: ${THEME.darkText};
   font-size: 18px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
   letter-spacing: 0.02px;
+  margin-bottom: 5px;
 `;
 
-// 중간 정보 영역
-const CardContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const UserInfo = styled.div`
+// 장소 주소
+const PlaceAddress = styled.div`
   color: ${THEME.lightGrayText};
-  font-size: 17px;
+  font-size: 13px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
-  letter-spacing: 0.02px;
-`;
-
-const LocationDate = styled.div`
-  color: ${THEME.lightGrayText};
-  font-size: 14px;
-  font-family: 'Noto Sans KR';
-  font-weight: 500;
   letter-spacing: 0.01px;
-  margin-bottom: 6px;
 `;
 
-// 구분선
-const Divider = styled.div`
-  width: 100%;
-  height: 1px;
-  background-color: ${THEME.dividerColor};
-  margin: 8px 0;
-`;
-
-// 하단 금액 정보
-const TotalAmount = styled.div`
-  width: 100%;
-  text-align: right;
-  color: ${THEME.blackText};
-  font-size: 16px;
+// 공개 여부 태그
+const VisibilityTag = styled.div<{ isPublic: boolean }>`
+  width: 45px;
+  height: 17px;
+  padding: 2px 8px;
+  border-radius: 21px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: ${props => (props.isPublic ? THEME.primaryAlpha : THEME.lightGrayText)};
+  border: 1px solid ${props => (props.isPublic ? THEME.primaryAlpha : THEME.lightGrayText)};
+  font-size: 12px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
-  letter-spacing: 0.02px;
+  margin-bottom: 10px;
+`;
+
+// 화살표 아이콘
+const ArrowIcon = styled.div`
+  margin-left: 10px;
+  color: #bbbbbb;
+  opacity: 0.8;
 `;
 
 // 로딩 컴포넌트
@@ -146,104 +139,103 @@ const NoDataMessage = styled.div`
   font-family: 'Noto Sans KR';
 `;
 
-interface MyTradeProps {
-  onBack?: () => void;
-}
-
 // 메인 컴포넌트
-const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
+const MyPlace: React.FC = () => {
   const navigate = useNavigate();
-  const [trades, setTrades] = useState<TradeItem[]>([]);
+  const [places, setPlaces] = useState<PlaceItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 거래 내역 데이터 조회
+  // 내 보관소 데이터 조회
   useEffect(() => {
-    const fetchTrades = async () => {
+    const fetchPlaces = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getMyTrades();
-        setTrades(data);
+
+        // API 호출 임시 구현
+        // 실제 API 구현될 때까지 임시 데이터 사용
+        // 실제 API는 나중에 services/api/modules/user.ts에 추가
+        const mockData: PlaceItem[] = [
+          {
+            post_id: 13,
+            post_title: '케아네집',
+            post_address: '부산 부산진구 신천대로 241',
+            post_main_image:
+              'https://matajo-image.s3.ap-northeast-2.amazonaws.com/post/2e807462-62eb-44cd-8939-1651734adc15.jpg',
+            hidden_status: false,
+            prefer_price: 32324,
+            created_at: '2025.03.27 13:26:27',
+          },
+        ];
+        setPlaces(mockData);
       } catch (err) {
-        console.error('거래 내역 조회 실패:', err);
-        setError('거래 내역을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.');
+        console.error('보관소 조회 실패:', err);
+        setError('보관소 목록을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTrades();
+    fetchPlaces();
   }, []);
 
   // 뒤로가기 핸들러 함수 - MyPage로 이동
   const handleBackClick = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      navigate(`/${ROUTES.MYPAGE}`);
-    }
+    navigate(`/${ROUTES.MYPAGE}`);
   };
 
-  // 날짜 형식 변환 - '2025-03-18' -> '2025.03.18'
-  const formatDate = (dateString: string) => {
-    return dateString.replace(/-/g, '.');
+  // 보관소 상세 페이지로 이동
+  const handlePlaceClick = (placeId: number) => {
+    navigate(`/${ROUTES.MYPLACE}/${placeId}`);
   };
-
-  // 보관 기간 계산 - 시작일 + 보관 기간으로 종료일 계산
-  const calculateEndDate = (startDate: string, storagePeriod: number) => {
-    return moment(startDate).add(storagePeriod, 'days').format('YYYY.MM.DD');
-  };
-
-  // 금액 포맷 함수
-  const formatAmount = (amount: number) => {
-    return `총 ${amount.toLocaleString()}원`;
-  };
-
-  // 현재 사용자 ID 가져오기
-  const currentUserId = parseInt(localStorage.getItem('userId') || '0');
 
   return (
     <>
-      {/* 페이지 헤더 - onBack prop을 handleBackClick으로 설정 */}
-      <Header title="내 거래 내역" showBackButton={true} onBack={handleBackClick} />
+      {/* 페이지 헤더 */}
+      <Header title="내 보관소" showBackButton={true} onBack={handleBackClick} />
 
       <Container>
         {loading ? (
-          <LoadingContainer>거래 내역을 불러오는 중...</LoadingContainer>
+          <LoadingContainer>보관소 목록을 불러오는 중...</LoadingContainer>
         ) : error ? (
           <ErrorMessage>{error}</ErrorMessage>
-        ) : trades.length === 0 ? (
-          <NoDataMessage>거래 내역이 없습니다.</NoDataMessage>
+        ) : places.length === 0 ? (
+          <NoDataMessage>등록된 보관소가 없습니다.</NoDataMessage>
         ) : (
-          // 거래 내역 목록
-          trades.map(trade => {
-            // 타입 결정 - 보관자(keeper)면 '맡아줬어요', 아니면 '보관했어요'
-            const isKeeper = trade.keeperStatus;
-            const endDate = calculateEndDate(trade.startDate, trade.storagePeriod);
-
-            return (
-              <TransactionCard key={trade.tradeId}>
-                <CardHeader>
-                  <TransactionType isDeposit={isKeeper}>
-                    {isKeeper ? '맡아줬어요' : '보관했어요'}
-                  </TransactionType>
-                  <ItemName>{trade.productName}</ItemName>
-                </CardHeader>
-
-                <CardContent>
-                  <UserInfo>타조 {trade.userId}</UserInfo>
-                  <LocationDate>
-                    {trade.postAddress} | {formatDate(trade.startDate)} ~ {endDate}
-                  </LocationDate>
-                </CardContent>
-
-                <Divider />
-
-                <TotalAmount>{formatAmount(trade.tradePrice)}</TotalAmount>
-              </TransactionCard>
-            );
-          })
+          // 보관소 목록
+          places.map(place => (
+            <PlaceCard key={place.post_id} onClick={() => handlePlaceClick(place.post_id)}>
+              <PlaceImage
+                src={place.post_main_image || 'https://via.placeholder.com/69x66'}
+                alt={place.post_title}
+              />
+              <PlaceInfo>
+                <VisibilityTag isPublic={!place.hidden_status}>
+                  {place.hidden_status ? '비공개' : '공개'}
+                </VisibilityTag>
+                <PlaceTitle>{place.post_title}</PlaceTitle>
+                <PlaceAddress>{place.post_address}</PlaceAddress>
+              </PlaceInfo>
+              <ArrowIcon>
+                <svg
+                  width="14"
+                  height="20"
+                  viewBox="0 0 14 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M0.399932 17.1076L9.4541 9.85097L0.233178 2.80748L0.200439 0L13.0968 9.85097L0.433661 20L0.399932 17.1076Z"
+                    fill="#BBBBBB"
+                    fillOpacity="0.8"
+                  />
+                </svg>
+              </ArrowIcon>
+            </PlaceCard>
+          ))
         )}
       </Container>
 
@@ -253,4 +245,4 @@ const MyTrade: React.FC<MyTradeProps> = ({ onBack }) => {
   );
 };
 
-export default MyTrade;
+export default MyPlace;

@@ -109,19 +109,38 @@ export const registerKeeperTerms = async (
     throw error;
   }
 };
-
 /**
- * 보관인 역할 확인 API 호출
+ * 액세스 토큰에서 사용자 역할을 파싱하여 보관인 여부 확인
  * @returns 보관인 여부
  */
-export const checkKeeperRole = async (): Promise<boolean> => {
+
+export const checkKeeperRole = (): boolean => {
   try {
-    const response = await client.get(API_PATHS.USER.ME);
-    // 응답에서 role 정보를 확인하여 보관인 여부 리턴
-    // role 값이 2인 경우 보관인으로 가정 (실제 값은 API 명세에 따라 조정)
-    return response.data?.data?.role === 2;
+    // 로컬 스토리지에서 액세스 토큰 가져오기
+    const accessToken = localStorage.getItem('accessToken');
+
+    if (!accessToken) {
+      console.error('액세스 토큰이 없습니다.');
+      return false;
+    }
+
+    // JWT 토큰 파싱 (payload 부분 추출)
+    const payload = accessToken.split('.')[1];
+    if (!payload) {
+      console.error('유효하지 않은 토큰 형식입니다.');
+      return false;
+    }
+
+    // Base64 디코딩
+    const decodedPayload = atob(payload);
+
+    // JSON 파싱
+    const userInfo = JSON.parse(decodedPayload);
+
+    // role 값 확인 (role 값이 2 또는 "KEEPER"인 경우 보관인으로 판단)
+    return userInfo.role === 2 || userInfo.role === 'KEEPER';
   } catch (error) {
-    console.error('사용자 정보 조회 실패:', error);
+    console.error('토큰 파싱 중 오류 발생:', error);
     return false;
   }
 };

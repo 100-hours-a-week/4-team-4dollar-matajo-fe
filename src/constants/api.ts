@@ -72,6 +72,9 @@ export const API_PATHS = {
     TRADE: '/api/mypage/trades',
     STORAGE: '/api/mypage/storage',
   },
+  TRADES: {
+    MY_TRADES: '/api/trades/my-trades',
+  },
 };
 
 // 기본 내보내기

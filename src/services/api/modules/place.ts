@@ -223,7 +223,7 @@ export const getStorageList = async (
     console.log('API 호출 파라미터:', params);
 
     // API_PATHS.STORAGE.LIST 엔드포인트 사용
-    const response = await client.get(API_PATHS.STORAGE.LIST, { params });
+    const response = await client.get(API_PATHS.POSTS.CREATE, { params });
 
     // API 응답 데이터 변환
     console.log('API 응답 데이터:', response.data);

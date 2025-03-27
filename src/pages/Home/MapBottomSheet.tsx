@@ -383,8 +383,9 @@ export const handleRegisterStorage = (
 
     // 보관인 여부 확인
     if (isKeeper()) {
-      // 보관인이면 바로 보관소 등록 페이지로 이동
-      navigate('/mypage/registration');
+      // 보관인이면 바로 보관소 등록 페이지의 step1로 이동
+      console.log('보관인으로 로그인되어 있어 바로 보관소 등록 step1 페이지로 이동합니다.');
+      navigate(ROUTES.MYPAGE_REGISTRATION_STEP1);
     } else {
       // 의뢰인이면 보관인 등록 모달 표시
       setShowKeeperModal(true);
@@ -472,19 +473,18 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   // 보관소 등록 클릭 핸들러
   const handleRegisterClick = () => {
     if (!isLoggedIn()) {
-      navigate('/login');
+      navigate('/login'); // 로그인되지 않은 경우 로그인 페이지로 이동
       return;
     }
 
-    // 보관인이면 바로 보관소 등록 페이지로 이동
+    // 보관인이면 바로 보관소 등록 페이지의 step1로 이동
     if (isKeeperUser) {
-      console.log('보관인으로 로그인되어 있어 바로 보관소 등록 페이지로 이동합니다.');
-      console.log('경로:', `/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
-      navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+      console.log('보관인으로 로그인되어 있어 바로 보관소 등록 step1 페이지로 이동합니다.');
+      navigate(ROUTES.MYPAGE_REGISTRATION_STEP1); // 'mypage/registration/step1'로 이동
     } else {
       // 의뢰인이면 보관인 등록 확인 모달 표시
       console.log('의뢰인으로 로그인되어 있어 보관인 등록 모달을 표시합니다.');
-      setShowKeeperModal(true);
+      setShowKeeperModal(true); // 보관인 등록 모달 표시
     }
 
     // 부모 컴포넌트 핸들러 호출

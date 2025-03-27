@@ -13,6 +13,9 @@ import { isAuthenticated, isKeeper } from '../../utils/api/authUtils';
 import { checkKeeperRole } from '../../services/api/modules/keeper';
 import axios from '../../services/api/client';
 import { ROUTES } from '../../constants/routes';
+// next/image와 react-icons/cg 대신 기본 이미지 태그 사용
+// import Image from 'next/image';
+// import { CgProfile } from 'react-icons/cg';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -28,32 +31,35 @@ const THEME = {
   white: '#FFFFFF',
 };
 
-// 푸터 컨테이너 추가
+// 공통 스타일 정의 - 중복되는 스타일 속성 통합
+const commonTextStyles = `
+  font-family: 'Noto Sans KR';
+  word-wrap: break-word;
+`;
+
+// 푸터 관련 스타일 컴포넌트 통합
 const FooterContainer = styled.div`
   width: 100%;
-  max-width: 375px;
-  margin: 0 auto;
-  position: relative;
-  padding: 0 20px;
+  max-width: 95%;
   margin-top: auto;
+  padding: 20px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-bottom: 60px;
 `;
 
-// 푸터 텍스트 스타일 수정
 const FooterText = styled.div`
   color: #666;
   font-size: 12px;
-  font-family: 'Noto Sans KR';
+  ${commonTextStyles}
   font-weight: 300;
   line-height: 14.4px;
-  word-wrap: break-word;
-  cursor: pointer;
   margin: 0 5px;
+  cursor: pointer;
+  align-items: center;
 `;
 
-// 사업자 정보 컨테이너 추가
 const BusinessInfoContainer = styled.div`
   margin-top: 10px;
   text-align: center;
@@ -62,71 +68,50 @@ const BusinessInfoContainer = styled.div`
   border-top: 1px solid #eee;
 `;
 
-// 사업자 정보 스타일 추가
 const BusinessInfo = styled.p`
   color: #999;
   font-size: 10px;
-  font-family: 'Noto Sans KR';
+  ${commonTextStyles}
   font-weight: 300;
   line-height: 1.4;
   margin: 3px 0;
+  align-items: center;
 `;
 
-// 모달관련 스타일 컴포넌트트
-const GrayText = styled.span`
-  color: #5b5a5d;
+// 모달 관련 텍스트 스타일 통합
+const ModalText = styled.span<{ isHighlight?: boolean }>`
+  color: ${props => (props.isHighlight ? '#010048' : '#5b5a5d')};
   font-size: 16px;
-  font-family: 'Noto Sans KR';
-  font-weight: 500;
+  ${commonTextStyles}
+  font-weight: ${props => (props.isHighlight ? 700 : 500)};
   line-height: 19.21px;
-  word-wrap: break-word;
 `;
 
-const HighlightText = styled.span`
-  color: #010048;
-  font-size: 16px;
-  font-family: 'Noto Sans KR';
-  font-weight: 700;
-  line-height: 19.21px;
-  word-wrap: break-word;
+// 구분선 관련 스타일 통합
+const Divider = styled.div`
+  width: 100%;
+  height: 1px;
+  background-color: ${THEME.borderColor};
+  margin: 5px 0;
 `;
 
-// 메뉴 링크 컨테이너
-const MenuLinksContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  margin-bottom: 10px;
-`;
-
-// 구분선 스타일 수정
 const Separator = styled.span`
   color: #999;
   font-size: 12px;
-  font-family: 'Noto Sans KR';
+  ${commonTextStyles}
   font-weight: 300;
 `;
 
-// 반복적으로 사용되는 스타일 컴포넌트 통합
+// 메뉴 아이템 관련 스타일 통합
 const MenuItem = styled.div`
   color: ${THEME.grayText};
   font-size: 14px;
-  font-family: 'Noto Sans KR';
+  ${commonTextStyles}
   font-weight: 700;
   letter-spacing: 0.01px;
   margin-left: 12px;
 `;
 
-// 화살표 아이콘 SVG로 교체
-const ChevronIcon = styled.div`
-  width: 24px;
-  height: 24px;
-  position: relative;
-  margin-right: 12px;
-  background: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 17L15 12L10 7' stroke='%237F7F7F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-    no-repeat center center;
-`;
-
-// 메뉴 아이템 래퍼 (클릭 가능한 영역)
 const MenuItemWrapper = styled.div`
   width: 100%;
   height: 50px;
@@ -137,13 +122,7 @@ const MenuItemWrapper = styled.div`
   position: relative;
 `;
 
-const Divider = styled.div`
-  width: 100%;
-  height: 1px;
-  background-color: ${THEME.borderColor};
-  margin: 5px 0;
-`;
-
+// 프로필 관련 스타일 통합
 const ProfileCard = styled.div`
   width: 100%;
   max-width: 348px;
@@ -154,12 +133,15 @@ const ProfileCard = styled.div`
   margin: 20px auto;
 `;
 
-const ProfileImageContainer = styled.div`
+const ProfileElement = styled.div<{ left?: string; top?: string }>`
+  position: absolute;
+  left: ${props => props.left || '0'};
+  top: ${props => props.top || '0'};
+`;
+
+const ProfileImageContainer = styled(ProfileElement).attrs({ left: '15px', top: '17px' })`
   width: 65px;
   height: 62px;
-  position: absolute;
-  left: 15px;
-  top: 17px;
   background: ${THEME.white};
   border-radius: 9999px;
 `;
@@ -174,33 +156,26 @@ const ProfileImage = styled.img`
   border-radius: 50%;
 `;
 
-const UserName = styled.div`
-  position: absolute;
-  left: 90px;
-  top: 30px;
+const UserName = styled(ProfileElement).attrs({ left: '90px', top: '30px' })`
   color: black;
   font-size: 15px;
-  font-family: 'Noto Sans KR';
+  ${commonTextStyles}
   font-weight: 700;
   letter-spacing: 0.02px;
-  word-wrap: break-word;
 `;
 
-const ProfileDivider = styled.div`
+const ProfileDivider = styled(ProfileElement).attrs({ left: '90px', top: '52px' })`
   width: 219px;
   height: 1px;
-  position: absolute;
-  left: 90px;
-  top: 52px;
   background-color: #f7f7f7;
 `;
 
-const BadgeContainer = styled.div`
+const BadgeContainer = styled(ProfileElement).attrs<{ offset?: number }>(props => ({
+  left: props.offset ? `${props.offset}px` : '90px',
+  top: '60px',
+}))<{ offset?: number }>`
   width: 32px;
   height: 17px;
-  position: absolute;
-  left: 90px;
-  top: 60px;
   background: ${THEME.darkBlue};
   border-radius: 5px;
   display: flex;
@@ -211,57 +186,50 @@ const BadgeContainer = styled.div`
 const BadgeText = styled.div`
   color: ${THEME.white};
   font-size: 9px;
-  font-family: 'Noto Sans KR';
+  ${commonTextStyles}
   font-weight: 500;
   letter-spacing: 0.01px;
   text-align: center;
 `;
 
-const HelperText = styled.div`
-  position: absolute;
-  left: 90px;
-  top: 15px;
-  color: rgba(255, 0, 0, 0);
-  font-size: 8px;
-  font-family: 'Noto Sans KR';
-  font-weight: 400;
-  letter-spacing: 0.01px;
-  word-wrap: break-word;
-`;
-
-const ActionIconsContainer = styled.div`
-  position: absolute;
-  right: 15px;
-  top: 30px;
-  display: flex;
-  gap: 10px;
-`;
-
-const ActionIcon = styled.div<{ color: string }>`
-  width: 21px;
-  height: 21px;
-  background-color: ${props => props.color};
-  border-radius: 50%;
-`;
-
-// 컨테이너 컴포넌트
+// 컨테이너 컴포넌트 통합
 const Container = styled.div`
   width: 100%;
-  max-width: 375px;
-  min-height: calc(100vh - 120px);
-  background: white;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
-  margin: 0 auto;
+  position: relative;
+  background: white;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 40px;
+  min-height: 90vh;
+  justify-content: space-between;
 `;
 
-// 메뉴 섹션 컨테이너
+// 메뉴 관련 컴포넌트 통합
 const MenuSection = styled.div`
   width: 100%;
   max-width: 346px;
-  margin: 80px auto 20px;
+  margin: 20px auto;
+`;
+
+const MenuLinksContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+  text-align: center;
+  width: 100%;
+`;
+
+// 화살표 아이콘 SVG로 교체
+const ChevronIcon = styled.div`
+  width: 24px;
+  height: 24px;
+  position: relative;
+  margin-right: 12px;
+  background: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 17L15 12L10 7' stroke='%237F7F7F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat center center;
 `;
 
 // 메인 컴포넌트
@@ -530,100 +498,102 @@ const MyPage: React.FC = () => {
     setIsLogoutModalOpen(false);
   };
 
-  // 모달 내용 컴포넌트 - 보관인 등록
-  const keeperRegistrationContent = (() => {
-    if (modalSource === 'my_place') {
+  // 모달 내용 렌더링 함수 통합
+  const renderModalContent = () => {
+    if (isKeeperModalOpen) {
+      if (modalSource === 'my_place') {
+        return (
+          <>
+            <ModalText>
+              보관소를 조회하려면
+              <br />
+            </ModalText>
+            <ModalText isHighlight>보관인 등록</ModalText>
+            <ModalText>이 필요합니다. 등록하시겠습니까?</ModalText>
+          </>
+        );
+      }
       return (
         <>
-          <GrayText>
-            보관소를 조회하려면
+          <ModalText>
+            보관인 미등록 계정입니다.
             <br />
-          </GrayText>
-          <HighlightText>보관인 등록</HighlightText>
-          <GrayText>이 필요합니다. 등록하시겠습니까?</GrayText>
+          </ModalText>
+          <ModalText isHighlight>보관인 등록</ModalText>
+          <ModalText>하시겠습니까?</ModalText>
+        </>
+      );
+    } else if (isMembershipModalOpen) {
+      return (
+        <>
+          <ModalText isHighlight>회원 탈퇴</ModalText>
+          <ModalText>를 하시겠습니까?</ModalText>
+        </>
+      );
+    } else if (isLogoutModalOpen) {
+      return (
+        <>
+          <ModalText isHighlight>로그아웃</ModalText>
+          <ModalText>을 하시겠습니까?</ModalText>
+          <div style={{ fontSize: '13px', color: '#909090', marginTop: '10px' }}>
+            로그아웃 하시면 서비스를 이용할 수 없습니다.
+          </div>
         </>
       );
     }
-    // 기본 등록 모달
-    return (
-      <>
-        <GrayText>
-          보관인 미등록 계정입니다.
-          <br />
-        </GrayText>
-        <HighlightText>보관인 등록</HighlightText>
-        <GrayText>하시겠습니까?</GrayText>
-      </>
-    );
-  })();
+    return null;
+  };
 
-  // 모달 내용 컴포넌트 - 회원 탈퇴
-  const cancelMembershipContent = (
-    <>
-      <HighlightText>회원 탈퇴</HighlightText>
-      <GrayText>를 하시겠습니까?</GrayText>
-    </>
-  );
-
-  // 모달 내용 컴포넌트 - 로그아웃
-  const logoutContent = (
-    <>
-      <HighlightText>로그아웃</HighlightText>
-      <GrayText>을 하시겠습니까?</GrayText>
-      <div style={{ fontSize: '13px', color: '#909090', marginTop: '10px' }}>
-        로그아웃 하시면 서비스를 이용할 수 없습니다.
-      </div>
-    </>
-  );
+  // 모달 속성 결정 함수
+  const getModalProps = () => {
+    if (isKeeperModalOpen) {
+      return {
+        isOpen: isKeeperModalOpen,
+        onClose: () => setIsKeeperModalOpen(false),
+        cancelText: '취소',
+        confirmText: '등록',
+        onCancel: handleKeeperCancel,
+        onConfirm: handleKeeperConfirm,
+      };
+    } else if (isMembershipModalOpen) {
+      return {
+        isOpen: isMembershipModalOpen,
+        onClose: () => setIsMembershipModalOpen(false),
+        cancelText: '취소',
+        confirmText: '탈퇴',
+        onCancel: handleMembershipCancel,
+        onConfirm: handleMembershipConfirm,
+      };
+    } else if (isLogoutModalOpen) {
+      return {
+        isOpen: isLogoutModalOpen,
+        onClose: () => setIsLogoutModalOpen(false),
+        cancelText: '취소',
+        confirmText: '로그아웃',
+        onCancel: handleLogoutCancel,
+        onConfirm: handleLogout,
+      };
+    }
+    return {
+      isOpen: false,
+      onClose: () => {},
+      cancelText: '',
+      confirmText: '',
+      onCancel: () => {},
+      onConfirm: () => {},
+    };
+  };
 
   return (
     <Container>
-      {/* 토스트 메시지 */}
-      <Toast
-        message={toastMessage}
-        visible={isToastVisible}
-        onClose={() => setIsToastVisible(false)}
-      />
-
-      {/* 보관인 등록 모달 */}
-      <Modal
-        isOpen={isKeeperModalOpen}
-        onClose={() => setIsKeeperModalOpen(false)}
-        content={keeperRegistrationContent}
-        cancelText="취소"
-        confirmText="등록"
-        onCancel={handleKeeperCancel}
-        onConfirm={handleKeeperConfirm}
-      />
-
-      {/* 회원 탈퇴 모달 */}
-      <Modal
-        isOpen={isMembershipModalOpen}
-        onClose={() => setIsMembershipModalOpen(false)}
-        content={cancelMembershipContent}
-        cancelText="취소"
-        confirmText="탈퇴"
-        onCancel={handleMembershipCancel}
-        onConfirm={handleMembershipConfirm}
-      />
-
-      {/* 로그아웃 모달 */}
-      <Modal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        content={logoutContent}
-        cancelText="취소"
-        confirmText="로그아웃"
-        onCancel={handleLogoutCancel}
-        onConfirm={handleLogout}
-      />
+      {/* 페이지 헤더 */}
+      <Header title="마이페이지" />
 
       {/* 프로필 카드 */}
       <ProfileCard>
         <ProfileImageContainer>
           <ProfileImage src="https://placehold.co/58x59" />
         </ProfileImageContainer>
-        <HelperText>헬퍼텍스트입니다</HelperText>
         <UserName>{userState.userName}</UserName>
         <ProfileDivider />
 
@@ -632,37 +602,28 @@ const MyPage: React.FC = () => {
         </BadgeContainer>
 
         {userState.isKeeper && (
-          <BadgeContainer style={{ left: '130px' }}>
+          <BadgeContainer offset={130}>
             <BadgeText>보관인</BadgeText>
           </BadgeContainer>
         )}
-
-        <ActionIconsContainer>
-          <ActionIcon color={THEME.accentGreen} />
-          <ActionIcon color={THEME.accentRed} />
-        </ActionIconsContainer>
       </ProfileCard>
 
       {/* 메뉴 섹션 */}
       <MenuSection>
         <Divider />
-        <MenuItemWrapper onClick={moveToMyTradePage}>
-          <MenuItem>내 거래 내역 보기</MenuItem>
-          <ChevronIcon />
-        </MenuItemWrapper>
-
-        <Divider />
-        <MenuItemWrapper onClick={handleKeeperRegistration}>
-          <MenuItem>보관장소 등록</MenuItem>
-          <ChevronIcon />
-        </MenuItemWrapper>
-
-        <Divider />
-        <MenuItemWrapper onClick={moveToMyPlacePage}>
-          <MenuItem>내 보관소 조회</MenuItem>
-          <ChevronIcon />
-        </MenuItemWrapper>
-
+        {[
+          { label: '내 거래 내역 보기', onClick: moveToMyTradePage },
+          { label: '보관장소 등록', onClick: handleKeeperRegistration },
+          { label: '내 보관소 조회', onClick: moveToMyPlacePage },
+        ].map((item, index) => (
+          <React.Fragment key={index}>
+            {index > 0 && <Divider />}
+            <MenuItemWrapper onClick={item.onClick}>
+              <MenuItem>{item.label}</MenuItem>
+              <ChevronIcon />
+            </MenuItemWrapper>
+          </React.Fragment>
+        ))}
         <Divider />
       </MenuSection>
 
@@ -670,21 +631,45 @@ const MyPage: React.FC = () => {
       <FooterContainer>
         {/* 푸터 링크 */}
         <MenuLinksContainer>
-          <FooterText onClick={moveToPrivacyPolicy}>개인정보 약관</FooterText>
-          <Separator>|</Separator>
-          <FooterText onClick={openLogoutModal}>로그아웃</FooterText>
-          <Separator>|</Separator>
-          <FooterText onClick={openMembershipModal}>회원탈퇴</FooterText>
+          {[
+            { text: '개인정보 약관', onClick: moveToPrivacyPolicy },
+            { text: '로그아웃', onClick: openLogoutModal },
+            { text: '회원탈퇴', onClick: openMembershipModal },
+          ].map((link, index) => (
+            <React.Fragment key={index}>
+              {index > 0 && <Separator>|</Separator>}
+              <FooterText onClick={link.onClick}>{link.text}</FooterText>
+            </React.Fragment>
+          ))}
         </MenuLinksContainer>
 
         {/* 사업자 정보 */}
         <BusinessInfoContainer>
-          <BusinessInfo>(주)마타조 | 대표이사: 정유진</BusinessInfo>
-          <BusinessInfo>사업자등록번호: 604-11-41401</BusinessInfo>
-          <BusinessInfo>이메일: matajoktb@gmail.com</BusinessInfo>
-          <BusinessInfo>© 2025 마타조(MATOAJO) Inc. All rights reserved.</BusinessInfo>
+          {[
+            '(주)마타조 | 대표이사: 정유진',
+            '사업자등록번호: 604-11-41401',
+            '이메일: matajoktb@gmail.com',
+            '© 2025 마타조(MATOAJO) Inc. All rights reserved.',
+          ].map((info, index) => (
+            <BusinessInfo key={index}>{info}</BusinessInfo>
+          ))}
         </BusinessInfoContainer>
       </FooterContainer>
+
+      {/* 토스트 메시지 */}
+      <Toast
+        message={toastMessage}
+        visible={isToastVisible}
+        onClose={() => setIsToastVisible(false)}
+      />
+
+      {/* 단일 모달로 통합 */}
+      {(isKeeperModalOpen || isMembershipModalOpen || isLogoutModalOpen) && (
+        <Modal {...getModalProps()} content={renderModalContent()} />
+      )}
+
+      {/* 하단 네비게이션 */}
+      <BottomNavigation activeTab="마이페이지" />
     </Container>
   );
 };

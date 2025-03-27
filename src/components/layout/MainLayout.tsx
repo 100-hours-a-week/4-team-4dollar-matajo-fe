@@ -20,7 +20,8 @@ const MainContent = styled.main`
   flex: 1;
   padding: 47px 0 60px 0; // 헤더(47px)와 네비게이션(60px) 높이만큼 패딩
   width: 100%;
-  max-width: 375px;
+  max-width: 95%; // 90%에서 95%로 변경하여 화면 너비의 95%를 차지하도록 함
+  min-width: 350px; // 최소 너비도 조금 더 키움
   margin: 0 auto;
   overflow-y: auto; // 스크롤이 필요할 경우 MainContent 내부에서만 스크롤 되도록 함
   position: relative; // 위치 지정

@@ -96,10 +96,10 @@ const routes: RouteObject[] = [
     path: '/',
     element: <PrivateRoute requiredRole={UserRole.Keeper} />,
     children: [
-      // 'mypage/registration'에서 'mypage/registration/step1'로 리다이렉트
+      // 'mypage/registration'에서 'mypage/keeper-registration'으로 리다이렉트
       {
-        path: ROUTES.MYPAGE_REGISTRATION,
-        element: <Navigate to={ROUTES.MYPAGE_REGISTRATION_STEP1} replace />,
+        path: ROUTES.MYPAGE_REGISTRATION_STEP1,
+        element: <Navigate to={ROUTES.KEEPER_REGISTRATION} replace />,
       },
       {
         path: ROUTES.MYPAGE_REGISTRATION_STEP1,
