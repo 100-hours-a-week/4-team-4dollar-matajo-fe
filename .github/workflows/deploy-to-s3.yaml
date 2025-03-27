@@ -38,9 +38,6 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: matajo
           SENTRY_PROJECT: matajo-s3-test
-          REACT_APP_API_BACKEND_URL: ${{ secrets.REACT_APP_API_BACKEND_URL }}
-          REACT_APP_KAKAO_REST_API_KEY: ${{ secrets.REACT_APP_KAKAO_REST_API_KEY }}
-          REACT_APP_KAKAO_REDIRECT_URI: ${{ secrets.REACT_APP_KAKAO_REDIRECT_URI }}
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -51,7 +48,20 @@ jobs:
       
       - name: Deploy to S3
         run: |
-          aws s3 sync ./build/ s3://matajo-frontend/ --delete
+          # HTML 파일 업로드
+          aws s3 sync ./build/ s3://matajo-frontend/ --delete --exclude "*" --include "*.html" --content-type "text/html" --cache-control "no-cache"
+          
+          # JavaScript 파일 업로드
+          aws s3 sync ./build/ s3://matajo-frontend/ --delete --exclude "*" --include "*.js" --content-type "text/javascript" --cache-control "max-age=31536000"
+          
+          # CSS 파일 업로드
+          aws s3 sync ./build/ s3://matajo-frontend/ --delete --exclude "*" --include "*.css" --content-type "text/css" --cache-control "max-age=31536000"
+          
+          # 이미지 파일 업로드
+          aws s3 sync ./build/ s3://matajo-frontend/ --delete --exclude "*" --include "*.png" --include "*.jpg" --include "*.jpeg" --include "*.gif" --include "*.ico" --content-type "image/\${filename##*.}" --cache-control "max-age=31536000"
+          
+          # 나머지 파일 업로드
+          aws s3 sync ./build/ s3://matajo-frontend/ --delete --exclude "*.html" --exclude "*.js" --exclude "*.css" --exclude "*.png" --exclude "*.jpg" --exclude "*.jpeg" --exclude "*.gif" --exclude "*.ico"
       
       - name: Invalidate CloudFront cache
         run: |
