@@ -9,7 +9,7 @@ export const ROUTES = {
   // 인증 관련
   LOGIN: 'login',
   SIGNUP: 'signup',
-  KAKAO_CALLBACK: 'auth/kakao',
+  KAKAO_CALLBACK: 'kakao',
 
   // 채팅 관련
   CHAT_LIST: 'chat/list',

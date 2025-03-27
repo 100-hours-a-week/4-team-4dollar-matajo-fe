@@ -76,8 +76,8 @@ const KakaoCallback: React.FC = () => {
 
       // 리다이렉션 실패를 감지하기 위한 타임아웃 설정
       navigationTimeoutRef.current = window.setTimeout(() => {
-        // 현재 경로가 여전히 /auth/kakao/callback 또는 /auth/kakao 인 경우
-        if (location.pathname.includes('/auth/kakao')) {
+        // 현재 경로가 여전히 /kakao/callback 또는 /kakao 인 경우
+        if (location.pathname.includes('/kakao')) {
           console.error('홈 페이지 리다이렉션 실패, 로그아웃 처리');
           logout(); // 로그아웃 처리
           setError('홈 페이지로 이동하지 못했습니다. 다시 로그인해주세요.');
@@ -148,7 +148,7 @@ const KakaoCallback: React.FC = () => {
       setTimeout(redirectToHome, 1000);
     };
 
-    // 직접 백엔드의 /auth/kakao 엔드포인트로 요청
+    // 직접 백엔드의 /kakao 엔드포인트로 요청
     kakaoLogin(code)
       .then(response => {
         console.log('로그인 응답:', response);

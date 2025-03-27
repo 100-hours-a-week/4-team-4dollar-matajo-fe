@@ -7,7 +7,7 @@ export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL || 'http://
 export const API_PATHS = {
   // 인증 관련
   AUTH: {
-    KAKAO: '/auth/kakao',
+    KAKAO: '/kakao',
     KEEPER_STATUS: '/auth/keeper-status',
     REFRESH: '/auth/refresh',
     LOGOUT: '/auth/logout',
@@ -64,7 +64,7 @@ export const API_PATHS = {
 // 카카오 인증 관련 상수
 export const KAKAO_AUTH = {
   REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY || '9655a3f1781523203be3afb00ad486e4',
-  REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'https://matajo.store/auth/kakao',
+  REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'https://matajo.store/kakao',
   getLoginUrl: () => {
     return `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_AUTH.REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
   },

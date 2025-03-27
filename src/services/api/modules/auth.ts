@@ -24,7 +24,7 @@ export const kakaoLogin = async (code: string): Promise<LoginResponse> => {
     console.log('코드의 처음 20자:', code.substring(0, 20));
     console.log('코드의 마지막 20자:', code.substring(code.length - 20));
     console.log('API 엔드포인트:', `${API_PATHS.AUTH.KAKAO}`);
-    // const redirectUri = 'http://localhost:3000/auth/kakao/callback'
+    // const redirectUri = 'http://localhost:3000/kakao/callback'
 
     // 요청 데이터에 리다이렉트 URI 추가
     const requestData = {
