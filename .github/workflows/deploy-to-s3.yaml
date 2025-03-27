@@ -1,6 +1,11 @@
 name: Deploy Frontend to S3
 
 on:
+  push:
+    branches:
+      - dev
+      - main
+      - feat/s3 # 나중에 지우기. 테스트용이라 임시로 추가함.
   workflow_dispatch:
 
 jobs:
