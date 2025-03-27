@@ -1,19 +1,37 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="theme-color" content="#000000" />
-    <meta name="description" content="마타조 - 물건 보관 플랫폼" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>MATOAJO</title>
-    <!-- 카카오맵 API 스크립트를 미리 로드 -->
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=a4c611d058d64f59855869d2b158e4b9&libraries=services"></script>
+    <meta name="description" content="마타조 - 물품보관 서비스" />
+    
+    <!-- 파비콘 -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" type="image/x-icon" />
+    <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" type="image/png" />
+    
+    <!-- 매니페스트 -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" type="application/json" />
+    
+    <!-- 스타일시트 -->
+    <link rel="stylesheet" type="text/css" href="%PUBLIC_URL%/index.css" />
+    
+    <!-- 외부 스크립트 -->
+    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=%REACT_APP_KAKAO_MAP_API_KEY%&libraries=services"></script>
+    
+    <!-- 메인 스크립트 -->
+    <script type="text/javascript" defer src="%PUBLIC_URL%/static/js/main.js"></script>
+    
+    <title>마타조 - 물품보관 서비스</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+    -->
   </body>
 </html>
