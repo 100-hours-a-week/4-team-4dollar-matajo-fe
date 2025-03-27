@@ -1,5 +1,15 @@
 // constants/api.ts
+
 export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+export const API_BACKEND_URL = API_BASE_URL; // API_BASE_URL과 동일하게 설정
+
+export const KAKAO_AUTH = {
+  REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY || '244abed4cb1b567f33d22e14fc58a2c5',
+  REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao',
+  getLoginUrl: () => {
+    return `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_AUTH.REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
+  },
+};
 
 export const API_PATHS = {
   AUTH: {
@@ -9,6 +19,7 @@ export const API_PATHS = {
     KAKAO: '/api/auth/kakao',
     KAKAO_CALLBACK: '/api/auth/kakao/callback',
     VERIFY: '/api/auth/verify',
+    KEEPER_STATUS: '/api/auth/keeper-status', // 추가
   },
   USER: {
     ME: '/api/users/me',
@@ -31,6 +42,7 @@ export const API_PATHS = {
     REGISTER: '/api/storage/register',
     UPDATE: '/api/storage/:postId',
     DELETE: '/api/storage/:postId',
+    CREATE: '/api/storage/list', // CREATE 속성 추가 (LIST와 동일한 엔드포인트 사용)
   },
   POSTS: {
     BY_LOCATION: '/api/posts/location', // 위치 ID 기반 게시글 조회
@@ -47,3 +59,13 @@ export const API_PATHS = {
     UPDATE: '/api/keeper/profile',
   },
 };
+
+// 추가: 기본 내보내기
+const api = {
+  API_BASE_URL,
+  API_BACKEND_URL,
+  KAKAO_AUTH,
+  API_PATHS,
+};
+
+export default api;

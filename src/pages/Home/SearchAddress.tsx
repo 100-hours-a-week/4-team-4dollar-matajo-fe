@@ -572,3 +572,5 @@ const SearchAddress: React.FC = () => {
     </>
   );
 };
+
+export default SearchAddress;
