@@ -1,5 +1,5 @@
 import client from '../client';
-import { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
+import api, { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
 import axios from 'axios';
 import { DaumAddressData } from '../../../utils/api/kakaoToDaum';
 import { response } from 'express';
@@ -18,6 +18,25 @@ export interface StorageRegistrationResponse {
   id: string;
   success: boolean;
   message?: string;
+}
+
+// 위치 기반 게시글 인터페이스
+export interface LocationPost {
+  id: number;
+  title: string;
+  latitude: number;
+  longitude: number;
+  price: number;
+  images: string[];
+}
+
+// 위치 기반 게시글 응답 인터페이스
+export interface LocationPostResponse {
+  success: boolean;
+  message: string;
+  data: {
+    posts: LocationPost[];
+  };
 }
 
 /**
@@ -207,5 +226,59 @@ export const updateStorage = async (
   }
 };
 
+// 위치 기반 게시글 인터페이스
+export interface LocationPost {
+  id: number;
+  title: string;
+  latitude: number;
+  longitude: number;
+  price: number;
+  images: string[];
+}
+
+// 위치 기반 게시글 응답 인터페이스
+export interface LocationPostResponse {
+  success: boolean;
+  message: string;
+  data: {
+    posts: LocationPost[];
+  };
+}
+
+/**
+ * 특정 동 위치 기반 게시글을 가져오는 함수
+ *
+ * @param locationInfoId 위치 정보 ID
+ * @returns 위치 기반 게시글 목록
+ */
+export const getLocationPosts = async (locationInfoId: string): Promise<LocationPostResponse> => {
+  try {
+    const response = await client.get(
+      `${API_PATHS.POSTS.BY_LOCATION}?locationInfoId=${locationInfoId}`,
+    );
+
+    return {
+      success: response.data.success,
+      message: response.data.message,
+      data: response.data.data,
+    };
+  } catch (error) {
+    console.error('위치 기반 게시글 조회 실패:', error);
+
+    if (axios.isAxiosError(error) && error.response) {
+      return {
+        success: false,
+        message: error.response.data.message || '위치 기반 게시글 조회에 실패했습니다.',
+        data: { posts: [] },
+      };
+    }
+
+    return {
+      success: false,
+      message: '위치 기반 게시글 조회 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.',
+      data: { posts: [] },
+    };
+  }
+};
 // createStorage 함수를 registerStorage의 별칭으로 내보내기
 export const createStorage = registerStorage;

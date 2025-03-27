@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import { initializeKakaoMaps } from '../../services/KakaoMapService';
+import { searchDong } from '../../services/api/modules/place';
 
 // 스타일드 컴포넌트 정의 (기존 코드와 동일)
 const Container = styled.div`
@@ -135,7 +136,11 @@ const LoadingContainer = styled.div`
 const LoadingSpinner = styled.div`
   width: 30px;
   height: 30px;
-  border: 3px solid rgba(94, 92, 253, 0.2);
+  border: 3px solid rgba(94, 92, 253, 0.2  );
+};
+
+export default SearchAddress;
+
   border-top: 3px solid #5e5cfd;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -157,6 +162,48 @@ const LoadingText = styled.p`
   font-family: 'Noto Sans KR', sans-serif;
 `;
 
+// 드롭다운 컴포넌트 스타일 추가
+const DropdownContainer = styled.div`
+  position: absolute;
+  top: 55px;
+  left: 0;
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+`;
+
+const DropdownItem = styled.div`
+  padding: 12px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background-color: #f5f5ff;
+  }
+`;
+
+const AddressText = styled.p`
+  color: #868686;
+  font-size: 14px;
+  font-weight: 400;
+`;
+
+const NoResultsText = styled.p`
+  padding: 15px;
+  text-align: center;
+  color: #868686;
+  font-size: 14px;
+`;
+
 interface SearchAddress {
   address_name: string;
   road_address_name: string;
@@ -176,10 +223,14 @@ const SearchAddress: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<SearchAddress[]>([]);
+  const [dongResults, setDongResults] = useState<string[]>([]);
   const [isSearched, setIsSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDongLoading, setIsDongLoading] = useState(false);
+  const [showDongDropdown, setShowDongDropdown] = useState(false);
   const [apiReady, setApiReady] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const initializingRef = useRef(false);
 
   // 카카오맵 API 초기화 - 이제 공통 서비스를 활용
@@ -214,8 +265,67 @@ const SearchAddress: React.FC = () => {
 
   // 디바운스를 위한 타이머 ref
   const searchTimerRef = useRef<number | null>(null);
+  const dongSearchTimerRef = useRef<number | null>(null);
 
-  // 디바운스 적용된 주소 검색 함수
+  // 동 검색 디바운스 함수
+  const searchDongWithDebounce = async (value: string) => {
+    if (!value.trim()) {
+      setDongResults([]);
+      setShowDongDropdown(false);
+      return;
+    }
+
+    // 이전 타이머가 있다면 제거
+    if (dongSearchTimerRef.current !== null) {
+      window.clearTimeout(dongSearchTimerRef.current);
+    }
+
+    setIsDongLoading(true);
+
+    // 300ms 디바운스 적용
+    dongSearchTimerRef.current = window.setTimeout(async () => {
+      try {
+        const results = await searchDong(value);
+        setDongResults(results);
+        setShowDongDropdown(results.length > 0);
+      } catch (error) {
+        console.error('동 검색 오류:', error);
+      } finally {
+        setIsDongLoading(false);
+      }
+    }, 300);
+  };
+
+  // 검색어 변경 핸들러
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    // 동 검색 API 호출
+    searchDongWithDebounce(value);
+  };
+
+  // 동 검색 결과 항목 클릭 핸들러
+  const handleDongSelect = (address: string) => {
+    // 주소에서 동 이름 추출 (마지막 부분)
+    const parts = address.split(' ');
+    const dongName = parts[parts.length - 1]; // 마지막 부분이 동 이름으로 가정
+
+    // 선택된 동을 가지고 Registration1 페이지로 돌아가기
+    navigate('/registration/step1', {
+      state: {
+        selectedAddress: {
+          address: address, // 전체 주소
+          roadAddress: address, // 도로명 주소가 없으면 동일하게 설정
+          place: dongName, // 동 이름
+          latitude: '', // API로부터 받은 데이터에 좌표가 없으므로 빈 값으로 설정
+          longitude: '',
+        },
+      },
+    });
+  };
+
+  // 디바운스 적용된 주소 검색 함수 (기존 카카오맵 검색)
   const searchAddress = () => {
     if (!searchTerm.trim()) return;
 
@@ -232,6 +342,7 @@ const SearchAddress: React.FC = () => {
 
     setIsLoading(true);
     setIsSearched(true);
+    setShowDongDropdown(false); // 검색 시작 시 드롭다운 닫기
 
     // 디바운스 적용 (300ms)
     searchTimerRef.current = window.setTimeout(() => {
@@ -328,6 +439,24 @@ const SearchAddress: React.FC = () => {
     }
   };
 
+  // 드롭다운 외부 클릭 감지를 위한 이벤트 리스너
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        !searchInputRef.current?.contains(event.target as Node)
+      ) {
+        setShowDongDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // 뒤로가기 핸들러
   const handleBack = () => {
     navigate('/registration/step1');
@@ -344,13 +473,33 @@ const SearchAddress: React.FC = () => {
             type="text"
             placeholder="주소를 입력해주세요"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
             onKeyPress={handleKeyPress}
           />
           <SearchIcon onClick={searchAddress} />
+
+          {/* 동 검색 드롭다운 */}
+          {showDongDropdown && (
+            <DropdownContainer ref={dropdownRef}>
+              {isDongLoading ? (
+                <LoadingContainer>
+                  <LoadingSpinner />
+                  <LoadingText>검색 중...</LoadingText>
+                </LoadingContainer>
+              ) : dongResults.length > 0 ? (
+                dongResults.map((address, index) => (
+                  <DropdownItem key={index} onClick={() => handleDongSelect(address)}>
+                    <AddressText>{address}</AddressText>
+                  </DropdownItem>
+                ))
+              ) : (
+                <NoResultsText>검색 결과가 없습니다</NoResultsText>
+              )}
+            </DropdownContainer>
+          )}
         </SearchInputContainer>
 
-        {isLoading && (
+        {isLoading && !isDongLoading && (
           <LoadingContainer>
             <LoadingSpinner />
             <LoadingText>{apiReady ? '주소 검색 중...' : '카카오맵 API 초기화 중...'}</LoadingText>
@@ -380,6 +529,13 @@ const SearchAddress: React.FC = () => {
                 <strong>건물명, 아파트명</strong>
               </HelpText>
               <ExampleText>예: 타조빌라</ExampleText>
+            </HelpItem>
+
+            <HelpItem>
+              <HelpText>
+                <strong>동 이름만 입력하기</strong>
+              </HelpText>
+              <ExampleText>예: 여의도동, 공덕동, 역삼동</ExampleText>
             </HelpItem>
           </SearchHelpSection>
         )}

@@ -6,7 +6,7 @@ import { UserRole } from '../../contexts/auth';
 // 로그인 데이터 인터페이스
 interface KakaoLoginData {
   accessToken: string;
-  userId: string;
+  userId?: string;
   role?: string;
 }
 
@@ -23,20 +23,16 @@ export const notifyAuthStateChange = () => {
  * 카카오 로그인 데이터를 로컬 스토리지에 저장하는 함수
  * @param data 카카오 로그인 데이터
  */
+// saveKakaoLoginData 함수 수정
 export const saveKakaoLoginData = (data: KakaoLoginData) => {
   try {
+    // accessToken만 저장
     localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('userId', data.userId);
-
-    // role이 존재하는 경우에만 저장
-    if (data.role) {
-      localStorage.setItem('userRole', data.role);
-    }
 
     // 저장 후 인증 상태 변경 이벤트 발생
     notifyAuthStateChange();
 
-    console.log('로그인 데이터 저장 완료');
+    console.log('로그인 데이터 저장 완료 (accessToken만 저장)');
   } catch (error) {
     console.error('로그인 데이터 저장 오류:', error);
   }
@@ -121,36 +117,46 @@ export const getUserNickname = (): string => {
  * @param userId 사용자 ID (선택적)
  * @param role 사용자 역할 (선택적)
  */
+
 export const saveAuthData = (accessToken: string, userId?: string, role?: string): void => {
-  const data: KakaoLoginData = {
-    accessToken,
-    userId: userId || '',
-    role,
-  };
+  // accessToken만 저장하도록 수정
+  localStorage.setItem('accessToken', accessToken);
 
-  saveKakaoLoginData(data);
+  // 인증 상태 변경 알림
+  notifyAuthStateChange();
 };
-
 /**
  * 로그아웃 함수 - 로컬 스토리지의 인증 관련 데이터를 모두 삭제
  */
+// authUtils.ts의 logout 함수 수정
 export const logout = (): void => {
   try {
-    // 로컬 스토리지 데이터 삭제
+    // accessToken만 삭제
     localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userNickname');
-    localStorage.removeItem('userRole');
 
-    // 쿠키 정리 (모든 쿠키 삭제)
-    document.cookie.split(';').forEach(cookie => {
-      const name = cookie.split('=')[0].trim();
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    });
+    console.log('로그아웃 처리 완료 (accessToken 삭제)');
 
-    console.log('로그아웃 처리 완료 (로컬 스토리지 및 쿠키 데이터 삭제)');
+    // 인증 상태 변경 이벤트 발생
+    notifyAuthStateChange();
   } catch (error) {
     console.error('로그아웃 중 오류:', error);
+  }
+};
+
+/**
+ * 보관인 역할 업데이트 - 새 토큰으로 저장
+ * @param accessToken 새 접근 토큰 (새 역할 정보가 포함된)
+ */
+export const updateUserRole = (accessToken: string): void => {
+  try {
+    // 기존 토큰 대체
+    localStorage.setItem('accessToken', accessToken);
+
+    // 인증 상태 변경 알림
+    notifyAuthStateChange();
+
+    console.log('사용자 역할 업데이트 완료');
+  } catch (error) {
+    console.error('역할 업데이트 중 오류:', error);
   }
 };

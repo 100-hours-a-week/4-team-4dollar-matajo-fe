@@ -1,5 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+// src/components/feature/map/KakaoMap.tsx
+
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import styled from 'styled-components';
+import { getLocationPosts, LocationPost } from '../../../services/api/modules/storage';
 
 // 컨테이너 스타일
 const MapContainer = styled.div`
@@ -11,7 +14,7 @@ const MapContainer = styled.div`
 // 새로고침 버튼 스타일
 const RefreshButton = styled.button`
   position: absolute;
-  top: 70px; // 헤더 아래에 위치
+  top: 70px;
   right: 10px;
   width: 40px;
   height: 40px;
@@ -28,6 +31,19 @@ const RefreshButton = styled.button`
   &:hover {
     background-color: #f5f5f5;
   }
+`;
+
+// 로딩 인디케이터 스타일
+const LoadingIndicator = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 10px 20px;
+  border-radius: 20px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  z-index: 10;
 `;
 
 // 마커 인터페이스
@@ -52,6 +68,7 @@ interface KakaoMapProps {
   showCurrentLocation?: boolean;
   onCurrentLocationClick?: () => void;
   detailMode?: boolean;
+  locationInfoId?: string; // 위치 정보 ID 추가
 }
 
 const KakaoMap: React.FC<KakaoMapProps> = ({
@@ -66,6 +83,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   showCurrentLocation = false,
   onCurrentLocationClick,
   detailMode = false,
+  locationInfoId,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [kakaoMap, setKakaoMap] = useState<any>(null);
@@ -75,6 +93,8 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     lat: number;
     lng: number;
   } | null>(null);
+  const [locationPosts, setLocationPosts] = useState<LocationPost[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // 지도 초기화
   useEffect(() => {
@@ -129,6 +149,46 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       // 정리 작업
     };
   }, []);
+
+  // 위치 기반 게시글 조회 함수
+  const fetchLocationPosts = useCallback(async () => {
+    if (!locationInfoId) return;
+
+    setIsLoading(true);
+    try {
+      const response = await getLocationPosts(locationInfoId);
+      if (response.success && response.data.posts) {
+        setLocationPosts(response.data.posts);
+
+        // 게시글 데이터를 마커로 변환
+        const newMarkers = response.data.posts.map(post => ({
+          id: post.id.toString(),
+          name: post.title,
+          latitude: post.latitude,
+          longitude: post.longitude,
+          address: '', // API에서 제공하지 않는 경우 빈 문자열로 설정
+        }));
+
+        // 마커 업데이트
+        if (kakaoMap) {
+          updateKakaoMapMarkers(newMarkers);
+        }
+      } else {
+        console.error('위치 기반 게시글 조회 실패:', response.message);
+      }
+    } catch (error) {
+      console.error('위치 기반 게시글 조회 중 오류:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [locationInfoId, kakaoMap]);
+
+  // 위치 정보 ID 변경 시 API 호출
+  useEffect(() => {
+    if (locationInfoId) {
+      fetchLocationPosts();
+    }
+  }, [locationInfoId, fetchLocationPosts]);
 
   // 사용자 위치 마커 추가 함수
   const addUserLocationMarker = (map: any, lat: number, lng: number) => {
@@ -214,49 +274,62 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     }
   }, [center, kakaoMap]);
 
-  // 마커 업데이트
+  // 마커 업데이트 함수
+  const updateKakaoMapMarkers = useCallback(
+    (newStorageMarkers: Marker[]) => {
+      if (!kakaoMap) return;
+
+      // 기존 마커 제거
+      markers.forEach(marker => marker.setMap(null));
+      const newMarkers: any[] = [];
+
+      // 보관소 마커 추가
+      newStorageMarkers.forEach(markerData => {
+        const position = new window.kakao.maps.LatLng(markerData.latitude, markerData.longitude);
+
+        const marker = new window.kakao.maps.Marker({
+          position,
+          map: kakaoMap,
+        });
+
+        // 클릭 이벤트 추가
+        if (onMarkerClick) {
+          window.kakao.maps.event.addListener(marker, 'click', () => {
+            onMarkerClick(markerData.id);
+          });
+        }
+
+        // 인포윈도우 추가 (필요한 경우)
+        const infowindow = new window.kakao.maps.InfoWindow({
+          content: `<div style="padding:5px;font-size:12px;">${markerData.name}</div>`,
+        });
+
+        // 마우스 오버 시 인포윈도우 표시
+        window.kakao.maps.event.addListener(marker, 'mouseover', () => {
+          infowindow.open(kakaoMap, marker);
+        });
+
+        // 마우스 아웃 시 인포윈도우 닫기
+        window.kakao.maps.event.addListener(marker, 'mouseout', () => {
+          infowindow.close();
+        });
+
+        newMarkers.push(marker);
+      });
+
+      setMarkers(newMarkers);
+    },
+    [kakaoMap, markers, onMarkerClick],
+  );
+
+  // 기본 마커 업데이트 (기존 storageMarkers 프롭스 사용)
   useEffect(() => {
     if (!kakaoMap) return;
 
-    // 기존 마커 제거
-    markers.forEach(marker => marker.setMap(null));
-    const newMarkers: any[] = [];
-
-    // 보관소 마커 추가
-    storageMarkers.forEach(markerData => {
-      const position = new window.kakao.maps.LatLng(markerData.latitude, markerData.longitude);
-
-      const marker = new window.kakao.maps.Marker({
-        position,
-        map: kakaoMap,
-      });
-
-      // 클릭 이벤트 추가
-      if (onMarkerClick) {
-        window.kakao.maps.event.addListener(marker, 'click', () => {
-          onMarkerClick(markerData.id);
-        });
-      }
-
-      // 인포윈도우 추가 (필요한 경우)
-      const infowindow = new window.kakao.maps.InfoWindow({
-        content: `<div style="padding:5px;font-size:12px;">${markerData.name}</div>`,
-      });
-
-      // 마우스 오버 시 인포윈도우 표시
-      window.kakao.maps.event.addListener(marker, 'mouseover', () => {
-        infowindow.open(kakaoMap, marker);
-      });
-
-      // 마우스 아웃 시 인포윈도우 닫기
-      window.kakao.maps.event.addListener(marker, 'mouseout', () => {
-        infowindow.close();
-      });
-
-      newMarkers.push(marker);
-    });
-
-    setMarkers(newMarkers);
+    // 위치 기반 게시글 마커가 없을 때만 기본 마커 사용
+    if (locationPosts.length === 0) {
+      updateKakaoMapMarkers(storageMarkers);
+    }
 
     // 모달이 열려 있을 때는 지도 이벤트 막기
     if (isLocationModalOpen) {
@@ -266,12 +339,15 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       kakaoMap.setDraggable(draggable);
       kakaoMap.setZoomable(zoomable);
     }
-
-    return () => {
-      // 정리 작업
-      newMarkers.forEach(marker => marker.setMap(null));
-    };
-  }, [kakaoMap, storageMarkers, onMarkerClick, isLocationModalOpen]);
+  }, [
+    kakaoMap,
+    storageMarkers,
+    updateKakaoMapMarkers,
+    isLocationModalOpen,
+    draggable,
+    zoomable,
+    locationPosts.length,
+  ]);
 
   // 모달 상태가 변경될 때 지도 드래그/줌 기능 업데이트
   useEffect(() => {
@@ -288,6 +364,8 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
   return (
     <MapContainer ref={mapRef}>
+      {isLoading && <LoadingIndicator>데이터를 불러오는 중...</LoadingIndicator>}
+
       {!detailMode && showCurrentLocation && (
         <RefreshButton onClick={moveToUserLocation} title="현재 위치로 이동">
           <svg
