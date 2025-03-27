@@ -271,8 +271,8 @@ export const getStorageList = async (
 // 보관소 상세 정보 조회 함수
 export const getStorageDetail = async (id: string) => {
   try {
-    // API_PATHS.STORAGE.DETAIL 엔드포인트 사용
-    const endpoint = API_PATHS.STORAGE.DETAIL.replace(':postId', id);
+    // 엔드포인트 수정: API_PATHS.STORAGE.DETAIL 대신 직접 경로 사용
+    const endpoint = `/api/posts/${id}`;
     return await client.get(endpoint);
   } catch (error) {
     console.error('보관소 상세 정보 조회 오류:', error);

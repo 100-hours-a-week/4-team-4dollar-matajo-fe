@@ -239,11 +239,58 @@ const MyPage: React.FC = () => {
   // 실제로는 useAuth를 사용해 사용자 정보 가져오기
   // const { user, logout, isKeeper, registerAsKeeper } = useAuth();
 
-  // 백엔드 연동 전 임시 상수
-  const [userState, setUserState] = useState({
-    isKeeper: isKeeper(), // 초기값은 로컬에서 확인
-    userName: '타조 89389', // 사용자 이름
-  });
+  // 상태 초기화 시 토큰 디코딩
+  const decodeToken = (token: string) => {
+    try {
+      const base64Payload = token.split('.')[1];
+      // base64 디코딩 시 padding 관련 문제 해결
+      const base64 = base64Payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+      const jsonPayload = decodeURIComponent(
+        atob(base64 + padding)
+          .split('')
+          .map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          })
+          .join(''),
+      );
+
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('토큰 디코딩 실패:', error);
+      return null;
+    }
+  };
+
+  // 초기 상태 설정 - 페이지 로드 즉시 토큰 디코딩
+  const initialUserState = () => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) {
+      const decoded = decodeToken(accessToken);
+      console.log('디코딩된 토큰 정보:', decoded); // 디버깅용 로그
+
+      if (decoded) {
+        // 토큰 내의 다양한 가능한 필드명 확인
+        const nickname = decoded.nickname || decoded.sub || decoded.name || '타조 91088';
+        const isUserKeeper = decoded.role === 'KEEPER' || decoded.role === 'BOTH';
+        // 프로필 이미지가 없으면 타조 로고 사용
+        const profileImg = decoded.profileImage || decoded.avatar || '/tajo-logo.png';
+
+        return {
+          isKeeper: isUserKeeper,
+          userName: nickname,
+          profileImage: profileImg,
+        };
+      }
+    }
+    return {
+      isKeeper: isKeeper(),
+      userName: '타조 91088',
+      profileImage: '/tajo-logo.png', // 기본 이미지를 타조 로고로 변경
+    };
+  };
+
+  const [userState, setUserState] = useState(initialUserState());
 
   // 모달 상태 관리
   const [isKeeperModalOpen, setIsKeeperModalOpen] = useState(false);
@@ -272,44 +319,45 @@ const MyPage: React.FC = () => {
 
   // useEffect를 사용하여 페이지 로드 시 보관인 역할 확인
   useEffect(() => {
-    // 로그인 상태인 경우에만 보관인 역할 확인
+    // 로그인 상태인 경우에만 추가적인 API 확인
     if (isAuthenticated()) {
       const checkUserInfo = async () => {
         try {
-          // 1. 로컬에서 먼저 보관인 여부 확인
-          const isKeeperLocal = isKeeper();
-          console.log('로컬 보관인 여부 확인:', isKeeperLocal);
+          // 1. 토큰에서 정보를 가져왔는지 콘솔에 출력
+          console.log('현재 상태:', userState);
 
-          // 2. API로 보관인 역할 확인 (최신 정보)
+          // 2. API로 보관인 역할 검증 (초기화 후 백엔드와 동기화 목적)
           const isUserKeeper = await checkKeeperRole();
-          console.log('API 보관인 여부 확인:', isUserKeeper);
 
-          // 3. 사용자 정보 조회 (프로필 API 호출)
-          const userInfoResponse = await axios.get('/api/users/me');
-          const userNickname = userInfoResponse.data?.data?.nickname || '타조 회원';
+          // 3. API 정보와 상태가 다르면 업데이트
+          if (isUserKeeper !== userState.isKeeper) {
+            setUserState(prev => ({
+              ...prev,
+              isKeeper: isUserKeeper,
+            }));
+            console.log('API 확인 결과로 보관인 상태 업데이트:', isUserKeeper);
+          }
 
-          // 둘 중 하나라도 true면 보관인으로 처리
-          const finalKeeperStatus = isKeeperLocal || isUserKeeper;
+          // 4. 사용자 프로필 정보 업데이트 - 항상 시도하여 최신 정보 유지
+          try {
+            const userInfoResponse = await axios.get('/api/users/me');
+            console.log('사용자 정보 API 응답:', userInfoResponse.data);
 
-          // 상태 업데이트
-          setUserState(prev => ({
-            ...prev,
-            isKeeper: finalKeeperStatus,
-            userName: userNickname,
-          }));
-
-          console.log('마이페이지 사용자 상태 업데이트:', {
-            isKeeper: finalKeeperStatus,
-            userName: userNickname,
-          });
+            if (userInfoResponse.data?.data) {
+              const { nickname, profileImage } = userInfoResponse.data.data;
+              setUserState(prev => ({
+                ...prev,
+                userName: nickname || '타조 91088',
+                profileImage: profileImage || '/tajo-logo.png', // 여기도 타조 로고로 변경
+              }));
+              console.log('API에서 가져온 닉네임:', nickname);
+            }
+          } catch (profileError) {
+            console.warn('프로필 정보 조회 실패:', profileError);
+            // 토큰에서 가져온 정보 유지
+          }
         } catch (error) {
-          console.error('사용자 정보 조회 실패:', error);
-
-          // API 호출 실패 시 로컬 정보만으로 상태 설정
-          setUserState(prev => ({
-            ...prev,
-            isKeeper: isKeeper(),
-          }));
+          console.error('보관인 역할 검증 실패:', error);
         }
       };
 
@@ -317,11 +365,17 @@ const MyPage: React.FC = () => {
 
       // USER_ROLE_CHANGED 이벤트 리스너 등록
       const handleRoleChange = () => {
-        console.log('역할 변경 감지됨, 상태 업데이트');
-        setUserState(prev => ({
-          ...prev,
-          isKeeper: isKeeper(),
-        }));
+        const accessToken = localStorage.getItem('accessToken');
+        if (accessToken) {
+          const decoded = decodeToken(accessToken);
+          if (decoded) {
+            setUserState(prev => ({
+              ...prev,
+              isKeeper: decoded.role === 'KEEPER' || decoded.role === 'BOTH',
+            }));
+            console.log('역할 변경 감지, 상태 업데이트:', decoded.role);
+          }
+        }
       };
 
       window.addEventListener('USER_ROLE_CHANGED', handleRoleChange);
@@ -592,7 +646,19 @@ const MyPage: React.FC = () => {
       {/* 프로필 카드 */}
       <ProfileCard>
         <ProfileImageContainer>
-          <ProfileImage src="https://placehold.co/58x59" />
+          <ProfileImage
+            src={userState.profileImage}
+            alt="프로필 이미지"
+            style={{
+              width: '60px',
+              height: '60px',
+              objectFit: 'cover',
+              borderRadius: '50%',
+              position: 'absolute',
+              left: '2px',
+              top: '1px',
+            }}
+          />
         </ProfileImageContainer>
         <UserName>{userState.userName}</UserName>
         <ProfileDivider />
