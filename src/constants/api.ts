@@ -1,8 +1,7 @@
 // src/constants/api.ts
 
 // API 기본 URL 설정
-export const API_BACKEND_URL =
-  process.env.REACT_APP_API_BACKEND_URL || 'http://54.180.250.197:8080';
+export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL || 'https://api.matajo.store';
 
 // API 경로 정의
 export const API_PATHS = {

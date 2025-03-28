@@ -61,7 +61,7 @@
     "url": "https://github.com/100-hours-a-week/4-team-4dollar-matajo-fe/issues"
   },
   "homepage": ".",
-  "proxy": "http://54.180.250.197:8080",
+  "proxy": "https://matajo.store",
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
       "eslint --fix",
