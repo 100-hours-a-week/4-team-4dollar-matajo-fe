@@ -1,43 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../../components/layout/Header';
 import BottomNavigation from '../../../components/layout/BottomNavigation';
+import { ROUTES } from '../../../constants/routes';
+import { getMyStorages } from '../../../services/api/modules/storage';
 
-// 테마 컬러 상수 정의
+// 스타일 상수
 const THEME = {
   primary: '#3835FD',
   primaryLight: '#5E5CFD',
   tagBackground: '#F5F5F5',
-  tagBlueText: '#5E5CFD',
+  tagBlueText: 'rgba(56.26, 53.49, 252.61, 0.80)',
   tagGrayText: '#616161',
-  textDark: '#000000',
-  textGray: '#868686',
-  borderColor: '#EFEFEF',
+  textDark: '#616161',
+  textGray: '#C0BDBD',
+  borderColor: '#E0E0E0',
   white: '#FFFFFF',
+  background: '#F5F5FF',
 };
 
-// 컨테이너 컴포넌트 - 중앙 정렬 추가
 const Container = styled.div`
   width: 100%;
   max-width: 375px;
-  min-height: calc(100vh - 166px);
+  min-height: 100vh;
   background: white;
-  overflow-y: auto;
-  padding-bottom: 40px;
-  padding-top: 10px;
   margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+`;
+
+const HeaderBackground = styled.div`
+  width: 100%;
+  height: 47px;
+  background: ${THEME.background};
+  border-bottom: 1px solid #efeff0;
+`;
+
+const Content = styled.div`
+  padding: 16px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
 `;
 
-// 거래 아이템 카드 - 중앙 정렬 수정
 const TradeItemCard = styled.div`
-  width: 90%;
-  max-width: 340px;
-  margin: 10px auto;
-  padding: 16px;
+  width: 326px;
+  height: 96px;
+  margin: 8px 0;
   border-radius: 10px;
   border: 1px solid ${THEME.borderColor};
   display: flex;
@@ -46,200 +56,211 @@ const TradeItemCard = styled.div`
   cursor: pointer;
 `;
 
-// 거래 이미지
 const TradeImage = styled.div`
-  width: 64px;
-  height: 64px;
-  border-radius: 5px;
+  width: 69px;
+  height: 66px;
+  margin: 15px;
+  border-radius: 2px;
   overflow: hidden;
-  margin-right: 16px;
-  flex-shrink: 0;
+  position: relative;
 `;
 
-// 태그 스타일
+const ImagePlaceholder = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 13px;
+  color: ${THEME.textGray};
+  text-align: center;
+  line-height: 1.2;
+`;
+
 const StatusTag = styled.div<{ isPublic: boolean }>`
   display: inline-block;
-  width: fit-content;
-  padding: 2px 8px;
-  background: ${THEME.tagBackground};
+  width: 45px;
+  height: 17px;
+  padding: 0 5px;
+  background: transparent;
   color: ${props => (props.isPublic ? THEME.tagBlueText : THEME.tagGrayText)};
   font-size: 12px;
   font-family: 'Noto Sans KR';
-  border: 1px ${props => (props.isPublic ? THEME.tagBlueText : THEME.tagGrayText)} solid;
   font-weight: 500;
-  border-radius: 10px;
-  margin-bottom: 8px;
+  border: 1px ${props => (props.isPublic ? THEME.tagBlueText : THEME.tagGrayText)} solid;
+  border-radius: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 5px;
 `;
 
-// 거래 정보 컨테이너
 const TradeInfo = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
+  padding-right: 30px;
 `;
 
-// 거래 제목
 const TradeTitle = styled.div`
   color: ${THEME.textDark};
-  font-size: 16px;
+  font-size: 18px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
   margin-bottom: 4px;
 `;
 
-// 거래 위치
 const TradeLocation = styled.div`
   color: ${THEME.textGray};
-  font-size: 12px;
-  font-family: 'Noto Sans KR';
-  font-weight: 400;
-`;
-
-// 오른쪽 화살표 아이콘
-const ArrowIcon = styled.div`
-  width: 8px;
-  height: 16px;
-  position: absolute;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &::before {
-    content: '';
-    width: 8px;
-    height: 8px;
-    border-top: 2px solid ${THEME.textGray};
-    border-right: 2px solid ${THEME.textGray};
-    transform: rotate(45deg);
-  }
-`;
-
-// 토글 컴포넌트 - 중앙 정렬
-const ToggleContainer = styled.div`
-  width: 238px;
-  height: 40px;
-  position: relative;
-  background: rgba(56.26, 53.49, 252.61, 0.8);
-  overflow: hidden;
-  border-radius: 15px;
-  margin: 15px auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-`;
-
-const ToggleText = styled.span`
-  color: white;
-  font-size: 14px;
+  font-size: 13px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
-  line-height: 18.84px;
-  letter-spacing: 0.28px;
-  word-wrap: break-word;
 `;
+
+const ArrowIcon = styled.div`
+  position: absolute;
+  right: 16px;
+  width: 14px;
+  height: 20px;
+`;
+
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: ${THEME.textGray};
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: red;
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+`;
+
+const NoDataMessage = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  color: ${THEME.textGray};
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+`;
+
+interface StorageItem {
+  trade_id: number;
+  keeper_status: boolean;
+  trade_name: string;
+  user_id: number;
+  post_address: string;
+  trade_date: string;
+  start_date: string;
+  storage_period: number;
+  trade_price: number;
+}
 
 interface MyPlaceProps {
   onBack?: () => void;
 }
 
-// 거래 아이템 타입 정의
-interface TradeItem {
-  id: number;
-  title: string;
-  location: string;
-  isPublic: boolean;
-  imageUrl: string;
-}
-
 const MyPlace: React.FC<MyPlaceProps> = ({ onBack }) => {
-  // 추가: useNavigate 훅 사용
   const navigate = useNavigate();
+  const [trades, setTrades] = useState<StorageItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 추가: 뒤로가기 핸들러 함수
+  useEffect(() => {
+    const fetchStorages = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await getMyStorages();
+        console.log('내 보관소 목록:', data);
+        setTrades(data);
+      } catch (err) {
+        console.error('내 보관소 목록 조회 실패:', err);
+        setError('보관소 목록을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStorages();
+  }, []);
+
   const handleBack = () => {
-    navigate('/mypage'); // MyPage로 이동
+    if (onBack) {
+      onBack();
+    } else {
+      navigate(`/${ROUTES.MYPAGE}`);
+    }
   };
 
-  // 더미 거래 데이터
-  const tradeItems: TradeItem[] = [
-    {
-      id: 1,
-      title: '마곡 냉동창고',
-      location: '동두천시 생연동',
-      isPublic: false,
-      imageUrl: 'https://placehold.co/64x64',
-    },
-    {
-      id: 2,
-      title: '마곡 냉동창고',
-      location: '동두천시 생연동',
-      isPublic: true,
-      imageUrl: 'https://placehold.co/64x64',
-    },
-    {
-      id: 3,
-      title: '마곡 냉동창고',
-      location: '동두천시 생연동',
-      isPublic: true,
-      imageUrl: 'https://placehold.co/64x64',
-    },
-    {
-      id: 4,
-      title: '마곡 냉동창고',
-      location: '동두천시 생연동',
-      isPublic: false,
-      imageUrl: 'https://placehold.co/64x64',
-    },
-  ];
-
-  // 보관소 상세 페이지로 이동하는 함수
   const handleTradeItemClick = (id: number) => {
-    // navigate(`/storage/${id}`);
-    // 또는
-    // navigate('/storage', { state: { id } });
-    console.log(`거래 아이템 ${id} 클릭됨, 상세 페이지로 이동`);
+    navigate(`/trade/${id}`);
+    console.log(`거래 ${id} 클릭됨, 거래 내역 상세 페이지로 이동`);
   };
 
-  // 토글 버튼 클릭 핸들러
-  const handleToggleClick = () => {
-    // 토글 기능 구현
-    console.log('토글 버튼 클릭됨');
-  };
+  const renderArrowIcon = () => (
+    <svg width="14" height="20" viewBox="0 0 14 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M0.399932 17.1076L9.4541 9.85097L0.233178 2.80748L0.200439 0L13.0968 9.85097L0.433661 20L0.399932 17.1076Z"
+        fill="#BBBBBB"
+        fillOpacity="0.8"
+      />
+    </svg>
+  );
 
   return (
-    <>
+    <Container>
       <Header title="내 보관소" showBackButton={true} onBack={handleBack} />
+      <HeaderBackground />
 
-      <Container>
-        {/* 토글 버튼 */}
-        <ToggleContainer onClick={handleToggleClick}>
-          <ToggleText>보관소가 비공개 되었습니다.</ToggleText>
-        </ToggleContainer>
+      <Content>
+        {loading ? (
+          <LoadingContainer>보관소 목록을 불러오는 중...</LoadingContainer>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : trades.length === 0 ? (
+          <NoDataMessage>등록된 보관소가 없습니다.</NoDataMessage>
+        ) : (
+          trades.map((storage, index) => (
+            <TradeItemCard
+              key={storage.trade_id}
+              onClick={() => handleTradeItemClick(storage.trade_id)}
+            >
+              <TradeImage>
+                {storage.trade_name && (
+                  <ImagePlaceholder>
+                    장소
+                    <br />
+                    이미지
+                  </ImagePlaceholder>
+                )}
+              </TradeImage>
 
-        {tradeItems.map(item => (
-          <TradeItemCard key={item.id} onClick={() => handleTradeItemClick(item.id)}>
-            <TradeImage>
-              <img
-                src={item.imageUrl}
-                alt={item.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            </TradeImage>
+              <TradeInfo>
+                <StatusTag isPublic={storage.keeper_status}>
+                  {storage.keeper_status ? '공개' : '비공개'}
+                </StatusTag>
+                <TradeTitle>{storage.trade_name}</TradeTitle>
+                <TradeLocation>{storage.post_address}</TradeLocation>
+              </TradeInfo>
 
-            <TradeInfo>
-              <StatusTag isPublic={item.isPublic}>{item.isPublic ? '공개' : '비공개'}</StatusTag>
-              <TradeTitle>{item.title}</TradeTitle>
-              <TradeLocation>{item.location}</TradeLocation>
-            </TradeInfo>
-
-            <ArrowIcon />
-          </TradeItemCard>
-        ))}
-      </Container>
+              <ArrowIcon>{renderArrowIcon()}</ArrowIcon>
+            </TradeItemCard>
+          ))
+        )}
+      </Content>
 
       <BottomNavigation activeTab="마이페이지" />
-    </>
+    </Container>
   );
 };
 

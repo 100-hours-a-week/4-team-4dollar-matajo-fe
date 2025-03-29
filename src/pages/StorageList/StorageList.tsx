@@ -24,35 +24,44 @@ const THEME = {
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 100%;
-  height: calc(100vh - 116px); /* 네비게이션 바 높이 제외 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   position: relative;
   background: white;
   overflow-y: auto;
-  overflow-x: auto;
+  overflow-x: hidden;
   padding-bottom: 40px;
-  padding-top: 10px;
-  margin-top: -50px;
+`;
+
+// 검색창 컨테이너
+const SearchContainer = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  margin-top: 10px;
+  margin-bottom: 15px;
 `;
 
 // 검색창 컴포넌트
 const SearchInput = styled.div`
   width: 294px;
   height: 45px;
-  position: fixed;
-  left: 20px;
-  top: 55px;
   border-radius: 30px;
   border: 1px ${THEME.primaryLight} solid;
+  position: relative;
 `;
 
 // 돋보기 아이콘
 const SearchIcon = styled.div`
   width: 30px;
   height: 30px;
-  position: fixed;
-  left: 325px;
-  top: 63px;
-  transform-origin: top left;
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
   text-align: center;
   color: ${THEME.primaryLight};
   font-size: 43.75px;
@@ -83,11 +92,7 @@ const FilterTag = styled.div<{ isActive: boolean }>`
 
 // 필터 스크롤 컨테이너
 const FilterContainer = styled.div`
-  position: fixed;
-  top: 108px;
-  left: 0;
   width: 100%;
-  max-width: 345px;
   height: 40px;
   overflow-x: auto;
   white-space: nowrap;
@@ -95,24 +100,16 @@ const FilterContainer = styled.div`
   &::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Edge */
   }
-  padding: 5px 20px;
-  z-index: 999;
-  background-color: ${THEME.white};
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  margin: 0 auto;
+  padding: 5px 0;
+  margin-left: 20px;
+  margin-bottom: 15px;
   display: flex;
   align-items: center;
 `;
 
 // 아이템 그리드 컨테이너
 const ItemGridContainer = styled.div`
-  position: absolute;
-  top: 180px;
-  left: 0;
   width: 100%;
-  max-width: 345px;
-  height: calc(100% - 180px - 76px); /* 헤더 + 필터 + 네비게이션 높이 제외 */
-  overflow-y: auto;
   padding: 10px 15px 76px;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -602,9 +599,11 @@ const StorageList: React.FC = () => {
       {/* 페이지 헤더 */}
       <Header title="보관소 리스트" />
 
-      {/* 검색창 */}
-      <SearchInput />
-      <SearchIcon>⌕</SearchIcon>
+      <SearchContainer>
+        <SearchInput>
+          <SearchIcon>⌕</SearchIcon>
+        </SearchInput>
+      </SearchContainer>
 
       {/* 필터 */}
       <FilterContainer>

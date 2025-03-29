@@ -292,30 +292,23 @@ const KeeperImage = styled.img`
 
 const ImageIndicator = styled.div`
   position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 15px;
+  left: 0;
+  right: 0;
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 11px;
   z-index: 10;
 `;
 
 const Dot = styled.div<{ isActive: boolean }>`
-  width: 10px;
-  height: 9px;
-  opacity: 0.8;
-  background: ${props => (props.isActive ? '#9e9dfe' : '#efeff0')};
-  border-radius: 9999px;
-  transition: background-color 0.2s ease;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: ${props => (props.isActive ? THEME.primary : 'rgba(255, 255, 255, 0.6)')};
+  margin: 0 5px;
   cursor: pointer;
-  padding: 8px; /* 클릭 영역 확장 */
-  margin: -4px; /* 간격 유지를 위한 네거티브 마진 */
-  box-sizing: content-box;
-
-  &:hover {
-    opacity: 1;
-  }
+  transition: background-color 0.3s ease;
 `;
 
 const ScrollToTopButton = styled.img`
@@ -396,7 +389,14 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
         if (response.data && response.data.success) {
           // Transform the data from snake_case to camelCase
           const transformedData = transformStorageDetail(response.data.data);
+
+          // 응답 데이터에서 post_images가 있을 경우 직접 postImages에 할당
+          if (response.data.data.post_images && Array.isArray(response.data.data.post_images)) {
+            transformedData.postImages = response.data.data.post_images;
+          }
+
           setStorageDetail(transformedData);
+          console.log('보관소 상세 정보:', transformedData);
         } else {
           throw new Error('데이터를 불러오는 데 실패했습니다.');
         }
@@ -793,7 +793,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                   </ImageSlider>
 
                   {/* 이미지 인디케이터 - 이미지가 2개 이상일 때만 표시 */}
-                  {storageDetail.postImages.length > 1 && (
+                  {storageDetail.postImages && storageDetail.postImages.length > 1 && (
                     <ImageIndicator>
                       {storageDetail.postImages.map((_, index) => (
                         <Dot

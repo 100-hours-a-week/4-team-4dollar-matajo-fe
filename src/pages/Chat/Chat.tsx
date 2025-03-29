@@ -906,6 +906,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={handleTradeConfirm}
+        chatroomId={roomId || 0}
       />
     </Container>
   );

@@ -54,8 +54,10 @@ export interface StorageItem {
 // 위치 ID 응답 타입 정의
 export interface LocationIdResponse {
   id: number;
-  dong: string;
-  formatted_address: string;
+  dong?: string;
+  formatted_address?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 // 위치 ID 캐시 객체 (동일 주소 재검색 시 API 호출 최소화)
@@ -96,17 +98,27 @@ export const searchPlaces = async (keyword: string) => {
 // 동 검색 함수 (업데이트됨)
 export const searchDong = async (keyword: string): Promise<string[]> => {
   try {
-    if (!keyword.trim()) return [];
+    console.log(`동 검색 API 호출 시작 - 키워드: "${keyword}"`);
 
+    if (!keyword.trim()) {
+      console.log('키워드가 비어있어 검색 중단');
+      return [];
+    }
+
+    console.log('API 호출 경로:', API_PATHS.PLACE.LOCATIONS.AUTOCOMPLETE);
     const response = await client.get(API_PATHS.PLACE.LOCATIONS.AUTOCOMPLETE, {
       params: { dong: keyword },
     });
 
+    console.log('동 검색 API 응답:', response.data);
+
     // API 응답 구조가 { success: true, message: string, data: string[] } 형태
     if (response.data?.success && Array.isArray(response.data.data)) {
+      console.log(`검색 결과 ${response.data.data.length}개 반환`);
       return response.data.data;
     }
 
+    console.log('유효한 검색 결과가 없습니다');
     return [];
   } catch (error) {
     console.error('동 검색 오류:', error);
@@ -115,6 +127,7 @@ export const searchDong = async (keyword: string): Promise<string[]> => {
 };
 
 // 주소 기반 위치 ID 조회 함수 (추가)
+// 주소 기반 위치 ID 조회 함수
 export const getLocationId = async (
   formattedAddress: string,
 ): Promise<LocationIdResponse | null> => {
@@ -131,13 +144,22 @@ export const getLocationId = async (
     });
 
     // 응답 성공 여부 확인
-    if (response.data?.success && response.data.data) {
+    if (
+      response.data?.status === 'success' &&
+      Array.isArray(response.data.data) &&
+      response.data.data.length > 0
+    ) {
+      // 첫 번째 데이터 항목 사용
+      const locationData: LocationIdResponse = response.data.data[0];
+
       // 응답 데이터 캐싱
-      const locationData = response.data.data;
       locationIdCache[formattedAddress] = locationData;
+
+      console.log('위치 ID 조회 성공:', locationData);
       return locationData;
     }
 
+    console.warn('위치 ID 데이터가 없습니다:', response.data);
     return null;
   } catch (error) {
     console.error('위치 ID 조회 오류:', error);
@@ -201,7 +223,7 @@ export const getStorageList = async (
     console.log('API 호출 파라미터:', params);
 
     // API_PATHS.STORAGE.LIST 엔드포인트 사용
-    const response = await client.get(API_PATHS.STORAGE.LIST, { params });
+    const response = await client.get(API_PATHS.POSTS.CREATE, { params });
 
     // API 응답 데이터 변환
     console.log('API 응답 데이터:', response.data);
@@ -249,8 +271,8 @@ export const getStorageList = async (
 // 보관소 상세 정보 조회 함수
 export const getStorageDetail = async (id: string) => {
   try {
-    // API_PATHS.STORAGE.DETAIL 엔드포인트 사용
-    const endpoint = API_PATHS.STORAGE.DETAIL.replace(':postId', id);
+    // 엔드포인트 수정: API_PATHS.STORAGE.DETAIL 대신 직접 경로 사용
+    const endpoint = `/api/posts/${id}`;
     return await client.get(endpoint);
   } catch (error) {
     console.error('보관소 상세 정보 조회 오류:', error);

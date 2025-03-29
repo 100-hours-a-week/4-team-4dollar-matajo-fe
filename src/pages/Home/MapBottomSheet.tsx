@@ -1,9 +1,34 @@
-// src/pages/Home/MapBottomSheet.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import Modal from '../../components/common/Modal';
+import client from '../../services/api/client';
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import { ROUTES } from '../../constants/routes';
+
+interface JwtPayload {
+  role?: number;
+  // 다른 필요한 jwt 페이로드 속성들
+}
+
+// 사용자 역할 업데이트 함수를 분리하여 내보내기
+export const updateUserRole = (token: string): void => {
+  try {
+    const decoded = jwtDecode<JwtPayload>(token);
+
+    if (decoded.role !== undefined) {
+      localStorage.setItem('userRole', decoded.role.toString());
+      // 역할 변경 이벤트 발생
+      window.dispatchEvent(
+        new CustomEvent('USER_ROLE_CHANGED', { detail: { role: decoded.role } }),
+      );
+    }
+  } catch (error) {
+    console.error('토큰 디코딩 중 오류:', error);
+  }
+};
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -158,7 +183,7 @@ const MenuItem = styled.div`
 
 // 메뉴 제목
 const MenuTitle = styled.div`
-  font-size: 14px;
+  font-size: 13px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   margin-bottom: 4px;
@@ -166,7 +191,7 @@ const MenuTitle = styled.div`
 
 // 메뉴 설명
 const MenuDescription = styled.div`
-  font-size: 12px;
+  font-size: 10.5px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   color: ${THEME.gray500};
@@ -349,24 +374,28 @@ export const handleRegisterStorage = (
   navigate: ReturnType<typeof useNavigate>,
   setShowKeeperModal: (show: boolean) => void,
 ): void => {
-  // 인증 확인
-  if (!isLoggedIn()) {
-    // 로그인 페이지로 이동
-    navigate('/login');
-    return;
-  }
+  try {
+    // 로그인 체크
+    if (!isLoggedIn()) {
+      navigate('/login');
+      return;
+    }
 
-  // 보관인 여부 확인
-  if (isKeeper()) {
-    // 보관인이면 보관소 등록 페이지로 이동
-    navigate('/registration/step1');
-  } else {
-    // 일반 사용자면 보관인 등록 모달 표시
-    setShowKeeperModal(true);
+    // 보관인 여부 확인
+    if (isKeeper()) {
+      // 보관인이면 바로 보관소 등록 페이지의 step1로 이동
+      console.log('보관인으로 로그인되어 있어 바로 보관소 등록 step1 페이지로 이동합니다.');
+      navigate(ROUTES.MYPAGE_REGISTRATION_STEP1);
+    } else {
+      // 의뢰인이면 보관인 등록 모달 표시
+      setShowKeeperModal(true);
+    }
+  } catch (error) {
+    console.error('보관소 등록 처리 중 오류:', error);
   }
 };
 
-// KeeperRegistrationModal 컴포넌트
+// 보관인 등록 모달 컴포넌트
 export const KeeperRegistrationModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -376,10 +405,14 @@ export const KeeperRegistrationModal: React.FC<{
   const keeperRegistrationContent = (
     <>
       <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>
-        보관인 미등록 계정입니다.
+        보관인으로 등록되지 않은 계정입니다.
+        <br />
+        보관소를 등록하려면 먼저 보관인 등록이 필요합니다.
         <br />
       </span>
-      <span style={{ color: '#010048', fontSize: '16px', fontWeight: 700 }}>보관인 등록</span>
+      <span style={{ color: '#010048', fontSize: '16px', fontWeight: 700 }}>
+        보관인 등록 페이지로 이동
+      </span>
       <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>하시겠습니까?</span>
     </>
   );
@@ -390,7 +423,7 @@ export const KeeperRegistrationModal: React.FC<{
       onClose={onClose}
       content={keeperRegistrationContent}
       cancelText="취소"
-      confirmText="등록"
+      confirmText="등록하기"
       onCancel={onClose}
       onConfirm={onConfirm}
     />
@@ -420,23 +453,51 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   onEditLocation,
 }) => {
   const navigate = useNavigate();
-  const [showKeeperModal, setShowKeeperModal] = useState(false);
   const [sheetState, setSheetState] = useState<BottomSheetState>('half-expanded');
-  const [currentY, setCurrentY] = useState(window.innerHeight / 2);
+  const [showKeeperModal, setShowKeeperModal] = useState<boolean>(false);
+  const [isKeeperUser, setIsKeeperUser] = useState<boolean>(isKeeper());
 
-  // 보관소 등록 핸들러
+  // 역할 변경 이벤트 리스너 추가
+  useEffect(() => {
+    const handleRoleChange = () => {
+      setIsKeeperUser(isKeeper());
+    };
+
+    window.addEventListener('USER_ROLE_CHANGED', handleRoleChange);
+
+    return () => {
+      window.removeEventListener('USER_ROLE_CHANGED', handleRoleChange);
+    };
+  }, []);
+
+  // 보관소 등록 클릭 핸들러
   const handleRegisterClick = () => {
+    if (!isLoggedIn()) {
+      navigate('/login'); // 로그인되지 않은 경우 로그인 페이지로 이동
+      return;
+    }
+
+    // 보관인이면 바로 보관소 등록 페이지의 step1로 이동
+    if (isKeeperUser) {
+      console.log('보관인으로 로그인되어 있어 바로 보관소 등록 step1 페이지로 이동합니다.');
+      navigate(ROUTES.MYPAGE_REGISTRATION_STEP1); // 'mypage/registration/step1'로 이동
+    } else {
+      // 의뢰인이면 보관인 등록 확인 모달 표시
+      console.log('의뢰인으로 로그인되어 있어 보관인 등록 모달을 표시합니다.');
+      setShowKeeperModal(true); // 보관인 등록 모달 표시
+    }
+
+    // 부모 컴포넌트 핸들러 호출
     if (onRegisterStorage) {
       onRegisterStorage();
-    } else {
-      handleRegisterStorage(navigate, setShowKeeperModal);
     }
   };
 
-  // 보관인 등록 확인 핸들러
+  // 보관인 등록 확인 클릭 핸들러
   const handleKeeperConfirm = () => {
+    console.log('보관인 등록 페이지로 이동합니다.');
     setShowKeeperModal(false);
-    navigate('/keeper/registration');
+    navigate(`/${ROUTES.MYPAGE}/${ROUTES.KEEPER_REGISTRATION}`);
   };
 
   // 게시판 이동 핸들러
@@ -458,6 +519,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     if (onDiscountItemClick) {
       onDiscountItemClick(id);
     } else {
+      // 특가 아이템 클릭 시 보관소 상세 페이지로 이동
       navigate(`/storage/${id}`);
     }
   };
@@ -469,6 +531,60 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     }
   };
 
+  interface KeeperRegistrationData {
+    terms_of_service: boolean;
+    privacy_policy: boolean;
+  }
+
+  interface KeeperRegistrationResponse {
+    success: boolean;
+    message: string;
+    data: {
+      accessToken?: string;
+    };
+  }
+
+  /**
+   * 보관인 등록 API 함수
+   * @param termsData 약관 동의 정보
+   * @returns 등록 응답
+   */
+
+  const registerAsKeeper = async (termsData: {
+    terms_of_service: boolean;
+    privacy_policy: boolean;
+  }): Promise<KeeperRegistrationResponse> => {
+    try {
+      console.log('보관인 등록 시도');
+      const registrationData: KeeperRegistrationData = {
+        terms_of_service: termsData.terms_of_service,
+        privacy_policy: termsData.privacy_policy,
+      };
+
+      // 변경된 API 경로 사용 (API 명세에 맞게 수정)
+      const response = await client.post('/api/users/keeper', registrationData);
+
+      console.log('보관인 등록 응답:', response.data);
+
+      // 새로운 accessToken을 로컬 스토리지에 저장
+      if (response.data?.data?.accessToken) {
+        localStorage.setItem('accessToken', response.data.data.accessToken);
+
+        // 사용자 역할 업데이트
+        try {
+          updateUserRole(response.data.data.accessToken);
+        } catch (error) {
+          console.error('사용자 역할 업데이트 실패:', error);
+        }
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('보관인 등록 오류:', error);
+      throw error;
+    }
+  };
+
   return (
     <Container>
       <MapArea>
@@ -477,8 +593,9 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
       <BottomSheet
         style={{
-          top: `${currentY}px`,
-          height: `${window.innerHeight - 100}px`,
+          height: sheetState === 'closed' ? '60px' : sheetState === 'half-expanded' ? '40%' : '80%',
+          bottom: 0,
+          transition: 'height 0.3s ease-out',
         }}
       >
         <DragHandleContainer>
@@ -505,14 +622,16 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
           <MenuContainer>
             <MenuItem onClick={handleRegisterClick}>
-              <MenuTitle>보관장소 등록하기</MenuTitle>
-              <MenuDescription>보관인이 되어 장소를 등록해요</MenuDescription>
-              <MenuArrow>›</MenuArrow>
+              <MenuTitle>보관소 등록하기</MenuTitle>
+              <MenuDescription>
+                {isKeeperUser ? '내 보관소를 등록해보세요' : '보관인 등록 후 이용 가능해요'}
+              </MenuDescription>
+              <MenuArrow as="span">›</MenuArrow>
             </MenuItem>
             <MenuItem onClick={handleGoToBoard}>
-              <MenuTitle>게시판 둘러보기</MenuTitle>
-              <MenuDescription>게시판을 구경해보세요</MenuDescription>
-              <MenuArrow>›</MenuArrow>
+              <MenuTitle>보관소 게시판</MenuTitle>
+              <MenuDescription>내 주변 보관소를 확인하세요</MenuDescription>
+              <MenuArrow as="span">›</MenuArrow>
             </MenuItem>
           </MenuContainer>
 
