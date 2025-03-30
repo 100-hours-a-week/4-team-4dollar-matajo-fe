@@ -5,7 +5,10 @@ import Header from '../../../../components/layout/Header';
 import BottomNavigation from '../../../../components/layout/BottomNavigation';
 import Modal from '../../../../components/common/Modal';
 import Toast from '../../../../components/common/Toast';
-import { DaumAddressData, autoConvertAddress } from '../../../../utils/api/kakaoToDaum';
+import {
+  DaumAddressData,
+  convertKakaoToDaumAddress as autoConvertAddress,
+} from '../../../../services/KakaoMapService';
 
 // 테마 컬러 상수 정의
 const THEME = {

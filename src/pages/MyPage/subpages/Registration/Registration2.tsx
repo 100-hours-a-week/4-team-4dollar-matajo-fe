@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../../../components/layout/Header';
 import BottomNavigation from '../../../../components/layout/BottomNavigation';
 import { convertTagsToStrings } from '../../../../services/domain/tag/TagMappingService';
-import { DaumAddressData } from '../../../../utils/api/kakaoToDaum';
+import { DaumAddressData } from '../../../../services/KakaoMapService';
 
 const RegistrationContainer = styled.div`
   width: 100%;

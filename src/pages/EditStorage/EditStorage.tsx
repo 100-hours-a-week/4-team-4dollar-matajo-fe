@@ -5,7 +5,10 @@ import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
-import { DaumAddressData, autoConvertAddress } from '../../utils/api/kakaoToDaum';
+import {
+  DaumAddressData,
+  convertKakaoToDaumAddress as autoConvertAddress,
+} from '../../services/KakaoMapService';
 import { updateStorage, base64ToFile } from '../../services/api/modules/storage';
 import { getStorageDetail } from '../../services/api/modules/place';
 import { convertTagsToStrings } from '../../services/domain/tag/TagMappingService';

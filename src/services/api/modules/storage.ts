@@ -1,7 +1,7 @@
 import client from '../client';
 import api, { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
 import axios from 'axios';
-import { DaumAddressData } from '../../../utils/api/kakaoToDaum';
+import { DaumAddressData } from '../../KakaoMapService';
 import { response } from 'express';
 
 // 보관소 등록 요청 인터페이스

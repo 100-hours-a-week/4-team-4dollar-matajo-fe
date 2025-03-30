@@ -10,7 +10,7 @@ import {
   base64ToFile,
   StorageRegistrationRequest,
 } from '../../../../services/api/modules/storage';
-import { DaumAddressData } from '../../../../utils/api/kakaoToDaum';
+import { DaumAddressData } from '../../../../services/KakaoMapService';
 
 const RegistrationContainer = styled.div`
   width: 100%;
