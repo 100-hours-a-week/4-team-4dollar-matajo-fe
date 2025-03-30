@@ -17,7 +17,8 @@ const KakaoCallback: React.FC = () => {
   useEffect(() => {
     const processKakaoLogin = async () => {
       try {
-        console.log('카카오 콜백 처리 시작');
+        console.log('====== 카카오 콜백 처리 시작 ======');
+        console.log('현재 URL:', window.location.href);
         setIsLoading(true);
 
         // URL에서 인가 코드 추출
@@ -32,9 +33,10 @@ const KakaoCallback: React.FC = () => {
           return;
         }
 
-        console.log('인가 코드 추출 성공:', code.substring(0, 10) + '...');
+        console.log('인가 코드 추출 성공:', code);
+        console.log('전체 URL 파라미터:', Object.fromEntries(searchParams.entries()));
 
-        // 카카오 로그인 API 호출
+        // 카카오 로그인 API 호출 (GET 요청)
         const response = await kakaoLogin(code);
 
         // 로그인 성공 시 처리
@@ -55,6 +57,11 @@ const KakaoCallback: React.FC = () => {
         }
       } catch (error: any) {
         console.error('카카오 콜백 처리 오류:', error);
+        console.error('오류 상세 정보:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
         setError('로그인 처리 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류'));
       } finally {
         setIsLoading(false);
