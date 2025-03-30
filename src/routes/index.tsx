@@ -80,30 +80,43 @@ const routes: RouteObject[] = [
     ],
   },
 
-  // 보관인만 접근 가능한 라우트
+  // 보관인 등록 라우트 (일반 사용자)
   {
-    path: '/',
-    element: <MainLayout />,
+    path: '/registration',
+    element: <PrivateRoute />,
     children: [
       {
-        path: 'registration',
-        children: [
-          {
-            path: 'step1',
-            element: <StorageRegistrationBasic />,
-          },
-          {
-            path: 'step2',
-            element: <StorageRegistrationDetails />,
-          },
-          {
-            path: 'step3',
-            element: <StorageRegistrationImages />,
-          },
-        ],
+        path: 'step1',
+        element: <StorageRegistrationBasic />,
       },
-      { path: ROUTES.EDIT_STORAGE, element: <EditStorage /> },
-      { path: ROUTES.MYPLACE, element: <MyPlace /> },
+      {
+        path: 'step2',
+        element: <StorageRegistrationDetails />,
+      },
+      {
+        path: 'step3',
+        element: <StorageRegistrationImages />,
+      },
+    ],
+  },
+
+  // 보관소 등록 라우트 (보관인 전용)
+  {
+    path: '/storage',
+    element: <PrivateRoute requiredRole={UserRole.Keeper} />,
+    children: [
+      {
+        path: 'register',
+        element: <StorageRegistrationBasic />,
+      },
+      {
+        path: 'register/details',
+        element: <StorageRegistrationDetails />,
+      },
+      {
+        path: 'register/images',
+        element: <StorageRegistrationImages />,
+      },
     ],
   },
 

@@ -377,6 +377,14 @@ export const KeeperRegistrationModal: React.FC<{
   onClose: () => void;
   onConfirm: () => void;
 }> = ({ isOpen, onClose, onConfirm }) => {
+  const navigate = useNavigate();
+
+  const handleConfirm = () => {
+    // 보관인 등록 페이지로 이동
+    navigate('/registration/step1');
+    onClose();
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -394,7 +402,7 @@ export const KeeperRegistrationModal: React.FC<{
       cancelText="취소"
       confirmText="등록"
       onCancel={onClose}
-      onConfirm={onConfirm}
+      onConfirm={handleConfirm}
     />
   );
 };
@@ -410,8 +418,10 @@ export const handleRegisterStorage = (
   }
 
   if (isKeeper()) {
-    navigate('/storage');
+    // 보관인인 경우 보관소 등록 페이지로 이동
+    navigate('/storage/register');
   } else {
+    // 일반 사용자인 경우 보관인 등록 모달 표시
     setShowKeeperModal(true);
   }
 };
@@ -685,7 +695,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
           <Divider />
 
           <MenuContainer>
-            =
             <MenuItem onClick={handleRegisterClick}>
               <MenuTitle>보관장소 등록하기</MenuTitle>
               <MenuDescription>보관인이 되어 장소를 등록해요</MenuDescription>
