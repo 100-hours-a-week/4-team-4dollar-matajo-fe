@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import Header from '../../../../components/layout/Header';
-import BottomNavigation from '../../../../components/layout/BottomNavigation';
-import Modal from '../../../../components/common/Modal';
-import Toast from '../../../../components/common/Toast';
+import Header from '../../components/layout/Header';
+import BottomNavigation from '../../components/layout/BottomNavigation';
+import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
 import {
   DaumAddressData,
   convertKakaoToDaumAddress as autoConvertAddress,
-} from '../../../../services/KakaoMapService';
+} from '../../services/KakaoMapService';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -249,7 +249,7 @@ interface AddressInfo {
   longitude: string;
 }
 
-const Registration1: React.FC = () => {
+const StorageRegistrationBasic: React.FC = () => {
   // 라우터 관련 훅
   const navigate = useNavigate();
   const location = useLocation();
@@ -279,7 +279,7 @@ const Registration1: React.FC = () => {
   });
 
   // 백 버튼 모달 상태
-  const [isBackModalOpen, setIsBackModalOpen] = useState(false);
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
 
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(false);
@@ -295,7 +295,7 @@ const Registration1: React.FC = () => {
   // 폼 데이터 불러오기 (로컬 스토리지) 및 주소 데이터 처리
   useEffect(() => {
     // 로컬 스토리지에서 저장된 데이터 불러오기
-    const savedData = localStorage.getItem('registration_step1');
+    const savedData = localStorage.getItem('storage_register_basic');
     if (savedData) {
       setFormData(JSON.parse(savedData));
     }
@@ -331,7 +331,7 @@ const Registration1: React.FC = () => {
             postAddress: selectedAddress.address,
             postAddressData: daumAddressData,
           };
-          localStorage.setItem('registration_step1', JSON.stringify(updatedData));
+          localStorage.setItem('storage_register_basic', JSON.stringify(updatedData));
 
           showToast('주소 데이터가 변환되었습니다.');
         } catch (error) {
@@ -392,7 +392,7 @@ const Registration1: React.FC = () => {
 
     // 로컬 스토리지에 데이터 저장 (자동 저장)
     localStorage.setItem(
-      'registration_step1',
+      'storage_register_basic',
       JSON.stringify({
         ...formData,
         [name]: value,
@@ -417,7 +417,7 @@ const Registration1: React.FC = () => {
 
             setFormData(updatedFormData);
             setErrors(prev => ({ ...prev, postAddress: '' }));
-            localStorage.setItem('registration_step1', JSON.stringify(updatedFormData));
+            localStorage.setItem('storage_register_basic', JSON.stringify(updatedFormData));
 
             showToast('주소가 선택되었습니다.');
           } catch (error) {
@@ -500,21 +500,19 @@ const Registration1: React.FC = () => {
     );
 
     if (hasData) {
-      // 데이터가 있으면 모달 표시
-      setIsBackModalOpen(true);
+      setIsExitModalOpen(true);
     } else {
-      // 데이터가 없으면 바로 이전 페이지로
       navigate('/');
     }
   };
 
-  // 모달 확인 버튼 핸들러 (나가기)
-  const handleConfirmExit = () => {
+  const handleExitConfirm = () => {
+    setIsExitModalOpen(false);
     // 로컬 스토리지 데이터 삭제
-    localStorage.removeItem('registration_step1');
-    localStorage.removeItem('registration_step2');
-    localStorage.removeItem('registration_step3');
-    navigate(-1);
+    localStorage.removeItem('storage_register_basic');
+    localStorage.removeItem('storage_register_details');
+    localStorage.removeItem('storage_register_images');
+    navigate('/');
   };
 
   // 폼 제출 핸들러
@@ -541,11 +539,11 @@ const Registration1: React.FC = () => {
 
         // 상태 및 로컬 스토리지 업데이트
         setFormData(updatedFormData);
-        localStorage.setItem('registration_step1', JSON.stringify(updatedFormData));
+        localStorage.setItem('storage_register_basic', JSON.stringify(updatedFormData));
 
         // 다음 단계로 이동
         console.log('다음 단계로 이동', updatedFormData);
-        navigate('/registration/step2', { state: updatedFormData });
+        navigate('/storage/register/details', { state: updatedFormData });
       } catch (error) {
         console.error('주소 데이터 변환 실패:', error);
         showToast('주소 데이터 변환에 실패했습니다. 다시 시도해주세요.');
@@ -555,36 +553,33 @@ const Registration1: React.FC = () => {
     } else {
       // 이미 주소 데이터가 있으면 바로 다음 단계로 이동
       console.log('다음 단계로 이동', formData);
-      navigate('/registration/step2', { state: formData });
+      navigate('/storage/register/details', { state: formData });
     }
   };
 
-  // 모달 내용 컴포넌트
-  const backModalContent = (
-    <>
-      <div style={{ fontSize: '24px', textAlign: 'center', marginBottom: '10px' }}>😮</div>
-      <div style={{ textAlign: 'center' }}>
-        <span style={{ color: '#1e1e1e', fontSize: '18px', fontWeight: 700 }}>
-          페이지에서 나가시나요?
-        </span>
-        <br />
-        <br />
-        <span style={{ color: 'black', fontSize: '14px' }}>진행상황은 저장되지 않습니다.</span>
-      </div>
-    </>
-  );
-
   return (
     <>
-      {/* 뒤로가기 모달 */}
       <Modal
-        isOpen={isBackModalOpen}
-        onClose={() => setIsBackModalOpen(false)}
-        content={backModalContent}
-        cancelText="취소"
+        isOpen={isExitModalOpen}
+        onClose={() => setIsExitModalOpen(false)}
+        onConfirm={handleExitConfirm}
+        content={
+          <>
+            <div style={{ fontSize: '24px', textAlign: 'center', marginBottom: '10px' }}>😮</div>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ color: '#1e1e1e', fontSize: '18px', fontWeight: 700 }}>
+                페이지에서 나가시나요?
+              </span>
+              <br />
+              <br />
+              <span style={{ color: 'black', fontSize: '14px' }}>
+                진행상황은 저장되지 않습니다.
+              </span>
+            </div>
+          </>
+        }
         confirmText="나가기"
-        onCancel={() => setIsBackModalOpen(false)}
-        onConfirm={handleConfirmExit}
+        cancelText="취소"
       />
 
       {/* 상단 헤더 */}
@@ -696,4 +691,4 @@ const Registration1: React.FC = () => {
   );
 };
 
-export default Registration1;
+export default StorageRegistrationBasic;

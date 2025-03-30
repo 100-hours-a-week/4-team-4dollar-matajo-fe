@@ -279,7 +279,7 @@ const KeeperRegistration: React.FC = () => {
 
         // 1초 후 보관소 등록 페이지로 이동
         setTimeout(() => {
-          navigate('/registration/step1');
+          navigate('/storage/register');
         }, 1000);
       } catch (error) {
         console.error('보관인 등록 실패:', error);

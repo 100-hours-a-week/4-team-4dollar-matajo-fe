@@ -66,7 +66,12 @@ export const logout = (): void => {
  */
 export const saveToken = (token: string): void => {
   try {
+    console.log('토큰 저장 시작:', token.substring(0, 10) + '...');
     localStorage.setItem('accessToken', token);
+
+    // 저장 직후 확인
+    const savedToken = localStorage.getItem('accessToken');
+    console.log('저장된 토큰 확인:', savedToken ? savedToken.substring(0, 10) + '...' : '없음');
 
     // 인증 상태 변경 이벤트 발생
     window.dispatchEvent(new CustomEvent('AUTH_STATE_CHANGED'));

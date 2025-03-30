@@ -1,5 +1,5 @@
-import axios from 'axios';
 import client from '../client';
+import axios, { AxiosError } from 'axios';
 import { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
 import { DaumAddressData } from '../../KakaoMapService';
 import { response } from 'express';
@@ -54,10 +54,8 @@ export const registerStorage = async (
   detailImages: File[],
 ): Promise<StorageRegistrationResponse> => {
   try {
-    // 1. FormData 생성
     const formData = new FormData();
 
-    // 2. postData를 snake_case로 변환
     const postDataForServer = {
       post_title: postData.postTitle,
       post_content: postData.postContent,
@@ -67,7 +65,6 @@ export const registerStorage = async (
       storage_location: postData.storageLocation,
     };
 
-    // 3. FormData에 데이터 추가
     formData.append('postData', JSON.stringify(postDataForServer));
     formData.append('mainImage', mainImage);
 
@@ -75,16 +72,10 @@ export const registerStorage = async (
       formData.append('detailImages', file);
     });
 
-    console.log('서버로 전송할 postData:', postDataForServer);
-
-    // 4. API 요청
-    const response = await axios({
-      method: 'post',
-      url: `${API_BACKEND_URL}/api/posts`,
-      data: formData,
+    // client 인스턴스 사용
+    const response = await client.post('/api/posts', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
     });
 
@@ -96,11 +87,12 @@ export const registerStorage = async (
   } catch (error) {
     console.error('보관소 등록 실패:', error);
 
-    if (axios.isAxiosError(error) && error.response) {
+    if (error instanceof AxiosError) {
+      const axiosError = error as AxiosError<any>;
       return {
         id: '',
         success: false,
-        message: error.response.data.message || '보관소 등록에 실패했습니다.',
+        message: axiosError.response?.data?.message || '보관소 등록에 실패했습니다.',
       };
     }
 
@@ -171,10 +163,7 @@ export const updateStorage = async (
       formData.append('detailImages', file);
     });
 
-    const response = await axios({
-      method: 'put',
-      url: `${API_BACKEND_URL}/api/posts/${id}`,
-      data: formData,
+    const response = await client.put(`/api/posts/${id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
         Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -204,25 +193,6 @@ export const updateStorage = async (
     };
   }
 };
-
-// 위치 기반 게시글 인터페이스
-export interface LocationPost {
-  id: number;
-  title: string;
-  latitude: number;
-  longitude: number;
-  price: number;
-  images: string[];
-}
-
-// 위치 기반 게시글 응답 인터페이스
-export interface LocationPostResponse {
-  success: boolean;
-  message: string;
-  data: {
-    posts: LocationPost[];
-  };
-}
 
 /**
  * 특정 동 위치 기반 게시글을 가져오는 함수
@@ -259,5 +229,6 @@ export const getLocationPosts = async (locationInfoId: string): Promise<Location
     };
   }
 };
+
 // createStorage 함수를 registerStorage의 별칭으로 내보내기
 export const createStorage = registerStorage;

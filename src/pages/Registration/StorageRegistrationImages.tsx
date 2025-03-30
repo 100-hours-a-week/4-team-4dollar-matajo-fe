@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Header from '../../../../components/layout/Header';
-import BottomNavigation from '../../../../components/layout/BottomNavigation';
-import Modal from '../../../../components/common/Modal';
-import Toast from '../../../../components/common/Toast';
+import Header from '../../components/layout/Header';
+import BottomNavigation from '../../components/layout/BottomNavigation';
+import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
 import {
   registerStorage,
   base64ToFile,
   StorageRegistrationRequest,
-} from '../../../../services/api/modules/storage';
-import { DaumAddressData } from '../../../../services/KakaoMapService';
+} from '../../services/api/modules/storage';
+import { DaumAddressData } from '../../services/KakaoMapService';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -363,7 +363,7 @@ const Registration3: React.FC = () => {
 
   // 로컬 스토리지에서 이미지 데이터 불러오기
   useEffect(() => {
-    const savedData = localStorage.getItem('registration_step3');
+    const savedData = localStorage.getItem('storage_register_images');
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
@@ -393,7 +393,7 @@ const Registration3: React.FC = () => {
       detailImages,
     };
 
-    localStorage.setItem('registration_step3', JSON.stringify(dataToSave));
+    localStorage.setItem('storage_register_images', JSON.stringify(dataToSave));
   };
 
   // 토스트 메시지 표시 함수
@@ -490,7 +490,7 @@ const Registration3: React.FC = () => {
   // 뒤로가기 핸들러
   const handleBack = () => {
     // 변경 사항은 로컬 스토리지에 자동 저장됨
-    navigate('/registration/step2');
+    navigate('/storage/register/details');
   };
 
   // 등록 확인 모달 열기
@@ -557,9 +557,9 @@ const Registration3: React.FC = () => {
 
       if (response.success) {
         console.log('보관소 등록 성공:', response);
-        localStorage.removeItem('registration_step1');
-        localStorage.removeItem('registration_step2');
-        localStorage.removeItem('registration_step3');
+        localStorage.removeItem('storage_register_basic');
+        localStorage.removeItem('storage_register_details');
+        localStorage.removeItem('storage_register_images');
         openConfirmModal();
       } else {
         showToast(response.message || '보관소 등록에 실패했습니다. 다시 시도해주세요.');

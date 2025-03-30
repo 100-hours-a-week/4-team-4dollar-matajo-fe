@@ -1,8 +1,9 @@
 // src/pages/Login/KakaoCallback.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { kakaoLogin } from '../../services/api/modules/auth';
 import { saveToken } from '../../utils/api/authUtils';
+import axios from 'axios';
 
 /**
  * 카카오 로그인 콜백 처리 컴포넌트
@@ -14,8 +15,15 @@ const KakaoCallback: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // useRef를 사용하여 이미 처리 중인지 확인
+  const isProcessing = useRef(false);
+
   useEffect(() => {
     const processKakaoLogin = async () => {
+      // 이미 처리 중이면 중복 실행 방지
+      if (isProcessing.current) return;
+      isProcessing.current = true;
+
       try {
         console.log('====== 카카오 콜백 처리 시작 ======');
         console.log('현재 URL:', window.location.href);
@@ -36,24 +44,35 @@ const KakaoCallback: React.FC = () => {
         console.log('인가 코드 추출 성공:', code);
         console.log('전체 URL 파라미터:', Object.fromEntries(searchParams.entries()));
 
-        // 카카오 로그인 API 호출 (GET 요청)
-        const response = await kakaoLogin(code);
+        // 카카오 로그인 API 호출 (POST 요청)
+        const response = await axios.post(
+          'http://43.201.83.7:8080/auth/kakao',
+          { code },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            withCredentials: true,
+          },
+        );
 
-        // 로그인 성공 시 처리
-        if (response.success && response.data.accessToken) {
+        // 응답 구조 확인을 위한 로깅
+        console.log('서버 응답:', response.data);
+
+        // access_token으로 키 이름 수정
+        if (response.data.success && response.data.data?.access_token) {
           console.log('카카오 로그인 성공');
+          console.log('저장할 토큰:', response.data.data.access_token);
 
-          // accessToken만 저장
-          saveToken(response.data.accessToken);
+          saveToken(response.data.data.access_token);
+          console.log('토큰 저장 후 localStorage 확인:', localStorage.getItem('accessToken'));
 
-          // 메인 페이지로 리디렉션
           const returnPath = sessionStorage.getItem('returnPath') || '/';
           sessionStorage.removeItem('returnPath');
           navigate(returnPath, { replace: true });
         } else {
-          // 로그인 실패 시 처리
-          console.error('카카오 로그인 실패:', response.message);
-          setError(response.message || '로그인 처리 중 오류가 발생했습니다.');
+          console.error('카카오 로그인 실패: 토큰이 없거나 응답이 올바르지 않습니다');
+          setError('로그인 처리 중 오류가 발생했습니다.');
         }
       } catch (error: any) {
         console.error('카카오 콜백 처리 오류:', error);
@@ -64,6 +83,7 @@ const KakaoCallback: React.FC = () => {
         });
         setError('로그인 처리 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류'));
       } finally {
+        isProcessing.current = false;
         setIsLoading(false);
       }
     };

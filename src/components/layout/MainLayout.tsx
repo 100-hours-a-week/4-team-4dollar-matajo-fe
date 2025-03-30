@@ -49,18 +49,18 @@ const pathTitleMap: { [key: string]: string } = {
   '/login': '로그인',
   '/myplace': '내 공간',
   '/mytrade': '거래내역',
-  '/registration/step1': '회원가입 (1/3)',
-  '/registration/step2': '회원가입 (2/3)',
-  '/registration/step3': '회원가입 (3/3)',
+  '/storage/register': '회원가입 (1/3)',
+  '/storage/register/details': '회원가입 (2/3)',
+  '/storage/register/images': '회원가입 (3/3)',
   '/editstorage': '보관소 등록',
 };
 
 // 네비게이션이 표시되지 않는 경로 목록
 const noNavPaths = [
   '/login',
-  '/registration/step1',
-  '/registration/step2',
-  '/registration/step3',
+  '/storage/register',
+  '/storage/register/details',
+  '/storage/register/images',
   '/chat/', // 채팅 상세 페이지에서 네비바 숨기기 (앞부분만 매칭)
 ];
 

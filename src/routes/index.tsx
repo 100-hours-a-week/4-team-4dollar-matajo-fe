@@ -9,9 +9,6 @@ import MyPage from '../pages/MyPage';
 import StorageList from '../pages/StorageList/StorageList';
 import StorageDetail from '../pages/MyPage/subpages/StorageDetail';
 import KeeperRegistration from '../pages/MyPage/subpages/KeeperRegistration';
-import Registration1 from '../pages/MyPage/subpages/Registration/Registration1';
-import Registration2 from '../pages/MyPage/subpages/Registration/Registration2';
-import Registration3 from '../pages/MyPage/subpages/Registration/Registration3';
 import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
 import EditStorage from '../pages/EditStorage/EditStorage';
@@ -30,6 +27,11 @@ import PublicRoute from './PublicRoute';
 
 // 라우트 정의
 import { ROUTES } from '../constants/routes';
+
+// 새로운 import 추가
+import StorageRegistrationBasic from '../pages/Registration/StorageRegistrationBasic';
+import StorageRegistrationDetails from '../pages/Registration/StorageRegistrationDetails';
+import StorageRegistrationImages from '../pages/Registration/StorageRegistrationImages';
 
 const routes: RouteObject[] = [
   // 메인 리다이렉트 라우트 (초기 진입점)
@@ -88,15 +90,15 @@ const routes: RouteObject[] = [
         children: [
           {
             path: 'step1',
-            element: <Registration1 />,
+            element: <StorageRegistrationBasic />,
           },
           {
             path: 'step2',
-            element: <Registration2 />,
+            element: <StorageRegistrationDetails />,
           },
           {
             path: 'step3',
-            element: <Registration3 />,
+            element: <StorageRegistrationImages />,
           },
         ],
       },

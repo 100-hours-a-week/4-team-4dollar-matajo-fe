@@ -159,7 +159,7 @@ const MenuItem = styled.div`
 
 // 메뉴 제목
 const MenuTitle = styled.div`
-  font-size: 14px;
+  font-size: 13px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   margin-bottom: 4px;
@@ -167,7 +167,7 @@ const MenuTitle = styled.div`
 
 // 메뉴 설명
 const MenuDescription = styled.div`
-  font-size: 12px;
+  font-size: 10.5px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   color: ${THEME.gray500};
@@ -367,7 +367,7 @@ export const handleRegisterStorage = (
   // 보관인 여부 확인
   if (isKeeper()) {
     // 보관인이면 보관소 등록 페이지로 이동
-    navigate('/registration/step1');
+    navigate('/storage');
   } else {
     // 일반 사용자면 보관인 등록 모달 표시
     setShowKeeperModal(true);
@@ -480,7 +480,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   // 보관인 등록 확인 핸들러
   const handleKeeperConfirm = () => {
     setShowKeeperModal(false);
-    navigate('/keeper/registration');
+    navigate('/storage');
   };
 
   // 게시판 이동 핸들러

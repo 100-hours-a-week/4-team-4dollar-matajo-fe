@@ -28,15 +28,19 @@ export const ROUTES = {
   KEEPER_REGISTRATION: 'keeper/registration',
 
   // 보관인 등록 단계
-  REGISTRATION_STEP1: 'registration/step1',
-  REGISTRATION_STEP2: 'registration/step2',
-  REGISTRATION_STEP3: 'registration/step3',
+  REGISTRATION_STEP1: 'storage/register',
+  REGISTRATION_STEP2: 'storage/register/details',
+  REGISTRATION_STEP3: 'storage/register/images',
 
   // 기타
   EDIT_STORAGE: 'editstorage',
 
   // 404 페이지
   NOT_FOUND: '*',
-};
+
+  STORAGE_REGISTER: '/storage/register',
+  STORAGE_REGISTER_DETAILS: '/storage/register/details',
+  STORAGE_REGISTER_IMAGES: '/storage/register/images',
+} as const;
 
 export default ROUTES;
