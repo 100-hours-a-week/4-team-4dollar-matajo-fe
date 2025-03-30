@@ -38,7 +38,7 @@ const KakaoCallback: React.FC = () => {
         const response = await kakaoLogin(code);
 
         // 로그인 성공 시 처리
-        if (response.success && response.data.accessToken) {
+        if (response.success) {
           console.log('카카오 로그인 성공');
 
           // accessToken만 저장

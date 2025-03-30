@@ -24,7 +24,7 @@ interface ApiResponse<T> {
 }
 
 // 백엔드 거래 내역 응답 타입 정의
-interface BackendTradeItem {
+export interface BackendTradeItem {
   trade_id: number;
   keeper_status: boolean;
   product_name: string;

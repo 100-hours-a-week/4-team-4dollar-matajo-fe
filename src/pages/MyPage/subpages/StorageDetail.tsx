@@ -150,7 +150,7 @@ const ChatButton = styled.div`
   padding: 8px 0;
   position: absolute;
   right: 25px;
-  top: 50px;
+  top: 80px;
   background: ${THEME.primaryTransparent};
   border-radius: 10px;
   display: flex;

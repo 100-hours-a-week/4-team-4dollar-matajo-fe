@@ -18,7 +18,7 @@ interface KeeperRegistrationResponse {
   success: boolean;
   message: string;
   data: {
-    accessToken?: string;
+    accessToken: string;
   };
 }
 
@@ -69,28 +69,13 @@ export const registerKeeperTerms = async (
     const response = await client.post(API_PATHS.USER.REGISTER_AS_KEEPER, data);
     console.log('보관인 등록 API 응답:', response.data);
 
-    // 성공 응답에 새 토큰이 포함된 경우 역할 업데이트
-    if (response.data.success && response.data.data?.accessToken) {
-      console.log('새 액세스 토큰 저장:', response.data.data.accessToken);
-
-      // 기존 토큰을 새 토큰으로 대체
-      localStorage.setItem('accessToken', response.data.data.accessToken);
-      console.log('로컬스토리지에 새 토큰 저장 완료');
-
-      // 직접 updateUserRole 함수 가져와서 호출
-      updateUserRole(response.data.data.accessToken);
-      console.log('사용자 역할 업데이트 완료');
-
-      // 역할 변경 이벤트 발생
-      window.dispatchEvent(
-        new CustomEvent('USER_ROLE_CHANGED', {
-          detail: { role: 2 }, // 보관인 역할을 명시적으로 설정
-        }),
-      );
-      console.log('사용자 역할 변경 이벤트 발생 완료');
-    }
-
-    return response.data;
+    return {
+      success: true,
+      message: response.data.message,
+      data: {
+        accessToken: response.data.data.access_token,
+      },
+    };
   } catch (error: any) {
     console.error('보관인 약관 동의 실패:', error);
 

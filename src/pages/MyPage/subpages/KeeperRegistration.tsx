@@ -6,6 +6,7 @@ import { registerKeeperTerms } from '../../../services/api/modules/keeper';
 import Toast from '../../../components/common/Toast';
 import { updateUserRole, getRole } from '../../../utils/formatting/decodeJWT';
 import { ROUTES } from '../../../constants/routes';
+import { saveToken } from '../../../utils/api/authUtils';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -330,6 +331,27 @@ const KeeperRegistration: React.FC = () => {
       // 보관인 등록 API 호출
       const response = await registerKeeperTerms(termsData);
 
+      // 성공 응답에 새 토큰이 포함된 경우 역할 업데이트
+      if (response.success) {
+        console.log('새 액세스 토큰 저장:', response.data.accessToken);
+
+        // 기존 토큰을 새 토큰으로 대체
+        saveToken(response.data.accessToken);
+        console.log('로컬스토리지에 새 토큰 저장 완료');
+
+        // 직접 updateUserRole 함수 가져와서 호출
+        updateUserRole(response.data?.accessToken);
+        console.log('사용자 역할 업데이트 완료');
+
+        // 역할 변경 이벤트 발생
+        window.dispatchEvent(
+          new CustomEvent('USER_ROLE_CHANGED', {
+            detail: { role: 2 }, // 보관인 역할을 명시적으로 설정
+          }),
+        );
+        console.log('사용자 역할 변경 이벤트 발생 완료');
+      }
+
       console.log('보관인 등록 응답 성공:', response);
       console.log('새 토큰이 있는지 확인:', !!response.data?.accessToken);
 
@@ -387,6 +409,27 @@ const KeeperRegistration: React.FC = () => {
 
       // 보관인 등록 API 호출
       const response = await registerKeeperTerms(termsData);
+
+      // 성공 응답에 새 토큰이 포함된 경우 역할 업데이트
+      if (response.success) {
+        console.log('새 액세스 토큰 저장:', response.data.accessToken);
+
+        // 기존 토큰을 새 토큰으로 대체
+        saveToken(response.data.accessToken);
+        console.log('로컬스토리지에 새 토큰 저장 완료');
+
+        // 직접 updateUserRole 함수 가져와서 호출
+        updateUserRole(response.data?.accessToken);
+        console.log('사용자 역할 업데이트 완료');
+
+        // 역할 변경 이벤트 발생
+        window.dispatchEvent(
+          new CustomEvent('USER_ROLE_CHANGED', {
+            detail: { role: 2 }, // 보관인 역할을 명시적으로 설정
+          }),
+        );
+        console.log('사용자 역할 변경 이벤트 발생 완료');
+      }
 
       console.log('보관인 등록 응답 성공 (홈으로 이동):', response);
       console.log('새 토큰이 있는지 확인:', !!response.data?.accessToken);

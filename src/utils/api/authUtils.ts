@@ -50,6 +50,7 @@ export const isAuthenticated = (): boolean => {
 export const logout = (): void => {
   try {
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('userId');
 
     // 인증 상태 변경 이벤트 발생
     window.dispatchEvent(new CustomEvent('AUTH_STATE_CHANGED'));

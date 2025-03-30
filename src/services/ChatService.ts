@@ -2,6 +2,7 @@ import SockJS from 'sockjs-client';
 import { Client, IFrame, IMessage, StompSubscription } from '@stomp/stompjs';
 import client from '../services/api/client';
 import { API_BACKEND_URL, API_PATHS } from '../constants/api';
+import { getToken, getUserIdFromToken } from '../utils/api/authUtils';
 
 // 메시지 타입 정의 - 백엔드와 일치
 export enum MessageType {
@@ -120,26 +121,42 @@ class ChatService {
       this.connectionStatus = 'connecting';
       console.log('연결 시도 중...');
 
+      // accessToken 가져오기기
+      const token = getToken();
+      if (!token) {
+        throw new Error('인증 토큰이 없습니다.');
+      }
+      // userId 가져오기
+      const userId = getUserIdFromToken() as string;
+
       try {
         // SockJS 옵션 설정
         const sockJSOptions: any = {
           transports: ['websocket', 'xhr-streaming', 'xhr-polling'],
           timeout: 10000,
           withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            userId: userId, // WebSocket 연결 시 userId 헤더 추가
+            Authorization: `Bearer ${token}`,
+          },
         };
-
-        // userId 가져오기
-        const userId = localStorage.getItem('userId') || '1';
 
         // STOMP 클라이언트 생성
         this.stompClient = new Client({
-          webSocketFactory: () => new SockJS(`${API_BACKEND_URL}/ws-chat`, null, sockJSOptions),
+          webSocketFactory: () =>
+            new SockJS(
+              `${API_BACKEND_URL}/ws-chat?userId=${userId}&token=${token}`,
+              null,
+              sockJSOptions,
+            ),
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
           connectHeaders: {
             'X-Requested-With': 'XMLHttpRequest',
             userId: userId, // WebSocket 연결 시 userId 헤더 추가
+            Authorization: `Bearer ${token}`,
           },
 
           debug: msg => {
@@ -374,9 +391,6 @@ class ChatService {
         message_type: message.messageType,
       };
 
-      // userId 가져오기
-      const userId = localStorage.getItem('userId') || '1';
-
       // 메시지 전송 - userId 헤더 추가
       this.stompClient.publish({
         destination: `/app/${roomId}/message`,
@@ -511,7 +525,7 @@ class ChatService {
     const url = `${API_PATHS.CHAT.TRADE_INFO}`;
 
     // Get userId from localStorage
-    const userId = localStorage.getItem('userId') || '1';
+    //const userId = localStorage.getItem('userId') || '1';
 
     // Prepare data in the format expected by backend
     const requestData = {

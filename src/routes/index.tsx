@@ -99,10 +99,6 @@ const routes: RouteObject[] = [
       // 'mypage/registration'에서 'mypage/keeper-registration'으로 리다이렉트
       {
         path: ROUTES.MYPAGE_REGISTRATION_STEP1,
-        element: <Navigate to={ROUTES.KEEPER_REGISTRATION} replace />,
-      },
-      {
-        path: ROUTES.MYPAGE_REGISTRATION_STEP1,
         element: <Registration1 />,
       },
       {

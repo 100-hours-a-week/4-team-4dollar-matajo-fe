@@ -70,7 +70,7 @@ export interface MyTradesResponse {
 export const getMyTrades = async (): Promise<TradeItem[]> => {
   try {
     // 올바른 API 경로 사용 (API_PATHS.TRADES.MY_TRADES)
-    const response = await client.get<MyTradesResponse>('/api/trades/my-trades');
+    const response = await client.get<MyTradesResponse>(API_PATHS.TRADES.MY_TRADES);
 
     if (response.data && response.data.success && Array.isArray(response.data.data)) {
       console.log('거래 내역 조회 성공:', response.data);

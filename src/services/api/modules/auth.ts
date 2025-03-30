@@ -35,7 +35,6 @@ export const kakaoLogin = async (code: string): Promise<LoginResponse> => {
     // 일관되게 POST 메소드 사용 (서버가 POST를 기대함)
     const response = await client.post(API_PATHS.AUTH.KAKAO, {
       code,
-      redirect_uri: KAKAO_AUTH.REDIRECT_URI,
     });
 
     console.log('응답 상태 코드:', response.status);
@@ -45,7 +44,9 @@ export const kakaoLogin = async (code: string): Promise<LoginResponse> => {
 
     return {
       success: true,
-      data: response.data.data || response.data,
+      data: {
+        accessToken: response.data.data.access_token,
+      },
     };
   } catch (error: any) {
     console.error('====== 카카오 로그인 오류 ======');

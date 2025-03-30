@@ -57,11 +57,11 @@ export const API_PATHS = {
     MY_POSTS: '/api/posts/my-posts',
   },
   CHAT: {
-    ROOMS: '/api/chat/rooms',
-    MESSAGES: '/api/chat/rooms/:roomId/messages',
-    SEND: '/api/chat/rooms/:roomId/send',
-    CREATE: '/api/chat/rooms/create',
-    TRADE_INFO: '/api/chat/trade',
+    ROOMS: '/api/chats',
+    MESSAGES: '/api/chats/:roomId/message',
+    CREATE: '/api/chats',
+    SEND: '/app/:roomId/message',
+    TRADE_INFO: '/api/trades',
   },
   KEEPER: {
     REGISTER: '/api/keeper/register',
@@ -69,8 +69,8 @@ export const API_PATHS = {
     UPDATE: '/api/keeper/profile',
   },
   MYPAGE: {
-    TRADE: '/api/mypage/trades',
-    STORAGE: '/api/mypage/storage',
+    TRADE: '/api/trades/my-trades',
+    STORAGE: '/api/posts/my-posts',
   },
   TRADES: {
     MY_TRADES: '/api/trades/my-trades',
