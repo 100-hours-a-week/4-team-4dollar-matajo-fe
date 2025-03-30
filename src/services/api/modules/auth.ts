@@ -34,7 +34,7 @@ export const kakaoLogin = async (code: string): Promise<LoginResponse> => {
 
     // POST 메소드 사용 - body로 전달
     const response = await client.post(endpoint, {
-      code: code,
+      code,
     });
 
     console.log('응답 상태 코드:', response.status);
@@ -42,13 +42,15 @@ export const kakaoLogin = async (code: string): Promise<LoginResponse> => {
     console.log('응답 데이터:', response.data);
     console.log('====== 카카오 로그인 API 요청 종료 ======');
 
-    // 응답 데이터 구조 매핑
+    // 응답 데이터 구조 완전히 매핑
     return {
       success: response.data.success,
       data: {
         accessToken: response.data.data.access_token,
         refreshToken: response.data.data.refresh_token,
+        userId: response.data.data.user_id,
         nickname: response.data.data.nickname,
+        role: response.data.data.role,
       },
       message: response.data.message,
     };

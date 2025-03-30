@@ -2,6 +2,7 @@ import SockJS from 'sockjs-client';
 import { Client, IFrame, IMessage, StompSubscription } from '@stomp/stompjs';
 import client from '../services/api/client';
 import { API_BACKEND_URL, API_PATHS } from '../constants/api';
+import { getUserId } from '../utils/formatting/decodeJWT';
 
 // 메시지 타입 정의 - 백엔드와 일치
 export enum MessageType {
@@ -118,6 +119,20 @@ class ChatService {
   // 연결 상태를 더 명확하게 관리
   private connectionPromise: Promise<boolean> | null = null;
 
+  private getUserIdFromToken(): string {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      throw new Error('인증이 필요합니다.');
+    }
+
+    const userId = getUserId(accessToken);
+    if (userId === null) {
+      throw new Error('유효하지 않은 토큰입니다.');
+    }
+
+    return userId.toString();
+  }
+
   // WebSocket 연결
   public connect(): Promise<boolean> {
     // 이미 연결 중인 경우 진행 중인 Promise 반환
@@ -143,18 +158,31 @@ class ChatService {
           withCredentials: true,
         };
 
-        // userId 가져오기
-        const userId = localStorage.getItem('userId') || '1';
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) {
+          throw new Error('인증이 필요합니다.');
+        }
+
+        const userId = getUserId(accessToken);
+        if (userId === null) {
+          throw new Error('유효하지 않은 토큰입니다.');
+        }
 
         // STOMP 클라이언트 생성
         this.stompClient = new Client({
-          webSocketFactory: () => new SockJS(`${API_BACKEND_URL}/ws-chat`, null, sockJSOptions),
+          webSocketFactory: () =>
+            new SockJS(
+              `${API_BACKEND_URL}/ws-chat?userId=${userId}&token=${accessToken}`,
+              null,
+              sockJSOptions,
+            ),
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
           connectHeaders: {
             'X-Requested-With': 'XMLHttpRequest',
-            userId: userId, // WebSocket 연결 시 userId 헤더 추가
+            userId: userId.toString(),
+            Authorization: `Bearer ${accessToken}`,
           },
 
           debug: msg => {
@@ -389,8 +417,7 @@ class ChatService {
         message_type: message.messageType,
       };
 
-      // userId 가져오기
-      const userId = localStorage.getItem('userId') || '1';
+      const userId = this.getUserIdFromToken();
 
       // 메시지 전송 - userId 헤더 추가
       this.stompClient.publish({
@@ -398,6 +425,7 @@ class ChatService {
         body: JSON.stringify(backendMessage),
         headers: {
           'content-type': 'application/json',
+          userId: userId,
         },
       });
 

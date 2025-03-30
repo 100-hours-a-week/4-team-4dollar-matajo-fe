@@ -7,6 +7,7 @@ import Modal from '../../components/common/Modal';
 import ChatService, { ChatRoomResponseDto } from '../../services/ChatService';
 import axios from 'axios';
 import moment from 'moment-timezone';
+import { getUserId } from '../../utils/formatting/decodeJWT';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -216,18 +217,31 @@ const ChatroomList: React.FC = () => {
   // 채팅 서비스 인스턴스
   const chatService = ChatService.getInstance();
 
-  // 현재 사용자 ID - localStorage에서 가져오거나 설정
+  // 현재 사용자 ID - accessToken에서 추출
   const [currentUserId, setCurrentUserId] = useState<number>(() => {
-    // localStorage에서 userId 확인
-    const savedUserId = localStorage.getItem('userId');
-    if (savedUserId) {
-      return parseInt(savedUserId);
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      navigate('/login');
+      return 0;
     }
 
-    // 없으면 기본값 1 설정 및 저장
-    localStorage.setItem('userId', '1');
-    return 1;
+    const userId = getUserId(accessToken);
+    if (userId === null) {
+      navigate('/login');
+      return 0;
+    }
+
+    // userId를 localStorage에 저장
+    localStorage.setItem('userId', userId.toString());
+    return userId;
   });
+
+  // userId가 0인 경우(인증 실패) 처리
+  useEffect(() => {
+    if (currentUserId === 0) {
+      navigate('/login');
+    }
+  }, [currentUserId, navigate]);
 
   // 채팅방 데이터 상태
   const [chatrooms, setChatrooms] = useState<ChatRoomResponseDto[]>([]);

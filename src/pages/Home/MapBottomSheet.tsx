@@ -685,6 +685,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
           <Divider />
 
           <MenuContainer>
+            =
             <MenuItem onClick={handleRegisterClick}>
               <MenuTitle>보관장소 등록하기</MenuTitle>
               <MenuDescription>보관인이 되어 장소를 등록해요</MenuDescription>
