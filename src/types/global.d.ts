@@ -25,6 +25,8 @@ interface Window {
     };
   };
   daum: {
-    Postcode: new (options: any) => any;
+    Postcode: new (config: { oncomplete: (data: any) => void; [key: string]: any }) => {
+      open: () => void;
+    };
   };
 }

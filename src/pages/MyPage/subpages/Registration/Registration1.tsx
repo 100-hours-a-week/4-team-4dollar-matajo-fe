@@ -353,6 +353,18 @@ const Registration1: React.FC = () => {
     }
   }, [location.state]);
 
+  // Daum 우편번호 스크립트 로드
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
   // 토스트 메시지 표시 함수
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -390,43 +402,40 @@ const Registration1: React.FC = () => {
 
   // 주소 필드 클릭 핸들러
   const handleAddressClick = () => {
-    new window.daum.Postcode({
-      oncomplete: async (data: any) => {
-        try {
-          setIsLoading(true);
+    if (window.daum && window.daum.Postcode) {
+      new window.daum.Postcode({
+        oncomplete: async (data: any) => {
+          try {
+            setIsLoading(true);
 
-          // 다음 주소 API 응답 데이터를 formData에 맞게 변환
-          const updatedFormData = {
-            ...formData,
-            postAddress: data.address,
-            postAddressData: data,
-          };
+            // 다음 주소 API 응답 데이터를 formData에 맞게 변환
+            const updatedFormData = {
+              ...formData,
+              postAddress: data.address,
+              postAddressData: data,
+            };
 
-          setFormData(updatedFormData);
-          setErrors(prev => ({ ...prev, postAddress: '' }));
-          localStorage.setItem('registration_step1', JSON.stringify(updatedFormData));
+            setFormData(updatedFormData);
+            setErrors(prev => ({ ...prev, postAddress: '' }));
+            localStorage.setItem('registration_step1', JSON.stringify(updatedFormData));
 
-          showToast('주소가 선택되었습니다.');
-        } catch (error) {
-          console.error('주소 데이터 처리 실패:', error);
-          showToast('주소 설정에 실패했습니다. 다시 시도해주세요.');
-        } finally {
-          setIsLoading(false);
-        }
-      },
-    }).open();
+            showToast('주소가 선택되었습니다.');
+          } catch (error) {
+            console.error('주소 데이터 처리 실패:', error);
+            showToast('주소 설정에 실패했습니다. 다시 시도해주세요.');
+          } finally {
+            setIsLoading(false);
+          }
+        },
+      }).open();
+    } else {
+      showToast('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+    }
   };
 
   // 포커스 핸들러
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name } = e.target;
-
-    // 주소 필드의 경우 포커스 대신 클릭 이벤트 처리
-    if (name === 'postAddress') {
-      handleAddressClick();
-      return;
-    }
-
     setFocused(prev => ({ ...prev, [name]: true }));
   };
 
@@ -604,13 +613,13 @@ const Registration1: React.FC = () => {
             name="postAddress"
             value={formData.postAddress}
             onChange={handleInputChange}
-            onFocus={handleFocus}
+            onFocus={e => e.preventDefault()}
             onBlur={handleBlur}
             placeholder="주소를 입력해주세요"
             isError={!!errors.postAddress}
             isFocused={focused.postAddress}
-            readOnly={true} // 읽기 전용으로 설정
-            onClick={handleAddressClick} // 클릭 시 주소 검색 페이지로 이동
+            readOnly={true}
+            onClick={handleAddressClick}
           />
           <AddressSearchButton onClick={handleAddressClick} />
 

@@ -8,23 +8,28 @@ console.log('API 클라이언트 초기화: API_BACKEND_URL =', API_BACKEND_URL)
 
 // axios 인스턴스 생성
 const client = axios.create({
-  baseURL: API_BACKEND_URL,
+  baseURL: API_BACKEND_URL.replace(/\/+$/, ''), // 끝의 슬래시 제거
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // 쿠키, 인증 헤더 등 자격 증명 정보 포함
+  withCredentials: false, // CORS 오류 방지를 위해 false로 설정
 });
 
 // 인터셉터 설정 - 요청에 JWT 토큰 포함
 client.interceptors.request.use(
   config => {
-    const token = getToken();
+    const token = localStorage.getItem('token');
     if (token) {
       console.log('API 요청에 토큰 추가:', token.substring(0, 10) + '...');
       config.headers.Authorization = `Bearer ${token}`;
     } else {
       console.log('API 요청에 토큰 없음');
     }
+
+    // CORS 관련 헤더 추가
+    config.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000';
+    config.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+    config.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
 
     // 요청 디버깅을 위한 로그
     console.log(`API 요청: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);

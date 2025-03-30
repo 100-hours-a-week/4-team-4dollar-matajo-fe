@@ -81,11 +81,25 @@ const routes: RouteObject[] = [
   // 보관인만 접근 가능한 라우트
   {
     path: '/',
-    element: <PrivateRoute requiredRole={UserRole.Keeper} />,
+    element: <MainLayout />,
     children: [
-      { path: ROUTES.REGISTRATION_STEP1, element: <Registration1 /> },
-      { path: ROUTES.REGISTRATION_STEP2, element: <Registration2 /> },
-      { path: ROUTES.REGISTRATION_STEP3, element: <Registration3 /> },
+      {
+        path: 'registration',
+        children: [
+          {
+            path: 'step1',
+            element: <Registration1 />,
+          },
+          {
+            path: 'step2',
+            element: <Registration2 />,
+          },
+          {
+            path: 'step3',
+            element: <Registration3 />,
+          },
+        ],
+      },
       { path: ROUTES.EDIT_STORAGE, element: <EditStorage /> },
       { path: ROUTES.MYPLACE, element: <MyPlace /> },
     ],
