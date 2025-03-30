@@ -332,11 +332,11 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
         // 게시글 데이터를 마커로 변환
         const newMarkers = response.data.posts.map(post => ({
-          id: post.id.toString(),
-          name: post.title,
+          id: post.post_id.toString(),
+          name: post.post_title,
           latitude: post.latitude,
           longitude: post.longitude,
-          address: '', // API에서 제공하지 않는 경우 빈 문자열로 설정
+          address: post.post_address || '',
         }));
 
         // 마커 업데이트 - 이미 메모이제이션된 함수를 사용

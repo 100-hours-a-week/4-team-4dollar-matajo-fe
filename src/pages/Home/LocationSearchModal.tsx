@@ -190,13 +190,13 @@ const LoadingText = styled.p`
   font-family: 'Noto Sans KR', sans-serif;
 `;
 
-// 위치 정보 인터페이스
+// LocationInfo 인터페이스 수정
 interface LocationInfo {
   formatted_address: string;
   display_name: string;
   latitude: string;
   longitude: string;
-  location_id?: number;
+  location_id: number; // optional 제거
 }
 
 // 인터페이스 정의
@@ -288,68 +288,68 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   }, [isOpen]);
 
   const handleSearch = async () => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+
     if (!searchTerm.trim()) {
       const savedLocations = localStorage.getItem('recentLocationSearches');
-      let recentLocations: LocationInfo[] = [];
-
-      if (savedLocations) {
-        recentLocations = JSON.parse(savedLocations);
-      } else {
-        recentLocations = await getCurrentLocationData();
-      }
-
-      setSearchResults(recentLocations);
+      setSearchResults(savedLocations ? JSON.parse(savedLocations) : []);
+      setLoading(false);
       return;
     }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await searchDong(searchTerm);
+
+      if (Array.isArray(response)) {
+        const locationPromises = response.map(address => getLocationId(address));
+        const locationResponses = await Promise.all(locationPromises);
+
+        const formattedResults = locationResponses
+          .map((locationResponse, index) => {
+            if (
+              locationResponse &&
+              Array.isArray(locationResponse) &&
+              locationResponse.length > 0
+            ) {
+              const locationData = locationResponse[0];
+              return {
+                formatted_address: response[index],
+                display_name: response[index],
+                latitude: locationData.latitude.toString(),
+                longitude: locationData.longitude.toString(),
+                location_id: locationData.id,
+              } as LocationInfo;
+            }
+            return null;
+          })
+          .filter((result): result is LocationInfo => result !== null);
+
+        setSearchResults(formattedResults);
+      }
+    } catch (error) {
+      console.error('검색 오류:', error);
+      setError('검색 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
 
     if (searchTimerRef.current) {
       clearTimeout(searchTimerRef.current);
     }
 
-    setLoading(true);
-
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        setError(null);
-
-        const response = await searchDong(searchTerm);
-
-        if (Array.isArray(response)) {
-          const formattedResults = await Promise.all(
-            response.map(async (address: string) => {
-              const response = await getLocationId(address);
-              const locationResponse = response as unknown as LocationIdData[];
-
-              if (locationResponse && locationResponse.length > 0) {
-                const locationData = locationResponse[0];
-                return {
-                  formatted_address: address,
-                  display_name: address,
-                  latitude: locationData.latitude.toString(),
-                  longitude: locationData.longitude.toString(),
-                  location_id: locationData.id,
-                };
-              }
-              throw new Error('위치 정보를 가져오는데 실패했습니다.');
-            }),
-          );
-
-          setSearchResults(formattedResults);
-        } else {
-          throw new Error('동 검색에 실패했습니다.');
-        }
-      } catch (error) {
-        console.error('검색 오류:', error);
-        setError('검색 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    handleSearch();
+    searchTimerRef.current = setTimeout(() => {
+      handleSearch();
+    }, 500); // 디바운스 시간을 500ms로 증가
   };
 
   const handleResultClick = (location: LocationInfo) => {

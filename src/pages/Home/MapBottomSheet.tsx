@@ -4,7 +4,8 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import Modal from '../../components/common/Modal';
-import { getLocationId } from '../../utils/api/locationUtils';
+import { getLocationId } from '../../services/api/modules/place';
+import { LocationIdData, LocationIdResponse } from '../../services/api/modules/storage';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -345,34 +346,30 @@ const ItemTags = styled.div`
   color: ${THEME.gray500};
 `;
 
-interface LocationIdData {
-  id: number;
+// BottomSheetState 타입 정의
+type BottomSheetState = 'closed' | 'half-expanded' | 'full';
+
+// Marker 인터페이스 정의
+export interface Marker {
+  id: string;
+  name: string;
   latitude: number;
   longitude: number;
-  address?: string;
+  address: string;
 }
 
-// 보관소 등록 핸들러 함수
-export const handleRegisterStorage = (
-  navigate: ReturnType<typeof useNavigate>,
-  setShowKeeperModal: (show: boolean) => void,
-): void => {
-  // 인증 확인
-  if (!isLoggedIn()) {
-    // 로그인 페이지로 이동
-    navigate('/login');
-    return;
-  }
-
-  // 보관인 여부 확인
-  if (isKeeper()) {
-    // 보관인이면 보관소 등록 페이지로 이동
-    navigate('/storage');
-  } else {
-    // 일반 사용자면 보관인 등록 모달 표시
-    setShowKeeperModal(true);
-  }
-};
+interface MapBottomSheetProps {
+  location?: string;
+  defaultLocation?: string;
+  onRegisterStorage?: () => void;
+  onGoToBoard?: () => void;
+  onDiscountItemClick?: (id: string) => void;
+  discountItems?: any[];
+  recentItems?: any[];
+  onEditLocation?: () => void;
+  storageMarkers?: Marker[];
+  onMarkerClick?: (markerId: string) => void;
+}
 
 // KeeperRegistrationModal 컴포넌트
 export const KeeperRegistrationModal: React.FC<{
@@ -380,23 +377,20 @@ export const KeeperRegistrationModal: React.FC<{
   onClose: () => void;
   onConfirm: () => void;
 }> = ({ isOpen, onClose, onConfirm }) => {
-  // 모달 내용
-  const keeperRegistrationContent = (
-    <>
-      <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>
-        보관인 미등록 계정입니다.
-        <br />
-      </span>
-      <span style={{ color: '#010048', fontSize: '16px', fontWeight: 700 }}>보관인 등록</span>
-      <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>하시겠습니까?</span>
-    </>
-  );
-
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      content={keeperRegistrationContent}
+      content={
+        <>
+          <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>
+            보관인 미등록 계정입니다.
+            <br />
+          </span>
+          <span style={{ color: '#010048', fontSize: '16px', fontWeight: 700 }}>보관인 등록</span>
+          <span style={{ color: '#5b5a5d', fontSize: '16px', fontWeight: 500 }}>하시겠습니까?</span>
+        </>
+      }
       cancelText="취소"
       confirmText="등록"
       onCancel={onClose}
@@ -405,19 +399,22 @@ export const KeeperRegistrationModal: React.FC<{
   );
 };
 
-// 바텀 시트 타입 정의
-type BottomSheetState = 'closed' | 'half-expanded' | 'full';
+// 보관소 등록 핸들러
+export const handleRegisterStorage = (
+  navigate: ReturnType<typeof useNavigate>,
+  setShowKeeperModal: (show: boolean) => void,
+): void => {
+  if (!isLoggedIn()) {
+    navigate('/login');
+    return;
+  }
 
-interface MapBottomSheetProps {
-  location?: string;
-  onRegisterStorage?: () => void;
-  onGoToBoard?: () => void;
-  onDiscountItemClick?: (id: string) => void;
-  discountItems?: any[];
-  recentItems?: any[];
-  onEditLocation?: () => void;
-  defaultLocation?: string;
-}
+  if (isKeeper()) {
+    navigate('/storage');
+  } else {
+    setShowKeeperModal(true);
+  }
+};
 
 const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   location = '제주특별자치도 제주시 이도이동',
@@ -428,12 +425,89 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   discountItems = [],
   recentItems = [],
   onEditLocation,
+  storageMarkers = [],
+  onMarkerClick,
 }) => {
   const navigate = useNavigate();
   const [showKeeperModal, setShowKeeperModal] = useState(false);
   const [sheetState, setSheetState] = useState<BottomSheetState>('half-expanded');
-  const [currentY, setCurrentY] = useState(window.innerHeight / 2);
-  const [currentLocation, setCurrentLocation] = useState(location);
+  const [currentLocation, setCurrentLocation] = useState<string>(location);
+  const [currentUserLocation, setCurrentUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  const bottomSheetRef = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
+  const startYRef = useRef<number>(0);
+  const currentYRef = useRef<number>(0);
+
+  // 스냅포인트 정의 수정
+  const snapPoints = {
+    closed: window.innerHeight * 0.85, // 화면의 85% 지점 (지도가 15% 보임)
+    'half-expanded': window.innerHeight * 0.5, // 화면의 50% 지점
+    full: window.innerHeight * 0.2, // 화면의 20% 지점 (지도가 80% 보임)
+  };
+
+  // 스냅포인트 계산 함수 추가
+  const calculateSnapPoint = (currentTop: number): BottomSheetState => {
+    const viewportHeight = window.innerHeight;
+    const currentPercentage = (currentTop / viewportHeight) * 100;
+
+    // 각 스냅포인트와의 거리 계산
+    const distances = {
+      closed: Math.abs(currentPercentage - 85), // 85% 지점과의 거리
+      'half-expanded': Math.abs(currentPercentage - 50), // 50% 지점과의 거리
+      full: Math.abs(currentPercentage - 20), // 20% 지점과의 거리
+    };
+
+    // 가장 가까운 스냅포인트 찾기
+    return Object.entries(distances).reduce((a, b) => (a[1] < b[1] ? a : b))[0] as BottomSheetState;
+  };
+
+  const handleDragStart = (
+    e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
+  ) => {
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    startYRef.current = clientY;
+    currentYRef.current = bottomSheetRef.current?.offsetTop || 0;
+
+    if ('touches' in e) {
+      document.addEventListener('touchmove', handleDragMove as EventListener);
+      document.addEventListener('touchend', handleDragEnd);
+    } else {
+      document.addEventListener('mousemove', handleDragMove as EventListener);
+      document.addEventListener('mouseup', handleDragEnd);
+    }
+  };
+
+  const handleDragMove = (e: TouchEvent | MouseEvent) => {
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const delta = clientY - startYRef.current;
+    const newY = currentYRef.current + delta;
+
+    if (bottomSheetRef.current) {
+      bottomSheetRef.current.style.transition = 'none';
+      bottomSheetRef.current.style.top = `${Math.max(0, newY)}px`;
+    }
+  };
+
+  const handleDragEnd = () => {
+    document.removeEventListener('mousemove', handleDragMove as EventListener);
+    document.removeEventListener('mouseup', handleDragEnd);
+    document.removeEventListener('touchmove', handleDragMove as EventListener);
+    document.removeEventListener('touchend', handleDragEnd);
+
+    if (bottomSheetRef.current) {
+      const currentTop = bottomSheetRef.current.offsetTop;
+      const newState = calculateSnapPoint(currentTop);
+      const targetY = snapPoints[newState];
+
+      bottomSheetRef.current.style.transition = 'top 0.3s ease-out';
+      bottomSheetRef.current.style.top = `${targetY}px`;
+      setSheetState(newState);
+    }
+  };
 
   // 컴포넌트 마운트 시 현재 위치 가져오기
   useEffect(() => {
@@ -444,12 +518,10 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
         });
 
         const { latitude, longitude } = position.coords;
-        const locationResponse = (await getLocationId(
-          `${latitude},${longitude}`,
-        )) as LocationIdData[];
+        const locationResponse = await getLocationId(`${latitude},${longitude}`);
 
-        if (locationResponse && locationResponse.length > 0) {
-          const locationData = locationResponse[0];
+        if (Array.isArray(locationResponse) && locationResponse.length > 0) {
+          const locationData = locationResponse[0] as LocationIdData;
           setCurrentLocation(locationData.address || defaultLocation || location);
         }
       } catch (error) {
@@ -466,7 +538,22 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     if (location !== currentLocation) {
       setCurrentLocation(location);
     }
-  }, [location]);
+  }, [location, currentLocation]);
+
+  // 현재 위치 가져오기
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        setCurrentUserLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      error => {
+        console.error('현재 위치 가져오기 실패:', error);
+      },
+    );
+  }, []);
 
   // 보관소 등록 핸들러
   const handleRegisterClick = () => {
@@ -516,16 +603,66 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   return (
     <Container>
       <MapArea>
-        <MapText>지도가 이곳에 표시됩니다</MapText>
+        {/* 현재 위치 마커 */}
+        {currentUserLocation && (
+          <div
+            style={{
+              position: 'absolute',
+              left: `${currentUserLocation.latitude}px`,
+              top: `${currentUserLocation.longitude}px`,
+              width: '12px',
+              height: '12px',
+              backgroundColor: '#3A00E5',
+              borderRadius: '50%',
+              border: '2px solid white',
+              boxShadow: '0 0 4px rgba(0, 0, 0, 0.3)',
+            }}
+          />
+        )}
+
+        {/* 보관소 마커 */}
+        {storageMarkers.map(marker => (
+          <div
+            key={marker.id}
+            onClick={() => onMarkerClick?.(marker.id)}
+            style={{
+              position: 'absolute',
+              left: `${marker.latitude}px`,
+              top: `${marker.longitude}px`,
+              cursor: 'pointer',
+            }}
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z"
+                fill="#3A00E5"
+              />
+            </svg>
+          </div>
+        ))}
       </MapArea>
 
       <BottomSheet
+        ref={bottomSheetRef}
         style={{
-          top: `${currentY}px`,
-          height: `${window.innerHeight - 100}px`,
+          top: snapPoints[sheetState],
+          height: `${window.innerHeight}px`, // 높이를 전체 화면 높이로 설정
+          transition: 'top 0.3s ease-out',
         }}
       >
-        <DragHandleContainer>
+        <DragHandleContainer
+          ref={dragHandleRef}
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+        >
           <DragHandle />
         </DragHandleContainer>
 

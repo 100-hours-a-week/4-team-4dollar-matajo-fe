@@ -2,7 +2,38 @@ import client from '../client';
 import axios, { AxiosError } from 'axios';
 import { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
 import { DaumAddressData } from '../../KakaoMapService';
-import { response } from 'express';
+
+// 타입 정의 통합
+export interface LocationPost {
+  post_id: number;
+  post_title: string;
+  post_address: string;
+  post_content: string;
+  post_tags: string[];
+  post_images: string[];
+  prefer_price: number;
+  latitude: number;
+  longitude: number;
+  nickname: string;
+  hidden_status: boolean;
+}
+
+export interface LocationIdData {
+  id: number;
+  latitude: number;
+  longitude: number;
+  address?: string;
+}
+
+export interface LocationIdResponse extends Array<LocationIdData> {}
+
+export interface LocationPostResponse {
+  success: boolean;
+  message: string;
+  data: {
+    posts: LocationPost[];
+  };
+}
 
 // 보관소 등록 요청 인터페이스
 export interface StorageRegistrationRequest {
@@ -19,25 +50,6 @@ export interface StorageRegistrationResponse {
   id: string;
   success: boolean;
   message?: string;
-}
-
-// 위치 기반 게시글 인터페이스
-export interface LocationPost {
-  id: number;
-  title: string;
-  latitude: number;
-  longitude: number;
-  price: number;
-  images: string[];
-}
-
-// 위치 기반 게시글 응답 인터페이스
-export interface LocationPostResponse {
-  success: boolean;
-  message: string;
-  data: {
-    posts: LocationPost[];
-  };
 }
 
 /**
@@ -206,10 +218,13 @@ export const getLocationPosts = async (locationInfoId: string): Promise<Location
       `${API_PATHS.POSTS.BY_LOCATION}?locationInfoId=${locationInfoId}`,
     );
 
+    // API 응답 데이터를 그대로 사용 (변환하지 않음)
     return {
       success: response.data.success,
       message: response.data.message,
-      data: response.data.data,
+      data: {
+        posts: response.data.data.posts,
+      },
     };
   } catch (error) {
     console.error('위치 기반 게시글 조회 실패:', error);
