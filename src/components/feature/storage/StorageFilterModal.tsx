@@ -215,7 +215,7 @@ type FilterType = '전체' | '보관위치' | '보관방식' | '물건유형' | 
 
 // 필터 옵션 타입 정의
 export interface FilterOptions {
-  storageLocation: '실내' | '실외' | '';
+  storageLocation: string[];
   itemTypes: string[];
   storageTypes: string[];
   durationOptions: string[];
@@ -240,7 +240,7 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
   // 초기 필터 상태 설정
   const [filters, setFilters] = useState<FilterOptions>(
     initialFilters || {
-      storageLocation: '',
+      storageLocation: [],
       itemTypes: [],
       storageTypes: [],
       durationOptions: [],
@@ -281,7 +281,9 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
   const handleLocationSelect = (location: '실내' | '실외') => {
     setFilters(prev => ({
       ...prev,
-      storageLocation: prev.storageLocation === location ? '' : location,
+      storageLocation: prev.storageLocation.includes(location)
+        ? prev.storageLocation.filter(loc => loc !== location)
+        : [...prev.storageLocation, location],
     }));
   };
 
@@ -326,7 +328,7 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
   // 필터 초기화 핸들러
   const handleReset = () => {
     setFilters({
-      storageLocation: '',
+      storageLocation: [],
       itemTypes: [],
       storageTypes: [],
       durationOptions: [],
@@ -377,7 +379,7 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
           <SectionTitle>보관 위치</SectionTitle>
           <LocationContainer>
             <LocationOptionButton
-              isSelected={filters.storageLocation === '실내'}
+              isSelected={filters.storageLocation.includes('실내')}
               onClick={() => handleLocationSelect('실내')}
             >
               <IconContainer>
@@ -390,28 +392,28 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
                 >
                   <path
                     d="M20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 18H4V6H20V18Z"
-                    fill={filters.storageLocation === '실내' ? '#8966EF' : '#868686'}
+                    fill={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
                   />
                   <path
                     d="M7 12H9V16H7V12Z"
-                    fill={filters.storageLocation === '실내' ? '#8966EF' : '#868686'}
+                    fill={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
                   />
                   <path
                     d="M11 8H13V16H11V8Z"
-                    fill={filters.storageLocation === '실내' ? '#8966EF' : '#868686'}
+                    fill={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
                   />
                   <path
                     d="M15 10H17V16H15V10Z"
-                    fill={filters.storageLocation === '실내' ? '#8966EF' : '#868686'}
+                    fill={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
                   />
                 </svg>
               </IconContainer>
-              <LocationOptionText isSelected={filters.storageLocation === '실내'}>
+              <LocationOptionText isSelected={filters.storageLocation.includes('실내')}>
                 실내
               </LocationOptionText>
             </LocationOptionButton>
             <LocationOptionButton
-              isSelected={filters.storageLocation === '실외'}
+              isSelected={filters.storageLocation.includes('실외')}
               onClick={() => handleLocationSelect('실외')}
             >
               <IconContainer>
@@ -424,19 +426,19 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
                 >
                   <path
                     d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z"
-                    fill={filters.storageLocation === '실외' ? '#8966EF' : '#868686'}
+                    fill={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
                   />
                   <path
                     d="M12 6C8.69 6 6 8.69 6 12C6 15.31 8.69 18 12 18C15.31 18 18 15.31 18 12C18 8.69 15.31 6 12 6ZM12 16C9.79 16 8 14.21 8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16Z"
-                    fill={filters.storageLocation === '실외' ? '#8966EF' : '#868686'}
+                    fill={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
                   />
                   <path
                     d="M12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10Z"
-                    fill={filters.storageLocation === '실외' ? '#8966EF' : '#868686'}
+                    fill={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
                   />
                 </svg>
               </IconContainer>
-              <LocationOptionText isSelected={filters.storageLocation === '실외'}>
+              <LocationOptionText isSelected={filters.storageLocation.includes('실외')}>
                 실외
               </LocationOptionText>
             </LocationOptionButton>

@@ -236,8 +236,8 @@ const StorageList: React.FC = () => {
   const [activeFilterCategories, setActiveFilterCategories] = useState<string[]>(['전체']);
   const [currentModalFilter, setCurrentModalFilter] = useState<string>('전체');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [appliedFilters, setAppliedFilters] = useState({
-    storageLocation: '',
+  const [appliedFilters, setAppliedFilters] = useState<FilterOptions>({
+    storageLocation: [],
     itemTypes: [],
     storageTypes: [],
     durationOptions: [],
@@ -283,18 +283,60 @@ const StorageList: React.FC = () => {
   };
 
   // 필터링 함수
-  const filterItemsLocally = (items: StorageItem[], filters: any) => {
+  const filterItemsLocally = (items: StorageItem[], filters: FilterOptions) => {
     if (isFilterEmpty(filters)) {
       return items;
     }
-    // ... 필터링 로직 구현 ...
-    return items;
+
+    return items.filter(item => {
+      // 태그가 없는 경우 필터링에서 제외
+      if (!item.post_tags) {
+        return false;
+      }
+
+      // 보관 위치 필터
+      if (filters.storageLocation.length > 0) {
+        const hasMatchingLocation = filters.storageLocation.some(location =>
+          item.post_tags.includes(location),
+        );
+        if (!hasMatchingLocation) return false;
+      }
+
+      // 물건 유형 필터
+      if (filters.itemTypes.length > 0) {
+        const hasMatchingItemType = filters.itemTypes.some(type => item.post_tags.includes(type));
+        if (!hasMatchingItemType) return false;
+      }
+
+      // 보관 방식 필터
+      if (filters.storageTypes.length > 0) {
+        const hasMatchingStorageType = filters.storageTypes.some(type =>
+          item.post_tags.includes(type),
+        );
+        if (!hasMatchingStorageType) return false;
+      }
+
+      // 보관 기간 필터
+      if (filters.durationOptions.length > 0) {
+        const hasMatchingDuration = filters.durationOptions.some(duration =>
+          item.post_tags.includes(duration),
+        );
+        if (!hasMatchingDuration) return false;
+      }
+
+      // 귀중품 필터
+      if (filters.isValuableSelected && !item.post_tags.includes('귀중품')) {
+        return false;
+      }
+
+      return true;
+    });
   };
 
   // 필터가 비어있는지 확인하는 함수
-  const isFilterEmpty = (filters: any) => {
+  const isFilterEmpty = (filters: FilterOptions) => {
     return (
-      !filters.storageLocation &&
+      filters.storageLocation.length === 0 &&
       filters.itemTypes.length === 0 &&
       filters.storageTypes.length === 0 &&
       filters.durationOptions.length === 0 &&
@@ -308,12 +350,24 @@ const StorageList: React.FC = () => {
   }, []);
 
   // 필터 적용 핸들러
-  const handleApplyFilter = (options: any) => {
+  const handleApplyFilter = (options: FilterOptions) => {
+    console.log('Applied filters:', options); // 디버깅용
     setAppliedFilters(options);
     setIsFilterModalOpen(false);
 
     const filteredItems = filterItemsLocally(allStorageItems, options);
+    console.log('Filtered items:', filteredItems); // 디버깅용
     setStorageItems(filteredItems);
+
+    // 필터가 적용되면 '전체' 필터를 제외하고 선택된 필터 카테고리들을 표시
+    const activeCategories = [];
+    if (options.storageLocation) activeCategories.push('보관위치');
+    if (options.storageTypes.length > 0) activeCategories.push('보관방식');
+    if (options.itemTypes.length > 0) activeCategories.push('물건유형');
+    if (options.durationOptions.length > 0) activeCategories.push('보관기간');
+    if (options.isValuableSelected) activeCategories.push('귀중품');
+
+    setActiveFilterCategories(activeCategories.length > 0 ? activeCategories : ['전체']);
   };
 
   // 상세 페이지로 이동
@@ -324,7 +378,7 @@ const StorageList: React.FC = () => {
   // 필터 초기화 함수
   const resetFilters = () => {
     setAppliedFilters({
-      storageLocation: '',
+      storageLocation: [],
       itemTypes: [],
       storageTypes: [],
       durationOptions: [],
