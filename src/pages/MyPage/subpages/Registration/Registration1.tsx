@@ -390,7 +390,31 @@ const Registration1: React.FC = () => {
 
   // 주소 필드 클릭 핸들러
   const handleAddressClick = () => {
-    navigate('/search-address');
+    new window.daum.Postcode({
+      oncomplete: async (data: any) => {
+        try {
+          setIsLoading(true);
+
+          // 다음 주소 API 응답 데이터를 formData에 맞게 변환
+          const updatedFormData = {
+            ...formData,
+            postAddress: data.address,
+            postAddressData: data,
+          };
+
+          setFormData(updatedFormData);
+          setErrors(prev => ({ ...prev, postAddress: '' }));
+          localStorage.setItem('registration_step1', JSON.stringify(updatedFormData));
+
+          showToast('주소가 선택되었습니다.');
+        } catch (error) {
+          console.error('주소 데이터 처리 실패:', error);
+          showToast('주소 설정에 실패했습니다. 다시 시도해주세요.');
+        } finally {
+          setIsLoading(false);
+        }
+      },
+    }).open();
   };
 
   // 포커스 핸들러

@@ -12,7 +12,6 @@ import KeeperRegistration from '../pages/MyPage/subpages/KeeperRegistration';
 import Registration1 from '../pages/MyPage/subpages/Registration/Registration1';
 import Registration2 from '../pages/MyPage/subpages/Registration/Registration2';
 import Registration3 from '../pages/MyPage/subpages/Registration/Registration3';
-import SearchAddress from '../pages/Home/SearchAddress';
 import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
 import EditStorage from '../pages/EditStorage/EditStorage';
@@ -76,7 +75,6 @@ const routes: RouteObject[] = [
       { path: ROUTES.CHAT, element: <Chat onBack={() => window.history.back()} /> },
       { path: ROUTES.CHAT_DETAIL, element: <Chat onBack={() => window.history.back()} /> },
       { path: ROUTES.KEEPER_REGISTRATION, element: <KeeperRegistration /> },
-      { path: ROUTES.SEARCH_ADDRESS, element: <SearchAddress /> },
     ],
   },
 

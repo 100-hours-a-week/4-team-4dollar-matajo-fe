@@ -1,9 +1,10 @@
 // src/pages/Home/MapBottomSheet.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import Modal from '../../components/common/Modal';
+import { getLocationId } from '../../utils/api/locationUtils';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -344,6 +345,13 @@ const ItemTags = styled.div`
   color: ${THEME.gray500};
 `;
 
+interface LocationIdData {
+  id: number;
+  latitude: number;
+  longitude: number;
+  address?: string;
+}
+
 // 보관소 등록 핸들러 함수
 export const handleRegisterStorage = (
   navigate: ReturnType<typeof useNavigate>,
@@ -408,10 +416,12 @@ interface MapBottomSheetProps {
   discountItems?: any[];
   recentItems?: any[];
   onEditLocation?: () => void;
+  defaultLocation?: string;
 }
 
 const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
-  location = '영등포구 여의도동',
+  location = '제주특별자치도 제주시 이도이동',
+  defaultLocation,
   onRegisterStorage,
   onGoToBoard,
   onDiscountItemClick,
@@ -423,6 +433,40 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   const [showKeeperModal, setShowKeeperModal] = useState(false);
   const [sheetState, setSheetState] = useState<BottomSheetState>('half-expanded');
   const [currentY, setCurrentY] = useState(window.innerHeight / 2);
+  const [currentLocation, setCurrentLocation] = useState(location);
+
+  // 컴포넌트 마운트 시 현재 위치 가져오기
+  useEffect(() => {
+    const getCurrentLocation = async () => {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+
+        const { latitude, longitude } = position.coords;
+        const locationResponse = (await getLocationId(
+          `${latitude},${longitude}`,
+        )) as LocationIdData[];
+
+        if (locationResponse && locationResponse.length > 0) {
+          const locationData = locationResponse[0];
+          setCurrentLocation(locationData.address || defaultLocation || location);
+        }
+      } catch (error) {
+        console.error('현재 위치 가져오기 실패:', error);
+        setCurrentLocation(defaultLocation || location);
+      }
+    };
+
+    getCurrentLocation();
+  }, [defaultLocation, location]);
+
+  // location prop이 변경될 때 currentLocation 업데이트
+  useEffect(() => {
+    if (location !== currentLocation) {
+      setCurrentLocation(location);
+    }
+  }, [location]);
 
   // 보관소 등록 핸들러
   const handleRegisterClick = () => {
@@ -497,7 +541,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
                 />
               </svg>
             </LocationIcon>
-            <LocationText>{location}</LocationText>
+            <LocationText>{currentLocation}</LocationText>
             <EditLocationButton onClick={handleEditLocation}>동네 수정</EditLocationButton>
           </LocationContainer>
 
@@ -518,19 +562,19 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
           <Divider />
 
-          <SectionTitle>{location.split(' ')[1]} 지역 특가</SectionTitle>
+          <SectionTitle>{currentLocation.split(' ')[1]} 지역 특가</SectionTitle>
           <DiscountGrid>
             {discountItems.length > 0 ? (
               discountItems.slice(0, 1).map(item => (
                 <DiscountItemBox key={item.id} onClick={() => handleDiscountItemClick(item.id)}>
                   <DiscountTag>-{item.discountRate}%</DiscountTag>
-                  <AreaText>{location.split(' ')[1]}</AreaText>
+                  <AreaText>{currentLocation.split(' ')[1]}</AreaText>
                 </DiscountItemBox>
               ))
             ) : (
               <DiscountItemBox>
                 <DiscountTag>-45%</DiscountTag>
-                <AreaText>{location.split(' ')[1]}</AreaText>
+                <AreaText>{currentLocation.split(' ')[1]}</AreaText>
               </DiscountItemBox>
             )}
             <MatjoItem onClick={handleRegisterClick}>
@@ -539,7 +583,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
             </MatjoItem>
           </DiscountGrid>
 
-          <SectionTitle>{location.split(' ')[1]} 최근 거래 내역</SectionTitle>
+          <SectionTitle>{currentLocation.split(' ')[1]} 최근 거래 내역</SectionTitle>
           <ItemList>
             {recentItems.length > 0 ? (
               recentItems.map(item => (

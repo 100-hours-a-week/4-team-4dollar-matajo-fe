@@ -33,7 +33,6 @@ export const ROUTES = {
   REGISTRATION_STEP3: 'registration/step3',
 
   // 기타
-  SEARCH_ADDRESS: 'search-address',
   EDIT_STORAGE: 'editstorage',
 
   // 404 페이지
