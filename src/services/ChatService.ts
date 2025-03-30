@@ -31,25 +31,40 @@ export interface ChatMessageResponseDto {
 
 // 채팅방 응답 DTO - 백엔드와 일치하도록 수정
 export interface ChatRoomResponseDto {
-  chatRoomId: number; // 카멜케이스로 변경
-  postId: number; // 카멜케이스로 변경
-  keeperStatus: boolean; // 카멜케이스로 변경
-  userNickname: string; // 카멜케이스로 변경
-  postMainImage: string; // 카멜케이스로 변경
-  postAddress: string; // 카멜케이스로 변경
-  lastMessage: string; // 카멜케이스로 변경
-  lastMessageTime: string; // 카멜케이스로 변경
-  hasUnreadMessages: boolean; // 필요한 필드 추가
+  chatRoomId: number;
+  keeperStatus: boolean;
+  userNickname: string;
+  postMainImage: string;
+  postAddress: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
 }
 
-// 채팅방 생성 요청 DTO
-export interface ChatRoomCreateRequestDto {
-  postId: number; // 카멜케이스로 변경
+// 백엔드 응답 형식에 맞는 인터페이스 추가
+interface ChatRoomBackendDto {
+  chat_room_id: number;
+  keeper_status: boolean;
+  user_nickname: string;
+  post_main_image: string;
+  post_address: string;
+  last_message: string;
+  last_message_time: string;
+  unread_count: number;
 }
 
-// 채팅방 생성 응답 DTO
-export interface ChatRoomCreateResponseDto {
-  id: number; // 백엔드 응답과 일치
+// 채팅방 생성 요청 인터페이스
+interface CreateChatRoomRequest {
+  post_id: number;
+}
+
+// 채팅방 생성 응답 인터페이스
+interface CreateChatRoomResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+  };
 }
 
 // API 응답 공통 형식
@@ -420,44 +435,47 @@ class ChatService {
   }
 
   // 채팅방 목록 로드 - 응답 변환 로직 추가
-  public loadChatRooms(): Promise<ChatRoomResponseDto[]> {
-    return client
-      .get<CommonResponse<any[]>>(API_PATHS.CHAT.ROOMS)
-      .then(response => {
-        if (response.data.success && response.data.data) {
-          console.log('채팅방 데이터 수신:', response.data.data);
-          // 백엔드 응답을 프론트엔드 형식으로 변환
-          return response.data.data.map(item => ({
-            chatRoomId: item.chatRoomId || item.chat_room_id,
-            postId: item.postId || item.post_id,
-            keeperStatus: item.keeperStatus || item.keeper_status || false,
-            userNickname: item.userNickname || item.user_nickname,
-            postMainImage: item.postMainImage || item.post_main_image,
-            postAddress: item.postAddress || item.post_address,
-            lastMessage: item.lastMessage || item.last_message,
-            lastMessageTime: item.lastMessageTime || item.last_message_time,
-            hasUnreadMessages: item.hasUnreadMessages || item.has_unread_messages,
-          }));
-        }
-        console.error('Error loading chat rooms:', response.data.message);
-        return [];
-      })
-      .catch(error => {
-        console.error('Error fetching chat rooms:', error);
-        return [];
+  public async loadChatRooms(): Promise<ChatRoomResponseDto[]> {
+    try {
+      const response = await client.get<CommonResponse<ChatRoomBackendDto[]>>('/api/chats', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
       });
+
+      if (response.data.success && response.data.data) {
+        // 백엔드 응답을 프론트엔드 형식으로 변환
+        return response.data.data.map(room => ({
+          chatRoomId: room.chat_room_id,
+          keeperStatus: room.keeper_status,
+          userNickname: room.user_nickname,
+          postMainImage: room.post_main_image,
+          postAddress: room.post_address,
+          lastMessage: room.last_message,
+          lastMessageTime: room.last_message_time,
+          unreadCount: room.unread_count,
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('채팅방 목록 로드 실패:', error);
+      throw error;
+    }
   }
 
-  // 채팅방 생성 - 수정된 DTO 형식 사용
-  public createChatRoom(postId: number): Promise<number> {
-    return client
-      .post<CommonResponse<ChatRoomCreateResponseDto>>('/api/chat', { postId })
-      .then(response => {
-        if (response.data.success && response.data.data) {
-          return response.data.data.id;
-        }
-        throw new Error(response.data.message || 'Failed to create chat room');
+  // 채팅방 생성 메서드 수정
+  public async createChatRoom(request: CreateChatRoomRequest): Promise<CreateChatRoomResponse> {
+    try {
+      const response = await client.post<CreateChatRoomResponse>('/api/chats', request, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
       });
+      return response.data;
+    } catch (error) {
+      console.error('채팅방 생성 실패:', error);
+      throw error;
+    }
   }
 
   // 채팅방 나가기

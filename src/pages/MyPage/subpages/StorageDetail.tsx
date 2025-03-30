@@ -7,6 +7,7 @@ import Modal from '../../../components/common/Modal';
 import KakaoMap from '../../../components/feature/map/KakaoMap';
 import { getStorageDetail, deleteStorage } from '../../../services/api/modules/place';
 import { transformStorageDetail } from '../../../utils/dataTransformers';
+import ChatService from '../../../services/ChatService';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -198,10 +199,13 @@ const LocationInfo = styled.div`
   margin-bottom: 15px;
 `;
 
-const LocationIcon = styled.img`
+const LocationIcon = styled.div`
   width: 20px;
   height: 20px;
   margin-right: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const LocationLabel = styled.div`
@@ -318,16 +322,58 @@ const Dot = styled.div<{ isActive: boolean }>`
   }
 `;
 
-const ScrollToTopButton = styled.img`
+const ScrollToTopButton = styled.div`
   width: 59px;
   height: 55px;
   position: fixed;
   left: 310px;
   bottom: 90px;
   opacity: 0.8;
-  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
   cursor: pointer;
   z-index: 99;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    opacity: 1;
+  }
+`;
+
+// 위치 아이콘 SVG 컴포넌트 추가
+const LocationIconSVG = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M10 1.875C6.89844 1.875 4.375 4.39844 4.375 7.5C4.375 11.5625 10 18.125 10 18.125C10 18.125 15.625 11.5625 15.625 7.5C15.625 4.39844 13.1016 1.875 10 1.875ZM10 9.375C8.96484 9.375 8.125 8.53516 8.125 7.5C8.125 6.46484 8.96484 5.625 10 5.625C11.0352 5.625 11.875 6.46484 11.875 7.5C11.875 8.53516 11.0352 9.375 10 9.375Z"
+      fill="#5E5CFD"
+    />
+  </svg>
+);
+
+// 스크롤 상단 이동 버튼 SVG 컴포넌트 수정 (화살표 방향 위로)
+const ScrollTopIconSVG = () => (
+  <svg width="59" height="55" viewBox="0 0 59 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="29.5" cy="27.5" r="27.5" fill="#5E5CFD" fillOpacity="0.9" />
+    <path d="M29.5 15L17 27.5H25.375V40H33.625V27.5H42L29.5 15Z" fill="white" />
+  </svg>
+);
+
+// Toast 메시지 스타일 컴포넌트 추가 (Container 바로 아래에 추가)
+const Toast = styled.div<{ visible: boolean }>`
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  opacity: ${props => (props.visible ? 1 : 0)};
+  transition: opacity 0.3s ease;
+  z-index: 1000;
+  white-space: nowrap;
 `;
 
 // 백엔드 API 응답 데이터 타입 정의
@@ -341,7 +387,7 @@ interface StorageDetailData {
   postAddress: string;
   nickname: string;
   hiddenStatus: boolean;
-  // 지도 표시를 위한 필드 (API에서 제공되지 않는 경우 기본값 사용)
+  userId: number; // 게시글 작성자 ID 추가
   latitude?: number;
   longitude?: number;
 }
@@ -375,6 +421,9 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
   const [storageDetail, setStorageDetail] = useState<StorageDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   // API에서 보관소 상세 정보 로드
   useEffect(() => {
@@ -412,9 +461,44 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     fetchStorageDetail();
   }, [id]);
 
-  const handleChatClick = () => {
-    console.log('Chat button clicked');
-    // 채팅 기능 구현
+  // 토스트 메시지 표시 함수
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  // 채팅하기 버튼 클릭 핸들러 수정
+  const handleChatClick = async () => {
+    if (!storageDetail) return;
+
+    try {
+      // 작성자와 현재 사용자가 같은지 확인
+      if (storageDetail.userId === Number(localStorage.getItem('userId'))) {
+        showToastMessage('본인의 장소에는 채팅을 생성할 수 없습니다.');
+        return;
+      }
+
+      // ChatService 인스턴스 생성
+      const chatService = ChatService.getInstance();
+
+      // 채팅방 생성 요청
+      const response = await chatService.createChatRoom({
+        post_id: Number(storageDetail.postId),
+      });
+
+      if (response.success && response.data) {
+        // 채팅방으로 이동
+        navigate(`/chat/${response.data.id}`);
+      } else {
+        showToastMessage('채팅방 생성에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('채팅방 생성 실패:', error);
+      showToastMessage('채팅방 생성에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleScrollToTop = () => {
@@ -829,7 +913,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                   <UnitText>/일</UnitText>
                 </PriceContainer>
 
-                {/* 채팅 버튼 */}
+                {/* 채팅하기 버튼 */}
                 <ChatButton onClick={handleChatClick}>
                   <ChatButtonText>채팅하기</ChatButtonText>
                 </ChatButton>
@@ -855,7 +939,9 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
             {/* 위치 정보 */}
             <LocationSection>
               <LocationInfo>
-                <LocationIcon src="https://placehold.co/20x20" alt="위치 아이콘" />
+                <LocationIcon>
+                  <LocationIconSVG />
+                </LocationIcon>
                 <LocationLabel>위치</LocationLabel>
                 <LocationText>{storageDetail.postAddress || '위치 정보 없음'}</LocationText>
               </LocationInfo>
@@ -912,14 +998,15 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
             <div>보관소 정보가 없습니다.</div>
           </div>
         )}
+
+        {/* 토스트 메시지 */}
+        <Toast visible={showToast}>{toastMessage}</Toast>
       </Container>
 
       {/* 스크롤 상단 이동 버튼 */}
-      <ScrollToTopButton
-        src="https://placehold.co/59x55"
-        alt="상단으로 이동"
-        onClick={handleScrollToTop}
-      />
+      <ScrollToTopButton onClick={handleScrollToTop}>
+        <ScrollTopIconSVG />
+      </ScrollToTopButton>
       <BottomNavigation activeTab="보관소" />
     </>
   );

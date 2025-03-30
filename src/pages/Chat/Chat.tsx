@@ -7,6 +7,7 @@ import ChatService, { ChatMessageResponseDto, MessageType } from '../../services
 import { API_BACKEND_URL } from '../../constants/api';
 import axios from 'axios';
 import moment from 'moment-timezone';
+import client from '../../services/api/client';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -392,6 +393,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 이미지 입력 참조
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 채팅방 상세 정보 상태 추가
+  const [chatRoomDetail, setChatRoomDetail] = useState<{
+    keeper_id: number;
+    client_id: number;
+  } | null>(null);
+
   // API 요청 헤더에 userId 추가
   useEffect(() => {
     // localStorage에서 userId 가져오기
@@ -771,6 +778,31 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     return message.senderId === currentUserId;
   };
 
+  // 현재 사용자가 보관인인지 확인하는 함수
+  const isKeeper = () => {
+    if (!chatRoomDetail) return false;
+    const currentUserId = Number(localStorage.getItem('userId'));
+    return currentUserId === chatRoomDetail.keeper_id;
+  };
+
+  // 채팅방 상세 정보 로드
+  useEffect(() => {
+    const loadChatRoomDetail = async () => {
+      if (!roomId) return;
+
+      try {
+        const response = await client.get(`/api/chats/${roomId}`);
+        if (response.data.success) {
+          setChatRoomDetail(response.data.data);
+        }
+      } catch (error) {
+        console.error('채팅방 상세 정보 로드 실패:', error);
+      }
+    };
+
+    loadChatRoomDetail();
+  }, [roomId]);
+
   return (
     <Container>
       {/* 상단 헤더 */}
@@ -781,10 +813,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         {isConnected ? '연결됨' : '연결 끊김'}
       </ConnectionStatus>
 
-      {/* 확정하기 버튼 */}
-      <ConfirmButton onClick={handleConfirm}>
-        <ConfirmButtonText>확정하기</ConfirmButtonText>
-      </ConfirmButton>
+      {/* 확정하기 버튼 - 보관인일 때만 표시 */}
+      {isKeeper() && (
+        <ConfirmButton onClick={handleConfirm}>
+          <ConfirmButtonText>확정하기</ConfirmButtonText>
+        </ConfirmButton>
+      )}
 
       {/* 채팅 영역 */}
       <ChatContainer ref={chatContainerRef}>
