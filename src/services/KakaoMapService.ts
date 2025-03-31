@@ -1,5 +1,49 @@
 // src/services/KakaoMapsService.ts
-// 카카오맵 API를 전역적으로 관리하는 서비스
+// 카카오맵 API와 주소 변환 서비스를 통합 관리하는 서비스
+
+export interface DaumAddressData {
+  postcode: string;
+  postcode1: string;
+  postcode2: string;
+  postcode_seq: string;
+  zonecode: string;
+  address: string;
+  address_english: string;
+  address_type: string;
+  bcode: string;
+  bname: string;
+  bname_english: string;
+  bname1: string;
+  bname1_english: string;
+  bname2: string;
+  bname2_english: string;
+  sido: string;
+  sido_english: string;
+  sigungu: string;
+  sigungu_english: string;
+  sigungu_code: string;
+  user_language_type: string;
+  query: string;
+  building_name: string;
+  building_code: string;
+  apartment: string;
+  jibun_address: string;
+  jibun_address_english: string;
+  road_address: string;
+  road_address_english: string;
+  auto_road_address: string;
+  auto_road_address_english: string;
+  auto_jibun_address: string;
+  auto_jibun_address_english: string;
+  user_selected_type: string;
+  no_selected: string;
+  hname: string;
+  roadname_code: string;
+  roadname: string;
+  roadname_english: string;
+  latitude?: number;
+  longitude?: number;
+}
 
 // 카카오맵 API 로딩 상태를 추적하는 인터페이스
 interface KakaoMapsLoadingStatus {
@@ -37,19 +81,18 @@ const loadScript = (src: string): Promise<void> => {
     return Promise.resolve();
   }
 
-  console.log(`스크립트 로딩 시작: ${src}`);
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = src;
     script.async = true;
 
     script.onload = () => {
-      console.log(`스크립트 로딩 완료: ${src}`);
+      console.log(`Script loaded: ${src}`);
       resolve();
     };
 
     script.onerror = () => {
-      const error = new Error(`스크립트 로딩 실패: ${src}`);
+      const error = new Error(`Failed to load script: ${src}`);
       console.error(error);
       reject(error);
     };
@@ -60,34 +103,6 @@ const loadScript = (src: string): Promise<void> => {
 
 // Kakao Maps SDK가 로드되었는지 확인하는 함수
 const isKakaoMapsLoaded = (): boolean => {
-  console.log('카카오맵 SDK 상태 확인:');
-  console.log('- window.kakao:', typeof window.kakao !== 'undefined' ? '존재함' : '존재하지 않음');
-
-  if (typeof window.kakao !== 'undefined') {
-    console.log(
-      '- window.kakao.maps:',
-      typeof window.kakao.maps !== 'undefined' ? '존재함' : '존재하지 않음',
-    );
-
-    if (typeof window.kakao.maps !== 'undefined') {
-      console.log(
-        '- window.kakao.maps.services:',
-        typeof window.kakao.maps.services !== 'undefined' ? '존재함' : '존재하지 않음',
-      );
-
-      if (typeof window.kakao.maps.services !== 'undefined') {
-        console.log(
-          '- window.kakao.maps.services.Places:',
-          typeof window.kakao.maps.services.Places !== 'undefined' ? '존재함' : '존재하지 않음',
-        );
-        console.log(
-          '- window.kakao.maps.services.Geocoder:',
-          typeof window.kakao.maps.services.Geocoder !== 'undefined' ? '존재함' : '존재하지 않음',
-        );
-      }
-    }
-  }
-
   return (
     typeof window.kakao !== 'undefined' &&
     typeof window.kakao.maps !== 'undefined' &&
@@ -99,30 +114,26 @@ const isKakaoMapsLoaded = (): boolean => {
 
 // Kakao Maps API 초기화를 위한 메인 함수
 export const initializeKakaoMaps = (): Promise<void> => {
-  console.log('카카오맵 초기화 함수 호출됨');
-
   // 이미 로드 완료된 경우
   if (loadingStatus.isLoaded && isKakaoMapsLoaded()) {
-    console.log('카카오맵이 이미 로드되고 초기화되었습니다');
+    console.log('Kakao Maps already loaded and initialized');
     return Promise.resolve();
   }
 
   // 현재 로딩 중인 경우
   if (loadingStatus.isLoading) {
-    console.log('카카오맵이 현재 로딩 중입니다. 콜백을 추가합니다.');
+    console.log('Kakao Maps is currently loading...');
     return new Promise(resolve => {
       callbacks.push(resolve);
     });
   }
 
-  console.log('카카오맵 초기화 시작');
   loadingStatus.isLoading = true;
   loadingStatus.error = null;
 
   // 이 함수는 window.kakao.maps가 이미 로드된 경우에만 작동한다고 가정
   const loadAdditionalScripts = async () => {
     try {
-      console.log('추가 스크립트 로딩 시작');
       // 필요한 추가 스크립트 로드
       const mainScriptPromise = loadScript(
         'https://t1.daumcdn.net/mapjsapi/js/main/4.4.19/kakao.js',
@@ -133,7 +144,7 @@ export const initializeKakaoMaps = (): Promise<void> => {
 
       await Promise.all([mainScriptPromise, servicesScriptPromise]);
 
-      console.log('모든 카카오 스크립트 로딩 완료');
+      console.log('All Kakao scripts loaded successfully');
 
       // 서비스 초기화 완료 확인
       if (isKakaoMapsLoaded()) {
@@ -141,44 +152,36 @@ export const initializeKakaoMaps = (): Promise<void> => {
         loadingStatus.isLoading = false;
 
         // 대기 중인 모든 콜백 실행
-        console.log(`${callbacks.length}개의 대기 중인 콜백 실행`);
         callbacks.forEach(callback => callback());
         callbacks.length = 0; // 배열 비우기
 
-        console.log('카카오맵 서비스 준비 완료 및 초기화 완료');
+        console.log('Kakao Maps services ready and initialized');
         return;
       } else {
-        const error = new Error('카카오 서비스가 완전히 초기화되지 않았습니다');
+        const error = new Error('Kakao services not fully initialized');
         console.warn(error);
         throw error;
       }
     } catch (error) {
       loadingStatus.error = error as Error;
       loadingStatus.isLoading = false;
-      console.error('추가 스크립트 로딩 중 오류:', error);
+      console.error('Error loading additional scripts:', error);
       throw error;
     }
   };
 
   // Kakao Maps SDK의 기본 로드 여부에 따라 다르게 처리
   return new Promise((resolve, reject) => {
-    console.log('window.kakao 존재 여부 확인:', window.kakao ? '존재함' : '존재하지 않음');
-    console.log(
-      'window.kakao.maps 존재 여부 확인:',
-      window.kakao?.maps ? '존재함' : '존재하지 않음',
-    );
-
     if (window.kakao && window.kakao.maps) {
       // 이미 기본 SDK가 로드된 경우 추가 스크립트만 로드
-      console.log('카카오맵 SDK 감지됨, 추가 스크립트 로드 시작...');
       window.kakao.maps.load(() => {
-        console.log('카카오맵 로드 콜백 호출됨');
+        console.log('Kakao Maps SDK detected, loading additional scripts...');
         loadAdditionalScripts().then(resolve).catch(reject);
       });
     } else {
       // SDK 자체가 로드되지 않은 경우, 에러 처리
       const error = new Error(
-        '카카오 SDK가 제대로 로드되지 않았습니다 - 애플리케이션에 카카오 SDK 스크립트가 포함되어 있는지 확인하세요',
+        'Kakao SDK not loaded properly - please ensure the Kakao SDK script is included in your application',
       );
       loadingStatus.error = error;
       loadingStatus.isLoading = false;
@@ -190,13 +193,55 @@ export const initializeKakaoMaps = (): Promise<void> => {
 
 // 현재 로딩 상태 반환
 export const getKakaoMapsLoadingStatus = (): KakaoMapsLoadingStatus => {
-  console.log('현재 카카오맵 로딩 상태:', loadingStatus);
   return { ...loadingStatus };
 };
 
 // React Hook으로 사용하기 위한 export 추가 - 필요한 경우 별도로 구현할 수 있음
 
+export const convertKakaoToDaumAddress = (address: string): Promise<DaumAddressData> => {
+  return new Promise((resolve, reject) => {
+    if ((window as any).daum && (window as any).daum.Postcode) {
+      openDaumPostcode(address, resolve, reject);
+    } else {
+      const script = document.createElement('script');
+      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+      script.onload = () => openDaumPostcode(address, resolve, reject);
+      script.onerror = () => reject(new Error('다음 주소 API 로드 실패'));
+      document.head.appendChild(script);
+    }
+  });
+};
+
+const openDaumPostcode = (
+  address: string,
+  resolve: (data: DaumAddressData) => void,
+  reject: (error: Error) => void,
+) => {
+  try {
+    new (window as any).daum.Postcode({
+      oncomplete: function (data: DaumAddressData) {
+        resolve(data);
+      },
+      onclose: function (state: string) {
+        if (state === 'FORCE_CLOSE') {
+          reject(new Error('사용자가 주소 검색을 취소했습니다.'));
+        }
+      },
+      width: '100%',
+      height: '100%',
+    }).open({
+      q: address,
+      left: window.screen.width / 2 - 500 / 2,
+      top: window.screen.height / 2 - 600 / 2,
+      popupName: 'postcodePopup',
+    });
+  } catch (error) {
+    reject(error instanceof Error ? error : new Error('주소 검색 중 오류가 발생했습니다.'));
+  }
+};
+
 export default {
   initializeKakaoMaps,
   getKakaoMapsLoadingStatus,
+  convertKakaoToDaumAddress,
 };

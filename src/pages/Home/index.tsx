@@ -12,7 +12,9 @@ import LocationService, {
   DEFAULT_COORDINATES,
   DEFAULT_LOCATION,
 } from '../../services/LocationService';
-import { getPostsByLocation, getLocationId } from '../../services/api/modules/place';
+import { getLocationId, getPostsByLocation } from '../../services/api/modules/place';
+import { getLocationPosts, LocationPost } from '../../services/api/modules/storage';
+import { Marker } from './MapBottomSheet';
 
 import LocationSearchModal from './LocationSearchModal';
 import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet';
@@ -90,15 +92,6 @@ const HeaderWrapper = styled.div`
   background-color: rgba(255, 255, 255, 0.9);
 `;
 
-// 마커 아이템 인터페이스
-interface StorageMarker {
-  id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  address: string;
-}
-
 // 특가 아이템 인터페이스
 interface DiscountItem {
   id: string;
@@ -128,21 +121,21 @@ const HomePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<string>(DEFAULT_LOCATION);
   const [locationId, setLocationId] = useState<number | null>(null);
-  const [markers, setMarkers] = useState<StorageMarker[]>([]);
+  const [markers, setMarkers] = useState<Marker[]>([]);
   const [discountItems, setDiscountItems] = useState<DiscountItem[]>([]);
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
   const [showKeeperModal, setShowKeeperModal] = useState<boolean>(false);
 
   // 지도 중심 좌표
-  const [mapCenter, setMapCenter] = useState(DEFAULT_COORDINATES);
-  const [mapLevel] = useState(4); // 초기 지도 레벨은 4로 설정
+  const [mapCenter, setMapCenter] = useState({ lat: 37.5665, lng: 126.978 });
+  const [mapLevel, setMapLevel] = useState(3);
 
   // 지도 마커 및 데이터 로드
   const loadMapData = async () => {
     try {
       // 마커 배열 초기화
-      let newMarkers: StorageMarker[] = [];
+      let newMarkers: Marker[] = [];
 
       // 위치 ID가 있을 경우 API 호출
       if (locationId) {
@@ -392,9 +385,9 @@ const HomePage: React.FC = () => {
     getCurrentLocation();
   };
 
-  // 마커 클릭 핸들러
-  const handleMarkerClick = (placeId: string) => {
-    navigate(`/storage/${placeId}`);
+  // 마커 클릭 핸들러 - 보관소 상세 페이지로 이동
+  const handleMarkerClick = (markerId: string) => {
+    navigate(`/storage/${markerId}`);
   };
 
   // 보관소 등록 버튼 클릭 핸들러
@@ -408,7 +401,7 @@ const HomePage: React.FC = () => {
     // 보관인 여부 확인
     if (isKeeper()) {
       console.log('보관인으로 로그인되어 있어 바로 보관소 등록 step1 페이지로 이동합니다.');
-      navigate('/' + ROUTES.MYPAGE_REGISTRATION_STEP1, { replace: true });
+      navigate(ROUTES.STORAGE_REGISTER, { replace: true });
     } else {
       console.log('의뢰인으로 로그인되어 있어 보관인 등록 모달을 표시합니다.');
       setShowKeeperModal(true);
@@ -438,7 +431,29 @@ const HomePage: React.FC = () => {
     getCurrentLocation();
   };
 
-  // 로딩 중일 때
+  useEffect(() => {
+    const fetchMarkers = async () => {
+      try {
+        const response = await getLocationPosts('1'); // string으로 변경
+        if (response.success) {
+          const postsData = response.data.posts;
+          const formattedMarkers: Marker[] = postsData.map((post: LocationPost) => ({
+            id: post.post_id.toString(),
+            name: post.post_title || '보관소',
+            latitude: post.latitude,
+            longitude: post.longitude,
+            address: post.post_address,
+          }));
+          setMarkers(formattedMarkers);
+        }
+      } catch (error) {
+        console.error('마커 데이터 가져오기 실패:', error);
+      }
+    };
+
+    fetchMarkers();
+  }, []);
+
   if (loading) {
     return (
       <Container>
@@ -488,6 +503,7 @@ const HomePage: React.FC = () => {
         discountItems={discountItems}
         recentItems={recentItems}
         onEditLocation={() => setIsLocationModalOpen(true)}
+        storageMarkers={markers}
       />
 
       <BottomNavigation activeTab="home" />

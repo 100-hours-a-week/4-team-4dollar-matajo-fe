@@ -1,12 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import Header from '../../../../components/layout/Header';
-import BottomNavigation from '../../../../components/layout/BottomNavigation';
-import Modal from '../../../../components/common/Modal';
-import Toast from '../../../../components/common/Toast';
-import { DaumAddressData, autoConvertAddress } from '../../../../utils/api/kakaoToDaum';
-import { transformKeysToCamel } from '../../../../utils/dataTransformers';
+import Header from '../../components/layout/Header';
+import BottomNavigation from '../../components/layout/BottomNavigation';
+import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
+import {
+  DaumAddressData,
+  convertKakaoToDaumAddress as autoConvertAddress,
+} from '../../services/KakaoMapService';
+import { ROUTES } from '../../constants/routes';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -264,14 +267,29 @@ interface AddressInfo {
   longitude: string;
 }
 
-// daum 전역 타입 정의 추가
-declare global {
-  interface Window {
-    daum: any;
-  }
-}
+// camelCase를 snake_case로 변환하는 유틸리티 함수
+const toSnakeCase = (str: string): string => {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+};
 
-const Registration1: React.FC = () => {
+// 객체의 모든 키를 snake_case로 변환하는 함수
+const convertKeysToSnakeCase = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(item => convertKeysToSnakeCase(item));
+  }
+
+  if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      const snakeKey = toSnakeCase(key);
+      acc[snakeKey] = convertKeysToSnakeCase(obj[key]);
+      return acc;
+    }, {} as any);
+  }
+
+  return obj;
+};
+
+const StorageRegistrationBasic: React.FC = () => {
   // 라우터 관련 훅
   const navigate = useNavigate();
   const location = useLocation();
@@ -301,7 +319,7 @@ const Registration1: React.FC = () => {
   });
 
   // 백 버튼 모달 상태
-  const [isBackModalOpen, setIsBackModalOpen] = useState(false);
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
 
   // 주소 검색 상태
   const [isAddressSearchActive, setIsAddressSearchActive] = useState(false);
@@ -444,14 +462,15 @@ const Registration1: React.FC = () => {
       let daumAddressData: DaumAddressData;
 
       if (directData) {
-        // 직접 받은 데이터가 있으면 바로 사용
+        // 직접 받은 데이터를 snake_case로 변환
         console.log('직접 받은 주소 데이터 사용:', directData);
-        daumAddressData = directData;
+        daumAddressData = convertKeysToSnakeCase(directData);
       } else {
-        // 없으면 API 호출
+        // API 호출 데이터를 snake_case로 변환
         console.log('Daum 주소 API 호출 시작...');
-        daumAddressData = await autoConvertAddress(address);
-        console.log('Daum 주소 API 응답 데이터:', daumAddressData);
+        const rawData = await autoConvertAddress(address);
+        daumAddressData = convertKeysToSnakeCase(rawData);
+        console.log('변환된 Daum 주소 API 응답 데이터:', daumAddressData);
       }
 
       // 폼 데이터에 Daum 주소 데이터 업데이트
@@ -489,7 +508,7 @@ const Registration1: React.FC = () => {
   // 폼 데이터 불러오기 (로컬 스토리지) 및 주소 데이터 처리
   useEffect(() => {
     // 로컬 스토리지에서 저장된 데이터 불러오기
-    const savedData = localStorage.getItem('registration_step1');
+    const savedData = localStorage.getItem('storage_register_basic');
     if (savedData) {
       setFormData(JSON.parse(savedData));
     }
@@ -525,7 +544,7 @@ const Registration1: React.FC = () => {
             postAddress: selectedAddress.address,
             postAddressData: daumAddressData,
           };
-          localStorage.setItem('registration_step1', JSON.stringify(updatedData));
+          localStorage.setItem('storage_register_basic', JSON.stringify(updatedData));
 
           showToast('주소 데이터가 변환되었습니다.');
         } catch (error) {
@@ -546,6 +565,18 @@ const Registration1: React.FC = () => {
       processAddressData();
     }
   }, [location.state]);
+
+  // Daum 우편번호 스크립트 로드
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   // 토스트 메시지 표시 함수
   const showToast = (message: string) => {
@@ -574,7 +605,7 @@ const Registration1: React.FC = () => {
 
     // 로컬 스토리지에 데이터 저장 (자동 저장)
     localStorage.setItem(
-      'registration_step1',
+      'storage_register_basic',
       JSON.stringify({
         ...formData,
         [name]: value,
@@ -649,21 +680,19 @@ const Registration1: React.FC = () => {
     );
 
     if (hasData) {
-      // 데이터가 있으면 모달 표시
-      setIsBackModalOpen(true);
+      setIsExitModalOpen(true);
     } else {
-      // 데이터가 없으면 바로 이전 페이지로
       navigate('/');
     }
   };
 
-  // 모달 확인 버튼 핸들러 (나가기)
-  const handleConfirmExit = () => {
+  const handleExitConfirm = () => {
+    setIsExitModalOpen(false);
     // 로컬 스토리지 데이터 삭제
-    localStorage.removeItem('registration_step1');
-    localStorage.removeItem('registration_step2');
-    localStorage.removeItem('registration_step3');
-    navigate(-1);
+    localStorage.removeItem('storage_register_basic');
+    localStorage.removeItem('storage_register_details');
+    localStorage.removeItem('storage_register_images');
+    navigate('/');
   };
 
   // 폼 제출 핸들러
@@ -689,23 +718,14 @@ const Registration1: React.FC = () => {
 
         // 상태 및 로컬 스토리지 업데이트
         setFormData(updatedFormData);
-        localStorage.setItem('registration_step1', JSON.stringify(updatedFormData));
+        localStorage.setItem('storage_register_basic', JSON.stringify(updatedFormData));
 
         // 다음 단계로 이동
-        console.log('다음 단계로 이동', updatedFormData);
-        navigate('/mypage/registration/step2', { state: updatedFormData });
+        navigate(ROUTES.STORAGE_REGISTER_DETAILS, { state: updatedFormData });
       } else {
-        // 카멜케이스 유지 (스네이크 케이스 변환 제거)
-        const apiReadyData = transformKeysToCamel({
-          ...formData,
-          preferPrice: parseInt(formData.preferPrice),
-        });
-
-        console.log('API 전송 준비된 데이터:', apiReadyData);
-
         // 이미 주소 데이터가 있으면 바로 다음 단계로 이동
-        console.log('다음 단계로 이동', apiReadyData);
-        navigate('/mypage/registration/step2', { state: apiReadyData });
+        console.log('다음 단계로 이동', formData);
+        navigate(ROUTES.STORAGE_REGISTER_DETAILS, { state: formData });
       }
     } catch (error) {
       console.error('주소 데이터 처리 또는 이동 중 오류:', error);
@@ -715,37 +735,45 @@ const Registration1: React.FC = () => {
     }
   };
 
-  // 모달 내용 컴포넌트
-  const backModalContent = (
-    <>
-      <div style={{ fontSize: '24px', textAlign: 'center', marginBottom: '10px' }}>😮</div>
-      <div style={{ textAlign: 'center' }}>
-        <span style={{ color: '#1e1e1e', fontSize: '18px', fontWeight: 700 }}>
-          페이지에서 나가시나요?
-        </span>
-        <br />
-        <br />
-        <span style={{ color: 'black', fontSize: '14px' }}>진행상황은 저장되지 않습니다.</span>
-      </div>
-    </>
-  );
-
-  // 주소 필드 클릭 핸들러 - 직접 다음 우편번호 API 호출
+  // 주소 필드 클릭 핸들러 - 이벤트 버블링 방지 및 더 안정적인 처리 추가
   const handleAddressClick = () => {
+    if (isAddressSearchActive) {
+      console.log('이미 주소 검색이 진행 중입니다.');
+      return;
+    }
+
+    if (document.getElementById('daum_postcode_iframe')) {
+      console.log('이미 다음 우편번호 검색이 열려있습니다.');
+      return;
+    }
+
+    setIsAddressSearchActive(true);
     openDaumPostcode();
   };
 
   return (
     <>
-      {/* 뒤로가기 모달 */}
       <Modal
-        isOpen={isBackModalOpen}
-        onClose={() => setIsBackModalOpen(false)}
-        content={backModalContent}
-        cancelText="취소"
+        isOpen={isExitModalOpen}
+        onClose={() => setIsExitModalOpen(false)}
+        onConfirm={handleExitConfirm}
+        content={
+          <>
+            <div style={{ fontSize: '24px', textAlign: 'center', marginBottom: '10px' }}>😮</div>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ color: '#1e1e1e', fontSize: '18px', fontWeight: 700 }}>
+                페이지에서 나가시나요?
+              </span>
+              <br />
+              <br />
+              <span style={{ color: 'black', fontSize: '14px' }}>
+                진행상황은 저장되지 않습니다.
+              </span>
+            </div>
+          </>
+        }
         confirmText="나가기"
-        onCancel={() => setIsBackModalOpen(false)}
-        onConfirm={handleConfirmExit}
+        cancelText="취소"
       />
 
       {/* 상단 헤더 */}
@@ -777,19 +805,19 @@ const Registration1: React.FC = () => {
                 value={formData.postAddress}
                 onChange={handleInputChange}
                 onFocus={e => {
-                  e.preventDefault(); // 기본 이벤트 방지
-                  e.stopPropagation(); // 이벤트 버블링 방지
+                  e.preventDefault();
+                  e.stopPropagation();
                   handleAddressClick();
                 }}
                 onBlur={handleBlur}
                 placeholder="주소를 입력해주세요"
                 isError={!!errors.postAddress}
                 isFocused={focused.postAddress}
-                readOnly={true} // 읽기 전용으로 설정
-                hasValue={!!formData.postAddress} // 값이 있는지 여부
+                readOnly={true}
+                hasValue={!!formData.postAddress}
                 onClick={e => {
-                  e.preventDefault(); // 기본 이벤트 방지
-                  e.stopPropagation(); // 이벤트 버블링 방지
+                  e.preventDefault();
+                  e.stopPropagation();
                   handleAddressClick();
                 }}
               />
@@ -907,4 +935,4 @@ const Registration1: React.FC = () => {
   );
 };
 
-export default Registration1;
+export default StorageRegistrationBasic;

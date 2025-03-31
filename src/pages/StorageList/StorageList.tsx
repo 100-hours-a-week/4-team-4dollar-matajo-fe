@@ -7,6 +7,7 @@ import StorageFilterModal, {
   FilterOptions,
 } from '../../components/feature/storage/StorageFilterModal';
 import { getStorageList, StorageItem as StorageItemType } from '../../services/api/modules/place';
+import client from '../../services/api/client';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -202,266 +203,142 @@ interface PageState {
   totalElements: number;
 }
 
+// 현재 API 응답 형식에 맞게 인터페이스 수정 필요
+interface StorageItem {
+  post_id: number;
+  post_title: string;
+  post_main_image: string;
+  post_address: string;
+  prefer_price: number;
+  post_tags: string[];
+}
+
+interface StorageDetailData {
+  post_id: number;
+  post_images: string[];
+  post_title: string;
+  post_tags: string[];
+  prefer_price: number;
+  post_content: string;
+  post_address: string;
+  nickname: string;
+  hidden_status: boolean;
+}
+
 const StorageList: React.FC = () => {
   const navigate = useNavigate();
-
-  // 활성화된 필터 카테고리들 (여러 개가 동시에 활성화될 수 있음)
-  const [activeFilterCategories, setActiveFilterCategories] = useState<FilterType[]>(['전체']);
-
-  // 현재 모달에서 선택된 필터 카테고리
-  const [currentModalFilter, setCurrentModalFilter] = useState<FilterType>('전체');
-
-  // 필터 모달 상태
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [allDataLoaded, setAllDataLoaded] = useState(false);
+  const [activeFilterCategories, setActiveFilterCategories] = useState<string[]>(['전체']);
+  const [currentModalFilter, setCurrentModalFilter] = useState<string>('전체');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-
-  // 적용된 필터 옵션 상태
   const [appliedFilters, setAppliedFilters] = useState<FilterOptions>({
-    storageLocation: '',
+    storageLocation: [],
     itemTypes: [],
     storageTypes: [],
     durationOptions: [],
     isValuableSelected: false,
   });
-
-  // 원본 데이터와 필터링된 데이터를 모두 저장
-  const [allStorageItems, setAllStorageItems] = useState<StorageItemType[]>([]);
-  const [storageItems, setStorageItems] = useState<StorageItemType[]>([]);
-
-  // 백엔드 필터링 지원 여부 (API가 태그 필터링을 지원하면 true)
+  const [storageItems, setStorageItems] = useState<StorageItem[]>([]);
+  const [allStorageItems, setAllStorageItems] = useState<StorageItem[]>([]);
+  const gridRef = useRef<HTMLDivElement>(null);
   const [hasBackendFilteringSupport] = useState<boolean>(false);
 
-  // 페이지네이션 상태
-  const [pageState, setPageState] = useState<PageState>({
-    page: 0,
-    size: 12,
-    totalPages: 1,
-    totalElements: 0,
-  });
-
-  // 모든 데이터를 이미 불러왔는지 확인하는 플래그
-  const [allDataLoaded, setAllDataLoaded] = useState<boolean>(false);
-
-  // 로딩 상태
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // 스크롤 컨테이너 ref
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  // 필터 목록
-  const filters: FilterType[] = ['전체', '보관위치', '보관방식', '물건유형', '보관기간', '귀중품'];
-
-  // 필터가 전체적으로 비어있는지 확인하는 함수
-  const isFilterEmpty = (options: FilterOptions): boolean => {
-    return (
-      !options.storageLocation &&
-      options.itemTypes.length === 0 &&
-      options.storageTypes.length === 0 &&
-      options.durationOptions.length === 0 &&
-      !options.isValuableSelected
-    );
-  };
-
-  // 필터 옵션을 기반으로 활성화된 필터 카테고리들을 업데이트하는 함수
-  const updateActiveFilterCategories = (options: FilterOptions) => {
-    const categories: FilterType[] = [];
-
-    // 필터가 비어있으면 '전체'만 활성화
-    if (isFilterEmpty(options)) {
-      categories.push('전체');
-    } else {
-      // 각 필터 카테고리별로 적용된 필터가 있는지 확인
-      if (options.storageLocation) {
-        categories.push('보관위치');
-      }
-
-      if (options.itemTypes.length > 0) {
-        categories.push('물건유형');
-      }
-
-      if (options.storageTypes.length > 0) {
-        categories.push('보관방식');
-      }
-
-      if (options.durationOptions.length > 0) {
-        categories.push('보관기간');
-      }
-
-      if (options.isValuableSelected) {
-        categories.push('귀중품');
-      }
-    }
-
-    setActiveFilterCategories(categories);
-  };
-
-  // 필터 옵션이 변경될 때마다 활성화된 필터 카테고리들 업데이트
-  useEffect(() => {
-    updateActiveFilterCategories(appliedFilters);
-  }, [appliedFilters]);
-
-  // 아이템을 클라이언트 측에서 필터링하는 함수
-  const filterItemsLocally = (
-    items: StorageItemType[],
-    options: FilterOptions,
-  ): StorageItemType[] => {
-    // 필터가 모두 비어있으면 모든 아이템 반환
-    if (isFilterEmpty(options)) {
-      return items;
-    }
-
-    return items.filter(item => {
-      // post_tags 필드에서 태그 추출
-      const tags = item.post_tags || item.itemTypes || [];
-
-      // 보관 위치 필터 (실내/실외)
-      if (options.storageLocation && !tags.includes(options.storageLocation)) {
-        return false;
-      }
-
-      // 물건 유형 필터 (전자기기, 식물 등)
-      if (options.itemTypes.length > 0 && !options.itemTypes.some(type => tags.includes(type))) {
-        return false;
-      }
-
-      // 보관 방식 필터 (상온보관, 냉장보관 등)
-      if (
-        options.storageTypes.length > 0 &&
-        !options.storageTypes.some(type => tags.includes(type))
-      ) {
-        return false;
-      }
-
-      // 보관 기간 필터 (일주일 이내, 한달 이내 등)
-      if (
-        options.durationOptions.length > 0 &&
-        !options.durationOptions.some(duration => tags.includes(duration))
-      ) {
-        return false;
-      }
-
-      // 귀중품 필터
-      if (options.isValuableSelected && !tags.includes('귀중품')) {
-        return false;
-      }
-
-      // 모든 조건을 통과하면 true 반환
-      return true;
-    });
-  };
-
-  // 보관소 데이터 로드 함수
+  // API 호출 함수
   const fetchStorageList = async (reset: boolean = true) => {
     try {
       setLoading(true);
       setError(null);
 
-      // 필터 파라미터 생성
-      const filterParams = getFilterParams(appliedFilters);
+      const response = await client.get('/api/posts', {
+        params: {
+          offset: 0,
+          limit: 10,
+        },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
 
-      console.log('필터 파라미터:', filterParams);
-      console.log('활성화된 필터 카테고리들:', activeFilterCategories);
-
-      // API 호출
-      const response = await getStorageList(
-        0,
-        pageState.size,
-        filterParams.district,
-        filterParams.neighborhood,
-      );
-
-      // 응답 데이터 처리
-      if (response && response.data) {
-        // 원본 아이템 저장
+      if (response.data.success) {
+        const items = response.data.data;
         if (reset) {
-          setAllStorageItems(response.data.items);
-
-          // 백엔드 필터링을 지원하지 않는 경우, 저장된 필터를 적용
-          if (!hasBackendFilteringSupport && !isFilterEmpty(appliedFilters)) {
-            // 클라이언트 측에서 필터링 적용
-            const filteredItems = filterItemsLocally(response.data.items, appliedFilters);
-            setStorageItems(filteredItems);
-          } else {
-            // 필터가 없거나 백엔드 필터링을 지원하면 그대로 사용
-            setStorageItems(response.data.items);
-          }
-
-          // 데이터가 더 있을 수 있으므로 allDataLoaded 초기화
-          setAllDataLoaded(false);
+          setAllStorageItems(items);
+          setStorageItems(items);
         } else {
-          // 페이지 추가면 데이터 합치기
-          setAllStorageItems(prev => [...prev, ...response.data.items]);
-
-          // 백엔드 필터링을 지원하지 않는 경우, 저장된 필터를 새 데이터에도 적용
-          if (!hasBackendFilteringSupport && !isFilterEmpty(appliedFilters)) {
-            // 기존 필터링된 아이템에 새로 필터링된 아이템 추가
-            const newFilteredItems = filterItemsLocally(response.data.items, appliedFilters);
-            setStorageItems(prev => [...prev, ...newFilteredItems]);
-          } else {
-            // 필터가 없거나 백엔드 필터링을 지원하면 그대로 추가
-            setStorageItems(prev => [...prev, ...response.data.items]);
-          }
-        }
-
-        // 페이지 상태 업데이트
-        setPageState({
-          page: 0,
-          size: pageState.size,
-          totalPages: 1,
-          totalElements: response.data.items.length,
-        });
-
-        // 결과가 없거나 적으면 모든 데이터를 불러왔다고 표시
-        if (response.data.items.length === 0) {
-          setAllDataLoaded(true);
+          setAllStorageItems(prev => [...prev, ...items]);
+          setStorageItems(prev => [...prev, ...items]);
         }
       }
     } catch (err) {
       console.error('보관소 목록 로드 오류:', err);
-      setError('데이터를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      setError('데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 필터에서 백엔드로 보낼 파라미터 변환 함수
-  const getFilterParams = (filters: FilterOptions): Record<string, any> => {
-    const params: Record<string, any> = {};
-
-    // 태그 필터링을 위한 단일 tags 파라미터로 변환
-    const tags: string[] = [];
-
-    // 보관 위치 태그 추가
-    if (filters.storageLocation) {
-      tags.push(filters.storageLocation);
+  // 필터링 함수
+  const filterItemsLocally = (items: StorageItem[], filters: FilterOptions) => {
+    if (isFilterEmpty(filters)) {
+      return items;
     }
 
-    // 물건 유형 태그 추가
-    if (filters.itemTypes.length > 0) {
-      tags.push(...filters.itemTypes);
-    }
+    return items.filter(item => {
+      // 태그가 없는 경우 필터링에서 제외
+      if (!item.post_tags) {
+        return false;
+      }
 
-    // 보관 방식 태그 추가
-    if (filters.storageTypes.length > 0) {
-      tags.push(...filters.storageTypes);
-    }
+      // 보관 위치 필터
+      if (filters.storageLocation.length > 0) {
+        const hasMatchingLocation = filters.storageLocation.some(location =>
+          item.post_tags.includes(location),
+        );
+        if (!hasMatchingLocation) return false;
+      }
 
-    // 보관 기간 태그 추가
-    if (filters.durationOptions.length > 0) {
-      tags.push(...filters.durationOptions);
-    }
+      // 물건 유형 필터
+      if (filters.itemTypes.length > 0) {
+        const hasMatchingItemType = filters.itemTypes.some(type => item.post_tags.includes(type));
+        if (!hasMatchingItemType) return false;
+      }
 
-    // 귀중품 태그 추가
-    if (filters.isValuableSelected) {
-      tags.push('귀중품');
-    }
+      // 보관 방식 필터
+      if (filters.storageTypes.length > 0) {
+        const hasMatchingStorageType = filters.storageTypes.some(type =>
+          item.post_tags.includes(type),
+        );
+        if (!hasMatchingStorageType) return false;
+      }
 
-    // 태그가 있으면 파라미터에 추가
-    if (tags.length > 0) {
-      params.tags = tags.join(',');
-    }
+      // 보관 기간 필터
+      if (filters.durationOptions.length > 0) {
+        const hasMatchingDuration = filters.durationOptions.some(duration =>
+          item.post_tags.includes(duration),
+        );
+        if (!hasMatchingDuration) return false;
+      }
 
-    return params;
+      // 귀중품 필터
+      if (filters.isValuableSelected && !item.post_tags.includes('귀중품')) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+
+  // 필터가 비어있는지 확인하는 함수
+  const isFilterEmpty = (filters: FilterOptions) => {
+    return (
+      filters.storageLocation.length === 0 &&
+      filters.itemTypes.length === 0 &&
+      filters.storageTypes.length === 0 &&
+      filters.durationOptions.length === 0 &&
+      !filters.isValuableSelected
+    );
   };
 
   // 초기 데이터 로드
@@ -469,50 +346,55 @@ const StorageList: React.FC = () => {
     fetchStorageList();
   }, []);
 
-  // 필터가 활성화되었는지 확인하는 함수
-  const isFilterActive = (filter: FilterType): boolean => {
-    if (filter === '전체') {
-      // '전체'는 다른 모든 필터가 비활성화되었을 때만 활성화
-      return activeFilterCategories.includes('전체');
-    }
+  // 필터 적용 핸들러
+  const handleApplyFilter = (options: FilterOptions) => {
+    console.log('Applied filters:', options); // 디버깅용
+    setAppliedFilters(options);
+    setIsFilterModalOpen(false);
 
-    // 나머지 필터는 해당 카테고리가 활성화된 경우에만 활성화
-    return activeFilterCategories.includes(filter);
+    const filteredItems = filterItemsLocally(allStorageItems, options);
+    console.log('Filtered items:', filteredItems); // 디버깅용
+    setStorageItems(filteredItems);
+
+    // 필터가 적용되면 '전체' 필터를 제외하고 선택된 필터 카테고리들을 표시
+    const activeCategories = [];
+    if (options.storageLocation) activeCategories.push('보관위치');
+    if (options.storageTypes.length > 0) activeCategories.push('보관방식');
+    if (options.itemTypes.length > 0) activeCategories.push('물건유형');
+    if (options.durationOptions.length > 0) activeCategories.push('보관기간');
+    if (options.isValuableSelected) activeCategories.push('귀중품');
+
+    setActiveFilterCategories(activeCategories.length > 0 ? activeCategories : ['전체']);
+  };
+
+  // 상세 페이지로 이동
+  const handleItemClick = (id: number) => {
+    navigate(`/storage/${id}`);
   };
 
   // 필터 초기화 함수
   const resetFilters = () => {
-    // 필터 초기화
     setAppliedFilters({
-      storageLocation: '',
+      storageLocation: [],
       itemTypes: [],
       storageTypes: [],
       durationOptions: [],
       isValuableSelected: false,
     });
 
-    // 활성화된 필터 카테고리를 '전체'로 설정
     setActiveFilterCategories(['전체']);
-
-    // 필터 초기화 후 원본 데이터 표시
     setStorageItems(allStorageItems);
   };
 
   // 필터 변경 핸들러
   const handleFilterChange = (filter: FilterType) => {
     if (filter === '전체') {
-      // '전체' 필터면 모든 필터 초기화
       resetFilters();
-
-      // 백엔드 필터링 지원하면 API 호출, 아니면 그냥 원본 데이터 표시
       if (hasBackendFilteringSupport) {
         fetchStorageList(true);
       }
     } else {
-      // 필터 모달을 열기 전에 현재 모달에서 선택한 필터 카테고리를 저장
       setCurrentModalFilter(filter);
-
-      // 필터 모달 열기
       setIsFilterModalOpen(true);
     }
   };
@@ -522,77 +404,26 @@ const StorageList: React.FC = () => {
     setIsFilterModalOpen(false);
   };
 
-  // 인피니티 스크롤 구현
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!gridRef.current || loading || allDataLoaded) return;
-
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-
-    // 스크롤이 하단에 도달했는지 확인 (90% 지점)
-    if (scrollTop + clientHeight >= scrollHeight * 0.9) {
-      loadMoreItems();
-    }
-  };
-
-  // 추가 아이템 로드
-  const loadMoreItems = () => {
-    // 모든 데이터를 이미 불러왔으면 더 이상 요청하지 않음
-    if (allDataLoaded) {
-      return;
-    }
-
-    // 다음 페이지 로드
-    // 현재 API는 페이지네이션을 지원하지 않을 수 있으므로 일단 모든 데이터를 불러왔다고 표시
-    setAllDataLoaded(true);
-
-    // 실제 페이지네이션 API가 구현되면 아래 코드 활성화
-    /*
-    setPageState(prev => ({
-      ...prev,
-      page: prev.page + 1,
-    }));
-
-    // API 호출하여 다음 페이지 데이터 로드
-    fetchStorageList(false);
-    */
-  };
-
-  // 필터 적용 핸들러
-  const handleApplyFilter = (options: FilterOptions) => {
-    // 필터 상태 업데이트
-    setAppliedFilters(options);
-
-    // 모달 닫기
-    setIsFilterModalOpen(false);
-
-    // 백엔드 API가 태그 필터링을 지원하는 경우
-    if (hasBackendFilteringSupport) {
-      // 필터 적용 후 데이터 다시 로드 (첫 페이지부터)
-      fetchStorageList(true);
-    } else {
-      // 클라이언트 측에서 필터링
-      setLoading(true);
-      if (isFilterEmpty(options)) {
-        // 필터가 비어있으면 모든 아이템 표시
-        setStorageItems(allStorageItems);
-      } else {
-        // 필터 적용
-        const filteredItems = filterItemsLocally(allStorageItems, options);
-        setStorageItems(filteredItems);
-      }
-      setLoading(false);
-    }
-  };
-
-  // 상세 페이지로 이동하는 함수
-  const handleItemClick = (id: string | number) => {
-    navigate(`/storage/${id}`);
-  };
-
   // 가격 포맷 함수
   const formatPrice = (price: number) => {
     return `${price.toLocaleString()}원`;
   };
+
+  // 아이템 렌더링 수정
+  const renderStorageItem = (item: StorageItem) => (
+    <StorageItem key={item.post_id} onClick={() => handleItemClick(item.post_id)}>
+      <StorageImageContainer>
+        {item.post_main_image ? (
+          <StorageImage src={item.post_main_image} alt={item.post_title} />
+        ) : (
+          <span>이미지 준비중</span>
+        )}
+      </StorageImageContainer>
+      <StorageName>{item.post_title}</StorageName>
+      <StorageLocation>{item.post_address}</StorageLocation>
+      <StoragePrice>{formatPrice(item.prefer_price)}</StoragePrice>
+    </StorageItem>
+  );
 
   return (
     <Container>
@@ -607,11 +438,11 @@ const StorageList: React.FC = () => {
 
       {/* 필터 */}
       <FilterContainer>
-        {filters.map(filter => (
+        {['전체', '보관위치', '보관방식', '물건유형', '보관기간', '귀중품'].map(filter => (
           <FilterTag
             key={filter}
-            isActive={isFilterActive(filter)}
-            onClick={() => handleFilterChange(filter)}
+            isActive={activeFilterCategories.includes(filter)}
+            onClick={() => handleFilterChange(filter as FilterType)}
           >
             {filter}
           </FilterTag>
@@ -622,7 +453,7 @@ const StorageList: React.FC = () => {
       <ScrollIndicator />
 
       {/* 아이템 그리드 */}
-      <ItemGridContainer ref={gridRef} onScroll={handleScroll}>
+      <ItemGridContainer ref={gridRef}>
         {loading && storageItems.length === 0 ? (
           <div style={{ gridColumn: '1 / span 2', textAlign: 'center', padding: '20px 0' }}>
             보관소 목록을 불러오는 중...
@@ -643,20 +474,7 @@ const StorageList: React.FC = () => {
             해당 조건에 맞는 보관소가 없습니다.
           </div>
         ) : (
-          storageItems.map(item => (
-            <StorageItem key={item.id} onClick={() => handleItemClick(item.id)}>
-              <StorageImageContainer>
-                {item.imageUrl ? (
-                  <StorageImage src={item.imageUrl} alt={item.name} />
-                ) : (
-                  <span>이미지 준비중</span>
-                )}
-              </StorageImageContainer>
-              <StorageName>{item.name}</StorageName>
-              <StorageLocation>{item.location}</StorageLocation>
-              <StoragePrice>{formatPrice(item.price)}</StoragePrice>
-            </StorageItem>
-          ))
+          storageItems.map(renderStorageItem)
         )}
         {loading && storageItems.length > 0 && (
           <div style={{ gridColumn: '1 / span 2', textAlign: 'center', padding: '20px 0' }}>
@@ -670,8 +488,8 @@ const StorageList: React.FC = () => {
         isOpen={isFilterModalOpen}
         onClose={handleCloseModal}
         onApplyFilter={handleApplyFilter}
-        initialFilters={appliedFilters}
-        currentFilter={currentModalFilter}
+        initialFilters={appliedFilters as FilterOptions}
+        currentFilter={currentModalFilter as FilterType}
       />
 
       {/* 하단 네비게이션 */}

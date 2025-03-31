@@ -398,7 +398,7 @@ const MyPage: React.FC = () => {
       // 로컬 상태에서 먼저 체크 (API 호출 전에)
       if (userState.isKeeper) {
         console.log('이미 보관인으로 등록되었습니다. 보관소 등록 페이지로 이동합니다.');
-        navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+        navigate(`${ROUTES.STORAGE_REGISTER}`);
         return;
       }
 
@@ -414,7 +414,7 @@ const MyPage: React.FC = () => {
           isKeeper: true,
         }));
 
-        navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+        navigate(`${ROUTES.STORAGE_REGISTER}`);
         return;
       }
 
@@ -426,7 +426,7 @@ const MyPage: React.FC = () => {
 
       // 오류 발생 시 기본적으로 로컬 상태 확인
       if (userState.isKeeper) {
-        navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+        navigate(`${ROUTES.STORAGE_REGISTER}`);
         return;
       }
 
@@ -442,7 +442,7 @@ const MyPage: React.FC = () => {
       // 로컬 상태에서 먼저 체크
       if (userState.isKeeper) {
         console.log('보관인 역할 확인됨, 내 보관소 페이지로 이동합니다.');
-        navigate('/myplace');
+        navigate('/storage/myplace');
         return;
       }
 
@@ -459,7 +459,7 @@ const MyPage: React.FC = () => {
           isKeeper: true,
         }));
 
-        navigate('/myplace');
+        navigate('/storage/myplace');
         return;
       }
 
@@ -472,7 +472,7 @@ const MyPage: React.FC = () => {
 
       // 오류 발생 시 로컬 상태 확인
       if (userState.isKeeper) {
-        navigate('/myplace');
+        navigate('/storage/myplace');
         return;
       }
 

@@ -17,7 +17,7 @@ export interface LoginResponse {
 }
 
 /**
- * 카카오 로그인 API 함수 - 일관되게 POST 메소드 사용
+ * 카카오 로그인 API 함수 - POST 메소드 사용
  * @param code 카카오 인증 코드
  * @returns 로그인 응답
  */
@@ -25,15 +25,15 @@ export const kakaoLogin = async (code: string): Promise<LoginResponse> => {
   try {
     console.log('====== 카카오 로그인 API 요청 시작 ======');
     console.log('코드 길이:', code.length);
-    console.log('코드의 처음 20자:', code.substring(0, 20));
-    console.log('코드의 마지막 20자:', code.substring(code.length - 20));
+    console.log('코드:', code);
 
     // 올바른 엔드포인트 사용 확인
-    console.log('API 엔드포인트:', API_PATHS.AUTH.KAKAO);
+    const endpoint = API_PATHS.AUTH.KAKAO;
+    console.log('API 엔드포인트:', endpoint);
     console.log('리다이렉트 URI:', KAKAO_AUTH.REDIRECT_URI);
 
-    // 일관되게 POST 메소드 사용 (서버가 POST를 기대함)
-    const response = await client.post(API_PATHS.AUTH.KAKAO, {
+    // POST 메소드 사용 - body로 전달
+    const response = await client.post(endpoint, {
       code,
     });
 
@@ -42,11 +42,17 @@ export const kakaoLogin = async (code: string): Promise<LoginResponse> => {
     console.log('응답 데이터:', response.data);
     console.log('====== 카카오 로그인 API 요청 종료 ======');
 
+    // 응답 데이터 구조 완전히 매핑
     return {
-      success: true,
+      success: response.data.success,
       data: {
         accessToken: response.data.data.access_token,
+        refreshToken: response.data.data.refresh_token,
+        userId: response.data.data.user_id,
+        nickname: response.data.data.nickname,
+        role: response.data.data.role,
       },
+      message: response.data.message,
     };
   } catch (error: any) {
     console.error('====== 카카오 로그인 오류 ======');
@@ -56,6 +62,9 @@ export const kakaoLogin = async (code: string): Promise<LoginResponse> => {
     if (error.response) {
       console.error('서버 응답:', error.response.status);
       console.error('서버 응답 데이터:', error.response.data);
+      console.error('요청 URL:', error.config?.url);
+      console.error('요청 메소드:', error.config?.method);
+      console.error('요청 데이터:', error.config?.data);
 
       // 특정 오류 타입 확인
       if (error.response.status === 400) {

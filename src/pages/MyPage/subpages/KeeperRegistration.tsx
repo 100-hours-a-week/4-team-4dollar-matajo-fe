@@ -260,7 +260,7 @@ const KeeperRegistration: React.FC = () => {
         // 이미 보관인(role === "2")인 경우 보관소 등록 페이지로 리다이렉트
         if (role === '2') {
           console.log('이미 보관인 역할을 가진 사용자입니다. 보관소 등록 페이지로 이동합니다.');
-          navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+          navigate(`${ROUTES.STORAGE_REGISTER}`);
         }
       }
     } catch (error) {
@@ -369,7 +369,7 @@ const KeeperRegistration: React.FC = () => {
         // 보관소 등록 페이지로 이동
         setTimeout(() => {
           console.log('보관소 등록 페이지로 이동합니다.');
-          navigate(`/${ROUTES.MYPAGE}/${ROUTES.REGISTRATION_STEP1}`);
+          navigate('/storage/register');
         }, 1000);
       } else {
         showToast(response.message || '보관인 등록에 실패했습니다.');

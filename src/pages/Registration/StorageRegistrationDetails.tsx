@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Header from '../../../../components/layout/Header';
-import BottomNavigation from '../../../../components/layout/BottomNavigation';
-import { convertTagsToStrings } from '../../../../services/domain/tag/TagMappingService';
-import { DaumAddressData } from '../../../../utils/api/kakaoToDaum';
-import { transformKeysToCamel } from '../../../../utils/dataTransformers';
+import Header from '../../components/layout/Header';
+import BottomNavigation from '../../components/layout/BottomNavigation';
+import { convertTagsToStrings } from '../../services/domain/tag/TagMappingService';
+import { DaumAddressData } from '../../services/KakaoMapService';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -206,7 +205,7 @@ const Registration2: React.FC = () => {
 
   // 폼 데이터 불러오기 (로컬 스토리지)
   useEffect(() => {
-    const savedData = localStorage.getItem('registration_step2');
+    const savedData = localStorage.getItem('storage_register_details');
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
@@ -248,7 +247,7 @@ const Registration2: React.FC = () => {
       isValuableSelected,
     };
 
-    localStorage.setItem('registration_step2', JSON.stringify(dataToSave));
+    localStorage.setItem('storage_register_details', JSON.stringify(dataToSave));
   };
 
   // 위치 선택 핸들러
@@ -293,7 +292,7 @@ const Registration2: React.FC = () => {
   // 뒤로가기 핸들러
   const handleBack = () => {
     // 변경 사항은 로컬 스토리지에 자동 저장 상태이므로 바로 이전 페이지로 이동
-    navigate('/mypage/registration/step1');
+    navigate('/storage/register');
   };
 
   // 폼 제출 핸들러
@@ -339,15 +338,15 @@ const Registration2: React.FC = () => {
     };
 
     // 모든 단계 데이터 통합 및 카멜케이스 유지
-    const combinedData = transformKeysToCamel({
+    const combinedData = {
       ...prevFormData,
       ...step2Data,
-    });
+    };
 
     // 다음 단계로 이동
     console.log('다음 단계로 이동, 통합 데이터:', combinedData);
     console.log('태그 문자열 배열:', tagStrings);
-    navigate('/mypage/registration/step3', { state: combinedData });
+    navigate('/storage/register/images', { state: combinedData });
   };
 
   return (

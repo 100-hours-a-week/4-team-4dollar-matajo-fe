@@ -28,23 +28,15 @@ export const ROUTES = {
   // 보관인 등록
   KEEPER_REGISTRATION: 'keeper-registration',
 
-  // 보관소 등록 단계
-  REGISTRATION_STEP1: 'registration/step1',
-  REGISTRATION_STEP2: 'registration/step2',
-  REGISTRATION_STEP3: 'registration/step3',
-
-  // 전체 경로
-  MYPAGE_REGISTRATION: 'mypage/registration',
-  MYPAGE_REGISTRATION_STEP1: 'mypage/registration/step1',
-  MYPAGE_REGISTRATION_STEP2: 'mypage/registration/step2',
-  MYPAGE_REGISTRATION_STEP3: 'mypage/registration/step3',
-
   // 기타
-  SEARCH_ADDRESS: 'search-address',
   EDIT_STORAGE: 'editstorage',
 
   // 404 페이지
   NOT_FOUND: '*',
-};
+
+  STORAGE_REGISTER: '/storage/register',
+  STORAGE_REGISTER_DETAILS: '/storage/register/details',
+  STORAGE_REGISTER_IMAGES: '/storage/register/images',
+} as const;
 
 export default ROUTES;

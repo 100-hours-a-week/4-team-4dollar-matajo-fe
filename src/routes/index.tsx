@@ -10,10 +10,6 @@ import MyPage from '../pages/MyPage';
 import StorageList from '../pages/StorageList/StorageList';
 import StorageDetail from '../pages/MyPage/subpages/StorageDetail';
 import KeeperRegistration from '../pages/MyPage/subpages/KeeperRegistration';
-import Registration1 from '../pages/MyPage/subpages/Registration/Registration1';
-import Registration2 from '../pages/MyPage/subpages/Registration/Registration2';
-import Registration3 from '../pages/MyPage/subpages/Registration/Registration3';
-import SearchAddress from '../pages/Home/SearchAddress';
 import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
 import EditStorage from '../pages/EditStorage/EditStorage';
@@ -32,6 +28,11 @@ import PublicRoute from './PublicRoute';
 
 // 라우트 정의
 import { ROUTES } from '../constants/routes';
+
+// 새로운 import 추가
+import StorageRegistrationBasic from '../pages/Registration/StorageRegistrationBasic';
+import StorageRegistrationDetails from '../pages/Registration/StorageRegistrationDetails';
+import StorageRegistrationImages from '../pages/Registration/StorageRegistrationImages';
 
 const routes: RouteObject[] = [
   // 메인 리다이렉트 라우트 (초기 진입점)
@@ -76,38 +77,46 @@ const routes: RouteObject[] = [
       },
       { path: ROUTES.CHAT, element: <Chat onBack={() => window.history.back()} /> },
       { path: ROUTES.CHAT_DETAIL, element: <Chat onBack={() => window.history.back()} /> },
+      { path: ROUTES.KEEPER_REGISTRATION, element: <KeeperRegistration /> },
+    ],
+  },
+
+  // 보관인 등록 라우트 (일반 사용자)
+  {
+    path: '/registration',
+    element: <PrivateRoute />,
+    children: [
       {
-        path: `${ROUTES.MYPAGE}/${ROUTES.KEEPER_REGISTRATION}`,
-        element: <KeeperRegistration />,
+        path: 'step1',
+        element: <StorageRegistrationBasic />,
       },
       {
-        path: ROUTES.SEARCH_ADDRESS,
-        element: (
-          <SearchAddress
-            onSelectLocation={location => console.log('Selected location:', location)}
-          />
-        ),
+        path: 'step2',
+        element: <StorageRegistrationDetails />,
+      },
+      {
+        path: 'step3',
+        element: <StorageRegistrationImages />,
       },
     ],
   },
 
-  // 보관인만 접근 가능한 라우트
+  // 보관소 등록 라우트 (보관인 전용)
   {
-    path: '/',
+    path: '/storage',
     element: <PrivateRoute requiredRole={UserRole.Keeper} />,
     children: [
-      // 'mypage/registration'에서 'mypage/keeper-registration'으로 리다이렉트
       {
-        path: ROUTES.MYPAGE_REGISTRATION_STEP1,
-        element: <Registration1 />,
+        path: 'register',
+        element: <StorageRegistrationBasic />,
       },
       {
-        path: ROUTES.MYPAGE_REGISTRATION_STEP2,
-        element: <Registration2 />,
+        path: 'register/details',
+        element: <StorageRegistrationDetails />,
       },
       {
-        path: ROUTES.MYPAGE_REGISTRATION_STEP3,
-        element: <Registration3 />,
+        path: 'register/images',
+        element: <StorageRegistrationImages />,
       },
       { path: ROUTES.EDIT_STORAGE, element: <EditStorage /> },
       { path: ROUTES.MYPLACE, element: <MyPlace /> },

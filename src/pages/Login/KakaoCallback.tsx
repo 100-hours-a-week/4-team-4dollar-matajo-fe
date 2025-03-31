@@ -1,62 +1,66 @@
-// src/pages/Login/KakaoCallback.tsx
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { decodeJWT } from '../../utils/formatting/decodeJWT';
 import { kakaoLogin } from '../../services/api/modules/auth';
-import { saveToken } from '../../utils/api/authUtils';
 
-/**
- * 카카오 로그인 콜백 처리 컴포넌트
- * URL의 인가 코드를 추출하여 서버에 전송하고, 응답으로 받은 토큰을 저장
- */
 const KakaoCallback: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const navigate = useNavigate();
+  const isProcessing = useRef<boolean>(false);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // 토큰 저장 함수를 컴포넌트 내부에 직접 구현
+  const saveToken = (token: string) => {
+    try {
+      localStorage.setItem('accessToken', token);
+      // JWT 디코딩 확인 (옵션)
+      const decoded = decodeJWT(token);
+      if (!decoded) {
+        console.warn('토큰 디코딩 실패');
+      }
+    } catch (error) {
+      console.error('토큰 저장 실패:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     const processKakaoLogin = async () => {
-      try {
-        console.log('카카오 콜백 처리 시작');
-        setIsLoading(true);
+      if (isProcessing.current) return;
+      isProcessing.current = true;
+      setIsLoading(true);
 
-        // URL에서 인가 코드 추출
+      try {
         const searchParams = new URLSearchParams(location.search);
         const code = searchParams.get('code');
 
-        // 인가 코드가 없는 경우 처리
         if (!code) {
-          console.error('인가 코드가 없습니다.');
-          setError('로그인에 필요한 인가 코드가 없습니다.');
-          setIsLoading(false);
-          return;
+          throw new Error('인가 코드가 없습니다.');
         }
 
-        console.log('인가 코드 추출 성공:', code.substring(0, 10) + '...');
-
-        // 카카오 로그인 API 호출
         const response = await kakaoLogin(code);
 
-        // 로그인 성공 시 처리
-        if (response.success) {
+        if (response.success && response.data?.accessToken) {
           console.log('카카오 로그인 성공');
 
-          // accessToken만 저장
+          // 토큰만 저장
           saveToken(response.data.accessToken);
 
-          // 메인 페이지로 리디렉션
+          // 저장된 토큰 확인 로그
+          console.log('토큰 저장 확인:', localStorage.getItem('accessToken'));
+
           const returnPath = sessionStorage.getItem('returnPath') || '/';
           sessionStorage.removeItem('returnPath');
           navigate(returnPath, { replace: true });
         } else {
-          // 로그인 실패 시 처리
-          console.error('카카오 로그인 실패:', response.message);
-          setError(response.message || '로그인 처리 중 오류가 발생했습니다.');
+          throw new Error('토큰이 없거나 응답이 올바르지 않습니다');
         }
       } catch (error: any) {
         console.error('카카오 콜백 처리 오류:', error);
         setError('로그인 처리 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류'));
       } finally {
+        isProcessing.current = false;
         setIsLoading(false);
       }
     };

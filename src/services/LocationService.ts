@@ -16,8 +16,9 @@ export interface LocationIdInfo {
   longitude?: number;
 }
 
-export const DEFAULT_LOCATION = '서울특별시 영등포구 여의도동';
-export const DEFAULT_COORDINATES = { lat: 37.5256, lng: 126.9249 }; // 여의도 좌표
+// Default location - will be overridden with actual location when available
+export const DEFAULT_COORDINATES = { lat: 33.4996, lng: 126.5312 }; // 제주시 이도이동 좌표
+export const DEFAULT_LOCATION = '제주특별자치도 제주시 이도이동';
 
 class LocationService {
   private static instance: LocationService;

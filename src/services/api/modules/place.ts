@@ -196,72 +196,38 @@ export const getRecentItems = async (
 
 // 보관소 목록 조회 함수 (API 응답값에 맞게 수정)
 export const getStorageList = async (
-  page: number = 0,
-  size: number = 12,
+  offset: number = 0,
+  limit: number = 10,
   district?: string,
   neighborhood?: string,
-  filter?: string,
-) => {
+): Promise<any> => {
   try {
-    // API 호출을 위한 파라미터 설정
-    const params: Record<string, any> = {};
+    const response = await client.get(API_PATHS.POSTS.LIST, {
+      params: {
+        offset,
+        limit,
+        district,
+        neighborhood,
+      },
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`, // JWT 토큰 추가
+      },
+    });
 
-    // 필터 파라미터 추가 (백엔드의 실제 API 파라미터 이름에 맞게 조정)
-    if (district) params.district = district;
-    if (neighborhood) params.neighborhood = neighborhood;
-
-    // 태그 기반 필터링
-    if (filter && filter !== '전체') {
-      params.filter = filter;
-    }
-
-    // 태그 필터링 추가 (선택된 태그를 쿼리 파라미터로 전달)
-    if (params.tags) {
-      params.tags = params.tags; // 이미 getFilterParams에서 처리됨
-    }
-
-    console.log('API 호출 파라미터:', params);
-
-    // API_PATHS.STORAGE.LIST 엔드포인트 사용
-    const response = await client.get(API_PATHS.POSTS.CREATE, { params });
-
-    // API 응답 데이터 변환
-    console.log('API 응답 데이터:', response.data);
-
-    // 실제 API 응답 구조에 맞게 데이터 추출
-    const items = response.data.success && response.data.data ? response.data.data : [];
-
-    const transformedData = {
+    return {
+      success: response.data.success,
+      message: response.data.message,
       data: {
-        items: items.map((item: any) => ({
+        items: response.data.data.map((item: any) => ({
           id: item.post_id,
           name: item.post_title,
-          location: item.post_address || '',
-          price: item.prefer_price || 0,
           imageUrl: item.post_main_image,
-          post_tags: item.post_tags || [],
-          // StorageList 컴포넌트가 기대하는 필드 매핑
-          itemTypes: item.post_tags || [], // 필터링을 위해 post_tags를 itemTypes에도 매핑
-          storageLocation: item.post_tags?.includes('실내')
-            ? '실내'
-            : item.post_tags?.includes('실외')
-              ? '실외'
-              : '',
-          storageTypes: mapTags(item.post_tags, ['상온 보관', '냉장 보관', '냉동 보관']),
-          durationOptions: mapTags(item.post_tags, ['일주일 이내', '한달 이내', '3개월 이상']),
-          isValuableItem: item.post_tags?.includes('귀중품') || false,
-          keeperId: item.keeper_id || '',
-          rating: item.rating || 0,
+          location: item.post_address,
+          price: item.prefer_price,
+          post_tags: item.post_tags,
         })),
-        // 페이지네이션 관련 데이터 (API에 없으면 기본값 사용)
-        totalPages: 1,
-        totalElements: items.length,
-        size: items.length,
-        number: 0,
       },
     };
-
-    return transformedData;
   } catch (error) {
     console.error('보관소 목록 조회 오류:', error);
     throw error;
@@ -271,8 +237,7 @@ export const getStorageList = async (
 // 보관소 상세 정보 조회 함수
 export const getStorageDetail = async (id: string) => {
   try {
-    // 엔드포인트 수정: API_PATHS.STORAGE.DETAIL 대신 직접 경로 사용
-    const endpoint = `/api/posts/${id}`;
+    const endpoint = API_PATHS.POSTS.DETAIL.replace(':postId', id);
     return await client.get(endpoint);
   } catch (error) {
     console.error('보관소 상세 정보 조회 오류:', error);
@@ -283,8 +248,7 @@ export const getStorageDetail = async (id: string) => {
 // 보관소 삭제 함수
 export const deleteStorage = async (id: string) => {
   try {
-    // API_PATHS.STORAGE.DELETE 엔드포인트 사용
-    const endpoint = API_PATHS.STORAGE.DELETE.replace(':postId', id);
+    const endpoint = API_PATHS.POSTS.DELETE.replace(':postId', id);
     return await client.delete(endpoint);
   } catch (error) {
     console.error('보관소 삭제 오류:', error);

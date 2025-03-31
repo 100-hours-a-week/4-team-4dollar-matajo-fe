@@ -43,18 +43,14 @@ export const API_PATHS = {
       INFO: '/api/locations/info',
     },
   },
-  STORAGE: {
-    LIST: '/api/storage/list',
-    DETAIL: '/api/storage/:postId',
-    REGISTER: '/api/storage/register',
-    UPDATE: '/api/storage/:postId',
-    DELETE: '/api/storage/:postId',
-    CREATE: '/api/storage/list',
-  },
   POSTS: {
-    BY_LOCATION: '/api/posts/location',
+    LIST: '/api/posts',
+    DETAIL: '/api/posts/:postId',
     CREATE: '/api/posts',
-    MY_POSTS: '/api/posts/my-posts',
+    UPDATE: '/api/posts/:postId',
+    DELETE: '/api/posts/:postId',
+    BY_LOCATION: '/api/posts/location',
+    MY_POSTS: '/api/posts/my-posts', // 내 보관소 조회용
   },
   CHAT: {
     ROOMS: '/api/chats',
