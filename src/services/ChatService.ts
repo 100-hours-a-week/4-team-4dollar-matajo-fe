@@ -169,8 +169,10 @@ class ChatService {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
-            userId: userId, // WebSocket 연결 시 userId 헤더 추가
             Authorization: `Bearer ${accessToken}`,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           },
         };
 
@@ -178,7 +180,7 @@ class ChatService {
         this.stompClient = new Client({
           webSocketFactory: () =>
             new SockJS(
-              `${API_BACKEND_URL}/ws-chat?userId=${userId}&token=${accessToken}`,
+              `${API_BACKEND_URL}ws-chat?userId=${userId}&token=${accessToken}`,
               null,
               sockJSOptions,
             ),
@@ -186,9 +188,11 @@ class ChatService {
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
           connectHeaders: {
-            'X-Requested-With': 'XMLHttpRequest',
-            userId: userId.toString(),
             Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           },
 
           debug: msg => {
@@ -554,7 +558,7 @@ class ChatService {
   // 메시지 읽음 처리 - 수정된 파라미터 이름
   public markMessagesAsRead(roomId: number, userId: number): Promise<boolean> {
     return client
-      .put<CommonResponse<null>>(`/api/chat/${roomId}/read`, null, {
+      .put<CommonResponse<null>>(`/api/chats/${roomId}/read`, null, {
         params: { userId },
       })
       .then(response => {
