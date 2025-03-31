@@ -6,6 +6,7 @@ import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import Modal from '../../components/common/Modal';
 import { getLocationId } from '../../services/api/modules/place';
 import { LocationIdData, LocationIdResponse } from '../../services/api/modules/storage';
+import { LocalDeal } from '../../types/place.types';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -210,13 +211,17 @@ const DiscountGrid = styled.div`
 `;
 
 // 특가 아이템
-const DiscountItemBox = styled.div`
+const DiscountItemBox = styled.div<{ hasImage?: boolean; image_url?: string }>`
   position: relative;
-  background-color: ${THEME.gray100};
+  background-color: ${props => (props.hasImage ? 'transparent' : THEME.gray100)};
   border-radius: 8px;
   overflow: hidden;
   aspect-ratio: 3/2;
   cursor: pointer;
+  background-image: ${props =>
+    props.hasImage && props.image_url ? `url(${props.image_url})` : 'none'};
+  background-size: cover;
+  background-position: center;
 `;
 
 // 특가 태그
@@ -254,15 +259,16 @@ const MatjoItem = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  cursor: pointer;
 `;
 
 // 마타조 아이콘
 const MatjoIcon = styled.div`
   width: 60px;
   height: 60px;
-  background-color: ${THEME.gray300};
-  border-radius: 50%;
+  background-image: url('/tajo-logo.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   margin-bottom: 8px;
 `;
 
@@ -364,7 +370,7 @@ interface MapBottomSheetProps {
   onRegisterStorage?: () => void;
   onGoToBoard?: () => void;
   onDiscountItemClick?: (id: string) => void;
-  discountItems?: any[];
+  discountItems?: LocalDeal[];
   recentItems?: any[];
   onEditLocation?: () => void;
   storageMarkers?: Marker[];
@@ -595,9 +601,9 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   };
 
   // 지역 특가 아이템 클릭 핸들러
-  const handleDiscountItemClick = (id: string): void => {
+  const handleDiscountItemClick = (id: number): void => {
     if (onDiscountItemClick) {
-      onDiscountItemClick(id);
+      onDiscountItemClick(id.toString());
     } else {
       navigate(`/storage/${id}`);
     }
@@ -664,7 +670,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
         ref={bottomSheetRef}
         style={{
           top: snapPoints[sheetState],
-          height: `${window.innerHeight}px`, // 높이를 전체 화면 높이로 설정
+          height: `${window.innerHeight}px`,
           transition: 'top 0.3s ease-out',
         }}
       >
@@ -712,19 +718,38 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
           <SectionTitle>{currentLocation.split(' ')[1]} 지역 특가</SectionTitle>
           <DiscountGrid>
             {discountItems.length > 0 ? (
-              discountItems.slice(0, 2).map(item => (
-                <DiscountItemBox key={item.id} onClick={() => handleDiscountItemClick(item.id)}>
-                  <DiscountTag>-{item.discountRate}%</DiscountTag>
+              <>
+                <DiscountItemBox
+                  hasImage={!!discountItems[0]?.image_url}
+                  image_url={discountItems[0]?.image_url}
+                  onClick={() => handleDiscountItemClick(discountItems[0].id)}
+                >
+                  <DiscountTag>{discountItems[0].discount}</DiscountTag>
                   <AreaText>{currentLocation.split(' ')[1]}</AreaText>
                 </DiscountItemBox>
-              ))
+                {discountItems[1] ? (
+                  <DiscountItemBox
+                    hasImage={!!discountItems[1]?.image_url}
+                    image_url={discountItems[1]?.image_url}
+                    onClick={() => handleDiscountItemClick(discountItems[1].id)}
+                  >
+                    <DiscountTag>{discountItems[1].discount}</DiscountTag>
+                    <AreaText>{currentLocation.split(' ')[1]}</AreaText>
+                  </DiscountItemBox>
+                ) : (
+                  <MatjoItem>
+                    <MatjoIcon />
+                    <MatjoText>내가 마타조?</MatjoText>
+                  </MatjoItem>
+                )}
+              </>
             ) : (
               <>
-                <DiscountItemBox>
-                  <DiscountTag>-45%</DiscountTag>
-                  <AreaText>{currentLocation.split(' ')[1]}</AreaText>
-                </DiscountItemBox>
-                <MatjoItem onClick={handleRegisterClick}>
+                <MatjoItem>
+                  <MatjoIcon />
+                  <MatjoText>내가 마타조?</MatjoText>
+                </MatjoItem>
+                <MatjoItem>
                   <MatjoIcon />
                   <MatjoText>내가 마타조?</MatjoText>
                 </MatjoItem>

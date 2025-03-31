@@ -12,7 +12,7 @@ import LocationService, {
   DEFAULT_COORDINATES,
   DEFAULT_LOCATION,
 } from '../../services/LocationService';
-import { getLocationId, getPostsByLocation } from '../../services/api/modules/place';
+import { getLocationId, getPostsByLocation, getLocalDeals } from '../../services/api/modules/place';
 import { getLocationPosts, LocationPost } from '../../services/api/modules/storage';
 import { Marker } from './MapBottomSheet';
 
@@ -20,6 +20,7 @@ import LocationSearchModal from './LocationSearchModal';
 import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet';
 import { ROUTES } from '../../constants/routes';
 import { createTrade, CreateTradeRequest } from '../../services/api/modules/trades';
+import { LocalDeal } from '../../types/place.types';
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
@@ -97,16 +98,6 @@ const HeaderWrapper = styled.div`
   background-color: transparent;
 `;
 
-// 특가 아이템 인터페이스
-interface DiscountItem {
-  id: string;
-  title: string;
-  originalPrice: number;
-  discountPrice: number;
-  discountRate: number;
-  imageUrl?: string;
-}
-
 // 최근 거래 아이템 인터페이스
 interface RecentItem {
   id: string;
@@ -127,7 +118,7 @@ const HomePage: React.FC = () => {
   const [location, setLocation] = useState<string>(DEFAULT_LOCATION);
   const [locationId, setLocationId] = useState<number | null>(null);
   const [markers, setMarkers] = useState<Marker[]>([]);
-  const [discountItems, setDiscountItems] = useState<DiscountItem[]>([]);
+  const [discountItems, setDiscountItems] = useState<LocalDeal[]>([]);
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
   const [showKeeperModal, setShowKeeperModal] = useState<boolean>(false);
@@ -151,15 +142,23 @@ const HomePage: React.FC = () => {
           // 게시글 데이터를 마커 형식으로 변환
           newMarkers = postsData.map((post, index) => ({
             id: post.post_id.toString(),
-            name: `보관소 ${index + 1}`, // 실제 이름이 없으므로 임시 이름 사용
-            latitude: mapCenter.lat + (Math.random() * 0.01 - 0.005), // 임시 좌표 (실제로는 API에서 제공하는 좌표 사용)
-            longitude: mapCenter.lng + (Math.random() * 0.01 - 0.005), // 임시 좌표 (실제로는 API에서 제공하는 좌표 사용)
+            name: `보관소 ${index + 1}`,
+            latitude: mapCenter.lat + (Math.random() * 0.01 - 0.005),
+            longitude: mapCenter.lng + (Math.random() * 0.01 - 0.005),
             address: post.address,
           }));
 
           setMarkers(newMarkers);
+
+          // 지역 특가 데이터 조회
+          const dealsResponse = await getLocalDeals(locationId);
+          if (dealsResponse.success && dealsResponse.data.posts) {
+            setDiscountItems(dealsResponse.data.posts);
+          } else {
+            setDiscountItems([]);
+          }
         } catch (err) {
-          console.error('게시글 조회 오류:', err);
+          console.error('데이터 조회 오류:', err);
           // 오류 시 기본 마커 제공
           const defaultMarker = {
             id: 'default-1',
@@ -169,6 +168,7 @@ const HomePage: React.FC = () => {
             address: location,
           };
           setMarkers([defaultMarker]);
+          setDiscountItems([]);
         }
       } else {
         // 위치 ID가 없으면 기본 마커 생성
@@ -180,27 +180,8 @@ const HomePage: React.FC = () => {
           address: location,
         };
         setMarkers([defaultMarker]);
+        setDiscountItems([]);
       }
-
-      // 특가 아이템 더미 데이터
-      const dummyDiscountItems: DiscountItem[] = [
-        {
-          id: '1',
-          title: '중앙 보관소 특가',
-          originalPrice: 15000,
-          discountPrice: 8250,
-          discountRate: 45,
-          imageUrl: 'https://placehold.co/300x200',
-        },
-        {
-          id: '2',
-          title: '북쪽 보관소 특가',
-          originalPrice: 12000,
-          discountPrice: 7800,
-          discountRate: 35,
-          imageUrl: 'https://placehold.co/300x200',
-        },
-      ];
 
       // 최근 거래 내역 더미 데이터
       const dummyRecentItems: RecentItem[] = [
@@ -223,7 +204,6 @@ const HomePage: React.FC = () => {
       ];
 
       // 상태 업데이트
-      setDiscountItems(dummyDiscountItems);
       setRecentItems(dummyRecentItems);
       setLoading(false);
     } catch (error) {
