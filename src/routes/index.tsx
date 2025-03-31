@@ -1,7 +1,6 @@
 // routes/index.tsx
 import { RouteObject, Navigate } from 'react-router-dom';
 import { UserRole } from '../contexts/auth';
-import styled from 'styled-components';
 
 // 페이지 컴포넌트 가져오기
 import HomePage from '../pages/Home';
@@ -63,21 +62,28 @@ const routes: RouteObject[] = [
     path: ROUTES.HOME,
     element: <PrivateRoute />,
     children: [
+      // MainLayout이 적용되는 라우트들
       {
-        path: ROUTES.HOME,
         element: <MainLayout />,
         children: [
           { path: ROUTES.MAIN, element: <HomePage /> },
-          { path: ROUTES.MYPAGE, element: <MyPage /> },
-          { path: ROUTES.MYTRADE, element: <MyTrade /> },
           { path: ROUTES.STORAGE, element: <StorageList /> },
           { path: ROUTES.STORAGE_DETAIL, element: <StorageDetail /> },
           { path: ROUTES.CHAT_LIST, element: <ChatroomList /> },
+          { path: ROUTES.CHAT, element: <Chat onBack={() => window.history.back()} /> },
+          { path: ROUTES.CHAT_DETAIL, element: <Chat onBack={() => window.history.back()} /> },
+          { path: ROUTES.KEEPER_REGISTRATION, element: <KeeperRegistration /> },
+          // MyPage와 관련 라우트들을 MainLayout 안으로 이동
+          {
+            path: ROUTES.MYPAGE,
+            element: <MyPage />,
+            children: [
+              { path: ROUTES.MYTRADE, element: <MyTrade /> },
+              { path: ROUTES.MYTRADE_DETAIL, element: <MyTrade /> },
+            ],
+          },
         ],
       },
-      { path: ROUTES.CHAT, element: <Chat onBack={() => window.history.back()} /> },
-      { path: ROUTES.CHAT_DETAIL, element: <Chat onBack={() => window.history.back()} /> },
-      { path: ROUTES.KEEPER_REGISTRATION, element: <KeeperRegistration /> },
     ],
   },
 

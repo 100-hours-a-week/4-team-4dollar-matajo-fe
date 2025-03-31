@@ -68,8 +68,16 @@ export interface MyTradesResponse {
  */
 export const getMyTrades = async (): Promise<TradeItem[]> => {
   try {
-    // 올바른 API 경로 사용 (API_PATHS.TRADES.MY_TRADES)
-    const response = await client.get<MyTradesResponse>(API_PATHS.TRADES.MY_TRADES);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('인증 토큰이 없습니다.');
+    }
+
+    const response = await client.get<MyTradesResponse>(API_PATHS.TRADES.MY_TRADES, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (response.data && response.data.success && Array.isArray(response.data.data)) {
       console.log('거래 내역 조회 성공:', response.data);
@@ -78,8 +86,13 @@ export const getMyTrades = async (): Promise<TradeItem[]> => {
 
     console.warn('거래 내역 응답 형식 오류:', response.data);
     return [];
-  } catch (error) {
+  } catch (error: any) {
     console.error('거래 내역 조회 실패:', error);
+    if (error.response?.status === 401) {
+      // 토큰이 만료되었거나 유효하지 않은 경우
+      localStorage.removeItem('token');
+      throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    }
     throw error;
   }
 };

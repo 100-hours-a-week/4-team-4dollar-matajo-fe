@@ -99,7 +99,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabCha
 
   // 탭 데이터
   const tabs: Array<{ name: TabType; icon: React.FC<{ isActive: boolean }>; path: string }> = [
-    { name: '홈', icon: HomeIcon, path: '/' },
+    { name: '홈', icon: HomeIcon, path: '/main' },
     { name: '보관소', icon: StorageIcon, path: '/storage' },
     { name: '채팅', icon: ChatIcon, path: '/chat/list' },
     { name: '마이페이지', icon: MyPageIcon, path: '/mypage' },
@@ -110,7 +110,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabCha
     if (onTabChange) {
       onTabChange(tab);
     } else {
-      if (!isAuthenticated && path !== '/') {
+      if (!isAuthenticated && path !== '/main') {
         navigate('/login');
         return;
       }

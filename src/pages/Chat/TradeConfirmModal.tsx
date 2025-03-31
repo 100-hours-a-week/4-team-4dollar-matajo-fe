@@ -4,7 +4,6 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ko } from 'date-fns/locale/ko';
 import { format, differenceInDays } from 'date-fns';
-import { createTrade, CreateTradeRequest } from '../../services/api/modules/trades';
 import Toast from '../../components/common/Toast';
 
 // 테마 컬러 상수 정의
@@ -423,62 +422,25 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
     setIsLoading(true);
 
     try {
-      // API 요청 데이터 형식 수정 - API 명세에 맞춤
-      const requestData: CreateTradeRequest = {
-        room_id: chatroomId,
-        product_name: itemName,
+      // TradeData 형식으로 변환하여 콜백 호출
+      const tradeData: TradeData = {
+        itemName,
+        itemTypes: selectedItemType ? [selectedItemType] : [],
         category: selectedItemType || '기타',
-        start_date: startDate ? format(startDate, 'yyyy-MM-dd') : '',
-        storage_period: storagePeriod,
-        trade_price: Number(price),
+        startDate: startDate ? format(startDate, 'yyyy-MM-dd') : '',
+        endDate: endDate ? format(endDate, 'yyyy-MM-dd') : '',
+        storagePeriod,
+        price: Number(price),
       };
 
-      // API 호출
-      const response = await createTrade(requestData);
+      // 성공 시 토스트 메시지 표시 및 콜백 호출
+      displayToast('거래 정보가 등록되었습니다');
+      onConfirm(tradeData);
 
-      if (response.success) {
-        // 성공 시 토스트 메시지 표시 및 콜백 호출
-        displayToast('거래 정보가 등록되었습니다');
-
-        // TradeData 형식으로 변환하여 콜백 호출
-        const tradeData: TradeData = {
-          itemName,
-          itemTypes: selectedItemType ? [selectedItemType] : [],
-          category: selectedItemType || '기타',
-          startDate: startDate ? format(startDate, 'yyyy-MM-dd') : '',
-          endDate: endDate ? format(endDate, 'yyyy-MM-dd') : '',
-          storagePeriod,
-          price: Number(price),
-        };
-
-        onConfirm(tradeData);
-
-        // 잠시 후 모달 닫기
-        setTimeout(() => {
-          onClose();
-        }, 1000);
-      } else {
-        // 에러 메시지 처리 개선
-        let errorMessage = '거래 정보 등록에 실패했습니다';
-        switch (response.message) {
-          case 'invalid_trade_address':
-            errorMessage = '유효하지 않은 거래 주소입니다';
-            break;
-          case 'invalid_category':
-            errorMessage = '유효하지 않은 카테고리입니다';
-            break;
-          case 'invalid_start_date':
-            errorMessage = '유효하지 않은 시작일입니다';
-            break;
-          case 'invalid_storage_period':
-            errorMessage = '유효하지 않은 보관 기간입니다';
-            break;
-          case 'invalid_trade_price':
-            errorMessage = '유효하지 않은 거래 가격입니다';
-            break;
-        }
-        displayToast(errorMessage);
-      }
+      // 잠시 후 모달 닫기
+      setTimeout(() => {
+        onClose();
+      }, 1000);
     } catch (error) {
       console.error('거래 정보 등록 오류:', error);
       displayToast('거래 정보 등록 중 오류가 발생했습니다');

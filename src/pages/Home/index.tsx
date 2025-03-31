@@ -21,6 +21,8 @@ import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet
 import { ROUTES } from '../../constants/routes';
 import { createTrade, CreateTradeRequest } from '../../services/api/modules/trades';
 import { LocalDeal } from '../../types/place.types';
+import axios from 'axios';
+import { API_PATHS } from '../../constants/api';
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
@@ -127,6 +129,38 @@ const HomePage: React.FC = () => {
   const [mapCenter, setMapCenter] = useState({ lat: 37.5665, lng: 126.978 });
   const [mapLevel, setMapLevel] = useState(3);
 
+  // 최근 거래내역 조회
+  const fetchRecentTrades = async (locationInfoId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API_PATHS.TRADES.RECENT_BY_LOCATION}?locationInfoId=${locationInfoId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.data.success) {
+        const trades = response.data.data.map((trade: any) => ({
+          id: trade.id,
+          name: trade.productName,
+          price: trade.tradePrice,
+          post_tags: [trade.category, `${trade.storagePeriod}일`],
+          imageUrl: trade.mainImage,
+          location: location.split(' ')[1] || '여의도동',
+        }));
+        setRecentItems(trades);
+      } else {
+        setRecentItems([]);
+      }
+    } catch (error) {
+      console.error('최근 거래내역 조회 실패:', error);
+      setRecentItems([]);
+    }
+  };
+
   // 지도 마커 및 데이터 로드
   const loadMapData = async () => {
     try {
@@ -157,6 +191,9 @@ const HomePage: React.FC = () => {
           } else {
             setDiscountItems([]);
           }
+
+          // 최근 거래내역 조회
+          await fetchRecentTrades(locationId);
         } catch (err) {
           console.error('데이터 조회 오류:', err);
           // 오류 시 기본 마커 제공
@@ -169,6 +206,7 @@ const HomePage: React.FC = () => {
           };
           setMarkers([defaultMarker]);
           setDiscountItems([]);
+          setRecentItems([]);
         }
       } else {
         // 위치 ID가 없으면 기본 마커 생성
@@ -181,30 +219,9 @@ const HomePage: React.FC = () => {
         };
         setMarkers([defaultMarker]);
         setDiscountItems([]);
+        setRecentItems([]);
       }
 
-      // 최근 거래 내역 더미 데이터
-      const dummyRecentItems: RecentItem[] = [
-        {
-          id: '1',
-          name: '플레이스테이션',
-          price: 12000,
-          post_tags: ['전자기기', '일주일 이내'],
-          imageUrl: 'https://placehold.co/64x64',
-          location: location.split(' ')[1] || '여의도동',
-        },
-        {
-          id: '2',
-          name: '캐리어',
-          price: 8000,
-          post_tags: ['여행', '장기'],
-          imageUrl: 'https://placehold.co/64x64',
-          location: location.split(' ')[1] || '여의도동',
-        },
-      ];
-
-      // 상태 업데이트
-      setRecentItems(dummyRecentItems);
       setLoading(false);
     } catch (error) {
       console.error('데이터 로드 오류:', error);

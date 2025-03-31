@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { isLoggedIn } from '../../utils/api/authUtils';
+import { ROUTES } from '../../constants/routes';
 
 /**
  * 메인 리다이렉트 컴포넌트
@@ -54,10 +55,23 @@ const MainRedirect: React.FC = () => {
     );
   }
 
+  // 현재 경로가 /mypage/mytrade 또는 /storage/mytrade인 경우 리다이렉트하지 않음
+  if (
+    location.pathname === `/${ROUTES.MYPAGE}/${ROUTES.MYTRADE}` ||
+    location.pathname === `/${ROUTES.MYTRADE}`
+  ) {
+    return null;
+  }
+
   // 인증 상태에 따라 리다이렉트
   if (isAuthenticated) {
-    console.log('인증됨: 메인 페이지로 리다이렉트');
-    return <Navigate to="/main" replace state={location.state} />;
+    // 현재 경로가 /인 경우에만 /main으로 리다이렉트
+    if (location.pathname === '/') {
+      console.log('인증됨: 메인 페이지로 리다이렉트');
+      return <Navigate to="/main" replace />;
+    }
+    // 그 외의 경우 현재 경로 유지
+    return null;
   } else {
     console.log('인증되지 않음: 로그인 페이지로 리다이렉트');
     return <Navigate to="/login" replace />;

@@ -350,8 +350,8 @@ interface ChatProps {
 
 const Chat: React.FC<ChatProps> = ({ onBack }) => {
   const navigate = useNavigate();
-  const { id: roomIdParam } = useParams<{ id: string }>();
-  const roomId = roomIdParam ? parseInt(roomIdParam) : null;
+  const { id: tradeId } = useParams();
+  const roomId = tradeId ? parseInt(tradeId) : null;
 
   // 채팅 서비스 인스턴스
   const chatService = ChatService.getInstance();

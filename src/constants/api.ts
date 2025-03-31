@@ -1,17 +1,29 @@
 // constants/api.ts
 
-// .env 파일에 있는 환경 변수에 맞게 이름 수정
-export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL || 'http://43.201.83.7:8080';
-export const API_URL = process.env.REACT_APP_API_URL || 'http://43.201.83.7:8080';
+if (!process.env.REACT_APP_API_BACKEND_URL) {
+  throw new Error('REACT_APP_API_BACKEND_URL is not defined');
+}
+
+if (!process.env.REACT_APP_API_URL) {
+  throw new Error('REACT_APP_API_URL is not defined');
+}
+
+if (!process.env.REACT_APP_KAKAO_REST_API_KEY) {
+  throw new Error('REACT_APP_KAKAO_REST_API_KEY is not defined');
+}
+
+if (!process.env.REACT_APP_KAKAO_REDIRECT_URI) {
+  throw new Error('REACT_APP_KAKAO_REDIRECT_URI is not defined');
+}
+
+export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL;
+export const API_URL = process.env.REACT_APP_API_URL;
 export const API_BASE_URL = API_BACKEND_URL; // 이전 코드와의 호환성을 위해 추가
 
 export const KAKAO_AUTH = {
-  REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY || '244abed4cb1b567f33d22e14fc58a2c5',
-  REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao',
+  REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY,
+  REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI,
   getLoginUrl: () => {
-    console.log(
-      `카카오 로그인 URL 생성: REST_API_KEY=${KAKAO_AUTH.REST_API_KEY}, REDIRECT_URI=${KAKAO_AUTH.REDIRECT_URI}`,
-    );
     return `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_AUTH.REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
   },
 };
@@ -72,6 +84,7 @@ export const API_PATHS = {
   },
   TRADES: {
     MY_TRADES: '/api/trades/my-trades',
+    RECENT_BY_LOCATION: '/api/trades',
   },
 };
 

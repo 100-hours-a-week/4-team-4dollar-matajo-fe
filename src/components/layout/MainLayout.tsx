@@ -41,7 +41,7 @@ const tabPathMap = {
 // 경로에 따른 헤더 제목 매핑 - 실제 라우트와 일치하도록 수정
 const pathTitleMap: { [key: string]: string } = {
   '/': '홈',
-  '/main': '홈', // '/main' 추가
+  '/main': '홈',
   '/storage': '보관소',
   '/storagede': '보관소 상세',
   '/chat/list': '채팅',
@@ -50,6 +50,8 @@ const pathTitleMap: { [key: string]: string } = {
   '/login': '로그인',
   '/myplace': '내 공간',
   '/mytrade': '거래내역',
+  '/mypage/mytrade': '거래내역',
+  '/storage/mytrade': '거래내역',
   '/storage/register': '회원가입 (1/3)',
   '/storage/register/details': '회원가입 (2/3)',
   '/storage/register/images': '회원가입 (3/3)',
@@ -63,6 +65,7 @@ const noNavPaths = [
   '/storage/register/details',
   '/storage/register/images',
   '/chat/', // 채팅 상세 페이지에서 네비바 숨기기 (앞부분만 매칭)
+  '/storage/mytrade', // 거래내역 페이지에서 네비바 숨기기
 ];
 
 const MainLayout: React.FC = () => {
@@ -103,14 +106,15 @@ const MainLayout: React.FC = () => {
     // 현재 경로에 해당하는 활성 탭 설정
     if (path === '/' || path === '/main') {
       setActiveTab('홈');
-    } else if (path.startsWith('/storage') || path.startsWith('/storage')) {
+    } else if (path.startsWith('/storage') && !path.startsWith('/storage/mytrade')) {
       setActiveTab('보관소');
     } else if (path.startsWith('/chat')) {
       setActiveTab('채팅');
     } else if (
       path.startsWith('/mypage') ||
       path.startsWith('/myplace') ||
-      path.startsWith('/mytrade')
+      path.startsWith('/mytrade') ||
+      path.startsWith('/storage/mytrade')
     ) {
       setActiveTab('마이페이지');
     }

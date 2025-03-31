@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
@@ -235,6 +235,8 @@ const ChevronIcon = styled.div`
 // 메인 컴포넌트
 const MyPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isMyTradePage = location.pathname.includes(`/${ROUTES.MYPAGE}/${ROUTES.MYTRADE}`);
 
   // 실제로는 useAuth를 사용해 사용자 정보 가져오기
   // const { user, logout, isKeeper, registerAsKeeper } = useAuth();
@@ -388,8 +390,7 @@ const MyPage: React.FC = () => {
 
   // 내 거래내역 보기 이동 핸들러
   const moveToMyTradePage = () => {
-    // 내 거래내역 페이지로 이동
-    navigate('/mytrade');
+    navigate(`/${ROUTES.MYPAGE}/${ROUTES.MYTRADE}`);
   };
 
   // 보관인 등록 핸들러
@@ -640,87 +641,96 @@ const MyPage: React.FC = () => {
 
   return (
     <Container>
-      {/* 페이지 헤더 */}
-      <Header title="마이페이지" />
+      {/* 페이지 헤더 - MyTrade 페이지가 아닐 때만 표시 */}
+      {!isMyTradePage && <Header title="마이페이지" />}
 
-      {/* 프로필 카드 */}
-      <ProfileCard>
-        <ProfileImageContainer>
-          <ProfileImage
-            src={userState.profileImage}
-            alt="프로필 이미지"
-            style={{
-              width: '60px',
-              height: '60px',
-              objectFit: 'cover',
-              borderRadius: '50%',
-              position: 'absolute',
-              left: '2px',
-              top: '1px',
-            }}
-          />
-        </ProfileImageContainer>
-        <UserName>{userState.userName}</UserName>
-        <ProfileDivider />
+      {/* 프로필 카드 - MyTrade 페이지가 아닐 때만 표시 */}
+      {!isMyTradePage && (
+        <ProfileCard>
+          <ProfileImageContainer>
+            <ProfileImage
+              src={userState.profileImage}
+              alt="프로필 이미지"
+              style={{
+                width: '60px',
+                height: '60px',
+                objectFit: 'cover',
+                borderRadius: '50%',
+                position: 'absolute',
+                left: '2px',
+                top: '1px',
+              }}
+            />
+          </ProfileImageContainer>
+          <UserName>{userState.userName}</UserName>
+          <ProfileDivider />
 
-        <BadgeContainer>
-          <BadgeText>의뢰인</BadgeText>
-        </BadgeContainer>
-
-        {userState.isKeeper && (
-          <BadgeContainer offset={130}>
-            <BadgeText>보관인</BadgeText>
+          <BadgeContainer>
+            <BadgeText>의뢰인</BadgeText>
           </BadgeContainer>
-        )}
-      </ProfileCard>
 
-      {/* 메뉴 섹션 */}
-      <MenuSection>
-        <Divider />
-        {[
-          { label: '내 거래 내역 보기', onClick: moveToMyTradePage },
-          { label: '보관장소 등록', onClick: handleKeeperRegistration },
-          { label: '내 보관소 조회', onClick: moveToMyPlacePage },
-        ].map((item, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && <Divider />}
-            <MenuItemWrapper onClick={item.onClick}>
-              <MenuItem>{item.label}</MenuItem>
-              <ChevronIcon />
-            </MenuItemWrapper>
-          </React.Fragment>
-        ))}
-        <Divider />
-      </MenuSection>
+          {userState.isKeeper && (
+            <BadgeContainer offset={130}>
+              <BadgeText>보관인</BadgeText>
+            </BadgeContainer>
+          )}
+        </ProfileCard>
+      )}
 
-      {/* 푸터 영역 */}
-      <FooterContainer>
-        {/* 푸터 링크 */}
-        <MenuLinksContainer>
+      {/* 메뉴 섹션 - MyTrade 페이지가 아닐 때만 표시 */}
+      {!isMyTradePage && (
+        <MenuSection>
+          <Divider />
           {[
-            { text: '개인정보 약관', onClick: moveToPrivacyPolicy },
-            { text: '로그아웃', onClick: openLogoutModal },
-            { text: '회원탈퇴', onClick: openMembershipModal },
-          ].map((link, index) => (
+            { label: '내 거래 내역 보기', onClick: moveToMyTradePage },
+            { label: '보관장소 등록', onClick: handleKeeperRegistration },
+            { label: '내 보관소 조회', onClick: moveToMyPlacePage },
+          ].map((item, index) => (
             <React.Fragment key={index}>
-              {index > 0 && <Separator>|</Separator>}
-              <FooterText onClick={link.onClick}>{link.text}</FooterText>
+              {index > 0 && <Divider />}
+              <MenuItemWrapper onClick={item.onClick}>
+                <MenuItem>{item.label}</MenuItem>
+                <ChevronIcon />
+              </MenuItemWrapper>
             </React.Fragment>
           ))}
-        </MenuLinksContainer>
+          <Divider />
+        </MenuSection>
+      )}
 
-        {/* 사업자 정보 */}
-        <BusinessInfoContainer>
-          {[
-            '(주)마타조 | 대표이사: 정유진',
-            '사업자등록번호: 604-11-41401',
-            '이메일: matajoktb@gmail.com',
-            '© 2025 마타조(MATOAJO) Inc. All rights reserved.',
-          ].map((info, index) => (
-            <BusinessInfo key={index}>{info}</BusinessInfo>
-          ))}
-        </BusinessInfoContainer>
-      </FooterContainer>
+      {/* 중첩 라우트를 위한 Outlet */}
+      <Outlet />
+
+      {/* 푸터 영역 - MyTrade 페이지가 아닐 때만 표시 */}
+      {!isMyTradePage && (
+        <FooterContainer>
+          {/* 푸터 링크 */}
+          <MenuLinksContainer>
+            {[
+              { text: '개인정보 약관', onClick: moveToPrivacyPolicy },
+              { text: '로그아웃', onClick: openLogoutModal },
+              { text: '회원탈퇴', onClick: openMembershipModal },
+            ].map((link, index) => (
+              <React.Fragment key={index}>
+                {index > 0 && <Separator>|</Separator>}
+                <FooterText onClick={link.onClick}>{link.text}</FooterText>
+              </React.Fragment>
+            ))}
+          </MenuLinksContainer>
+
+          {/* 사업자 정보 */}
+          <BusinessInfoContainer>
+            {[
+              '(주)마타조 | 대표이사: 정유진',
+              '사업자등록번호: 604-11-41401',
+              '이메일: matajoktb@gmail.com',
+              '© 2025 마타조(MATOAJO) Inc. All rights reserved.',
+            ].map((info, index) => (
+              <BusinessInfo key={index}>{info}</BusinessInfo>
+            ))}
+          </BusinessInfoContainer>
+        </FooterContainer>
+      )}
 
       {/* 토스트 메시지 */}
       <Toast
@@ -729,7 +739,7 @@ const MyPage: React.FC = () => {
         onClose={() => setIsToastVisible(false)}
       />
 
-      {/* 단일 모달로 통합 */}
+      {/* 모달 */}
       {(isKeeperModalOpen || isMembershipModalOpen || isLogoutModalOpen) && (
         <Modal {...getModalProps()} content={renderModalContent()} />
       )}
