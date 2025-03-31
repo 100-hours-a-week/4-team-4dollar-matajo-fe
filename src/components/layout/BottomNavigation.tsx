@@ -17,8 +17,9 @@ const THEME = {
 const NavContainer = styled.div`
   position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
-  max-width: 375px;
   height: 76px;
   background: ${THEME.background};
   display: flex;
@@ -27,8 +28,12 @@ const NavContainer = styled.div`
   box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
   z-index: 100;
   margin: 0 auto;
-  left: 50%;
-  transform: translateX(-50%);
+  max-width: 100vw;
+  @media (min-width: 768px) {
+    max-width: 768px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 `;
 
 // 네비게이션 아이템
