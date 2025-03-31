@@ -126,7 +126,6 @@ export const searchDong = async (keyword: string): Promise<string[]> => {
   }
 };
 
-// 주소 기반 위치 ID 조회 함수 (추가)
 // 주소 기반 위치 ID 조회 함수
 export const getLocationId = async (
   formattedAddress: string,
@@ -138,32 +137,35 @@ export const getLocationId = async (
       return locationIdCache[formattedAddress];
     }
 
+    // 좌표 형식인지 확인 (예: "33.4872054,126.5317774")
+    const isCoordinate = /^-?\d+\.\d+,-?\d+\.\d+$/.test(formattedAddress);
+
     // API 호출
     const response = await client.get(API_PATHS.PLACE.LOCATIONS.INFO, {
-      params: { formattedAddress },
+      params: isCoordinate ? { coordinates: formattedAddress } : { formattedAddress },
     });
 
-    // 응답 성공 여부 확인
-    if (
-      response.data?.status === 'success' &&
-      Array.isArray(response.data.data) &&
-      response.data.data.length > 0
-    ) {
-      // 첫 번째 데이터 항목 사용
-      const locationData: LocationIdResponse = response.data.data[0];
+    console.log('위치 ID API 응답:', response.data);
 
-      // 응답 데이터 캐싱
-      locationIdCache[formattedAddress] = locationData;
+    // API 응답 구조 확인
+    if (response.data?.success && response.data.data) {
+      const locationData = Array.isArray(response.data.data)
+        ? response.data.data[0]
+        : response.data.data;
 
-      console.log('위치 ID 조회 성공:', locationData);
-      return locationData;
+      if (locationData && locationData.id && locationData.latitude && locationData.longitude) {
+        // 응답 데이터 캐싱
+        locationIdCache[formattedAddress] = locationData;
+
+        console.log('위치 ID 조회 성공:', locationData);
+        return locationData;
+      }
     }
 
-    console.warn('위치 ID 데이터가 없습니다:', response.data);
+    console.warn('위치 ID 데이터가 없거나 유효하지 않습니다:', response.data);
     return null;
   } catch (error) {
     console.error('위치 ID 조회 오류:', error);
-    // 오류 발생 시 null 반환
     return null;
   }
 };
@@ -278,5 +280,49 @@ export const getPostsByLocation = async (locationInfoId: number): Promise<PostBy
   } catch (error) {
     console.error('위치 기반 게시글 조회 오류:', error);
     return [];
+  }
+};
+
+export const getLocalDeals = async (locationInfoId: number) => {
+  try {
+    const response = await axios.get(`/api/posts/promotion?locationInfoId=${locationInfoId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const toggleStorageVisibility = async (postId: string) => {
+  try {
+    const response = await axios.patch(
+      `${API_PATHS.POSTS.TOGGLE_VISIBILITY.replace(':postId', postId)}`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      },
+    );
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateStorage = async (postId: string, formData: FormData) => {
+  try {
+    const response = await axios.patch(
+      `${API_PATHS.POSTS.UPDATE.replace(':postId', postId)}`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      },
+    );
+    return response;
+  } catch (error) {
+    throw error;
   }
 };

@@ -4,7 +4,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ko } from 'date-fns/locale/ko';
 import { format, differenceInDays } from 'date-fns';
-import { createTrade } from '../../services/api/modules/trades';
+import { createTrade, CreateTradeRequest } from '../../services/api/modules/trades';
 import Toast from '../../components/common/Toast';
 
 // 테마 컬러 상수 정의
@@ -423,35 +423,35 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
     setIsLoading(true);
 
     try {
-      // TradeData 객체 생성
-      const tradeData: TradeData = {
-        itemName,
-        itemTypes: selectedItemType ? [selectedItemType] : [],
-        category: selectedItemType || '기타',
-        startDate: startDate ? format(startDate, 'yyyy-MM-dd') : '',
-        endDate: endDate ? format(endDate, 'yyyy-MM-dd') : '',
-        storagePeriod,
-        price: Number(price),
+      // API 요청 데이터 형식 수정 - CreateTradeRequest 인터페이스에 맞춤
+      const requestData: CreateTradeRequest = {
         product_name: itemName,
+        storage_category: selectedItemType || '기타', // 카테고리는 선택된 물품 종류 사용
         start_date: startDate ? format(startDate, 'yyyy-MM-dd') : '',
+        end_date: endDate ? format(endDate, 'yyyy-MM-dd') : '', // end_date 추가
         trade_price: Number(price),
-        message,
+        message: message, // 선택적 메시지
+        chatroom_id: chatroomId, // room_id 대신 chatroom_id 사용
       };
 
       // API 호출
-      const response = await createTrade({
-        product_name: itemName,
-        storage_category: selectedItemType || '기타',
-        start_date: format(startDate!, 'yyyy-MM-dd'),
-        end_date: format(endDate!, 'yyyy-MM-dd'),
-        trade_price: Number(price),
-        message: message,
-        chatroom_id: chatroomId,
-      });
+      const response = await createTrade(requestData);
 
       if (response.success) {
         // 성공 시 토스트 메시지 표시 및 콜백 호출
         displayToast('거래 정보가 등록되었습니다');
+
+        // TradeData 형식으로 변환하여 콜백 호출
+        const tradeData: TradeData = {
+          itemName,
+          itemTypes: selectedItemType ? [selectedItemType] : [],
+          category: selectedItemType || '기타',
+          startDate: startDate ? format(startDate, 'yyyy-MM-dd') : '',
+          endDate: endDate ? format(endDate, 'yyyy-MM-dd') : '',
+          storagePeriod,
+          price: Number(price),
+        };
+
         onConfirm(tradeData);
 
         // 잠시 후 모달 닫기
@@ -459,7 +459,26 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
           onClose();
         }, 1000);
       } else {
-        displayToast(response.message || '거래 정보 등록에 실패했습니다');
+        // 에러 메시지 처리 개선
+        let errorMessage = '거래 정보 등록에 실패했습니다';
+        switch (response.message) {
+          case 'invalid_trade_address':
+            errorMessage = '유효하지 않은 거래 주소입니다';
+            break;
+          case 'invalid_category':
+            errorMessage = '유효하지 않은 카테고리입니다';
+            break;
+          case 'invalid_start_date':
+            errorMessage = '유효하지 않은 시작일입니다';
+            break;
+          case 'invalid_storage_period':
+            errorMessage = '유효하지 않은 보관 기간입니다';
+            break;
+          case 'invalid_trade_price':
+            errorMessage = '유효하지 않은 거래 가격입니다';
+            break;
+        }
+        displayToast(errorMessage);
       }
     } catch (error) {
       console.error('거래 정보 등록 오류:', error);

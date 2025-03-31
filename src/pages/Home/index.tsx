@@ -29,6 +29,8 @@ const Container = styled.div`
   overflow: hidden;
   margin: 0 auto;
   max-width: 480px; // 모바일 환경 고려
+  display: flex; // flex 추가
+  flex-direction: column; // column 방향으로 설정
 `;
 
 // 로딩 인디케이터
@@ -80,6 +82,8 @@ const MapWrapper = styled.div`
   right: 0;
   bottom: 0;
   z-index: 1;
+  width: 100%;
+  height: 100%;
 `;
 
 // 헤더 래퍼
@@ -89,7 +93,7 @@ const HeaderWrapper = styled.div`
   left: 0;
   right: 0;
   z-index: 5;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: transparent;
 `;
 
 // 특가 아이템 인터페이스

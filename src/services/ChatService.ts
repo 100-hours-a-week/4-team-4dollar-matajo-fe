@@ -3,6 +3,7 @@ import { Client, IFrame, IMessage, StompSubscription } from '@stomp/stompjs';
 import client from '../services/api/client';
 import { API_BACKEND_URL, API_PATHS } from '../constants/api';
 import { getUserId } from '../utils/formatting/decodeJWT';
+import axios from 'axios';
 
 // 메시지 타입 정의 - 백엔드와 일치
 export enum MessageType {
@@ -511,17 +512,43 @@ class ChatService {
     }
   }
 
-  // 채팅방 나가기
-  public leaveChatRoom(roomId: number): Promise<boolean> {
-    return client
-      .delete<CommonResponse<null>>(`/api/chat/${roomId}`)
-      .then(response => {
-        return response.data.success === true;
-      })
-      .catch(error => {
-        console.error('Error leaving chat room:', error);
-        return false;
-      });
+  // 채팅방 나가기 메서드 수정
+  public async leaveChatRoom(roomId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await client.delete<CommonResponse<null>>(
+        `${API_PATHS.CHAT.ROOMS}/${roomId}`,
+      );
+      return {
+        success: response.data.success,
+        message: response.data.message,
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const response = error.response?.data;
+        // API 명세에 따른 에러 처리
+        switch (error.response?.status) {
+          case 400:
+            console.error('잘못된 채팅방 ID');
+            return { success: false, message: 'invalid_chat_room_id' };
+          case 401:
+            console.error('인증 필요');
+            return { success: false, message: 'required_authorization' };
+          case 403:
+            console.error('권한 없음 (보관인은 나갈 수 없음)');
+            return { success: false, message: 'required_permission' };
+          case 404:
+            console.error('채팅방 또는 사용자를 찾을 수 없음');
+            return { success: false, message: response?.message || 'not_found_chat_room' };
+          case 409:
+            console.error('이미 나간 채팅방');
+            return { success: false, message: 'chat_user_already_left' };
+          default:
+            console.error('서버 에러');
+            return { success: false, message: 'internal_server_error' };
+        }
+      }
+      return { success: false, message: 'internal_server_error' };
+    }
   }
 
   // 메시지 읽음 처리 - 수정된 파라미터 이름
@@ -545,9 +572,10 @@ class ChatService {
     formData.append('chatImage', file);
 
     return client
-      .post<CommonResponse<string>>('/api/chat/images/upload', formData, {
+      .post<CommonResponse<string>>(API_PATHS.CHAT.UPLOAD_IMAGE, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       })
       .then(response => {

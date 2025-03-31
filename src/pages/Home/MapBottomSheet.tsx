@@ -168,7 +168,7 @@ const MenuTitle = styled.div`
 
 // 메뉴 설명
 const MenuDescription = styled.div`
-  font-size: 10.5px;
+  font-size: 10px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   color: ${THEME.gray500};
@@ -712,22 +712,24 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
           <SectionTitle>{currentLocation.split(' ')[1]} 지역 특가</SectionTitle>
           <DiscountGrid>
             {discountItems.length > 0 ? (
-              discountItems.slice(0, 1).map(item => (
+              discountItems.slice(0, 2).map(item => (
                 <DiscountItemBox key={item.id} onClick={() => handleDiscountItemClick(item.id)}>
                   <DiscountTag>-{item.discountRate}%</DiscountTag>
                   <AreaText>{currentLocation.split(' ')[1]}</AreaText>
                 </DiscountItemBox>
               ))
             ) : (
-              <DiscountItemBox>
-                <DiscountTag>-45%</DiscountTag>
-                <AreaText>{currentLocation.split(' ')[1]}</AreaText>
-              </DiscountItemBox>
+              <>
+                <DiscountItemBox>
+                  <DiscountTag>-45%</DiscountTag>
+                  <AreaText>{currentLocation.split(' ')[1]}</AreaText>
+                </DiscountItemBox>
+                <MatjoItem onClick={handleRegisterClick}>
+                  <MatjoIcon />
+                  <MatjoText>내가 마타조?</MatjoText>
+                </MatjoItem>
+              </>
             )}
-            <MatjoItem onClick={handleRegisterClick}>
-              <MatjoIcon />
-              <MatjoText>내가 마타조?</MatjoText>
-            </MatjoItem>
           </DiscountGrid>
 
           <SectionTitle>{currentLocation.split(' ')[1]} 최근 거래 내역</SectionTitle>

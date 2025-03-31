@@ -51,6 +51,7 @@ export const API_PATHS = {
     DELETE: '/api/posts/:postId',
     BY_LOCATION: '/api/posts/location',
     MY_POSTS: '/api/posts/my-posts', // 내 보관소 조회용
+    TOGGLE_VISIBILITY: '/api/posts/:postId/visibility', // 공개/비공개 전환
   },
   CHAT: {
     ROOMS: '/api/chats',
@@ -58,6 +59,7 @@ export const API_PATHS = {
     CREATE: '/api/chats',
     SEND: '/app/:roomId/message',
     TRADE_INFO: '/api/trades',
+    UPLOAD_IMAGE: '/api/chats/image',
   },
   KEEPER: {
     REGISTER: '/api/keeper/register',

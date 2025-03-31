@@ -261,7 +261,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     }
   }, [center.lat, center.lng, kakaoMap]);
 
-  // 마커 업데이트 함수 - markers를 의존성 배열에서 제거하여 무한 루프 방지
+  // 마커 업데이트 함수
   const updateKakaoMapMarkers = useCallback(
     (newStorageMarkers: Marker[]) => {
       if (!kakaoMap) return;
@@ -271,9 +271,26 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       markers.forEach(marker => marker.setMap(null));
       const newMarkers: any[] = [];
 
+      // 유효한 좌표를 가진 마커만 필터링
+      const validMarkers = newStorageMarkers.filter(marker => {
+        const lat = parseFloat(marker.latitude.toString());
+        const lng = parseFloat(marker.longitude.toString());
+        return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+      });
+
+      console.log('유효한 마커 수:', validMarkers.length);
+
       // 보관소 마커 추가
-      newStorageMarkers.forEach(markerData => {
-        const position = new window.kakao.maps.LatLng(markerData.latitude, markerData.longitude);
+      validMarkers.forEach(markerData => {
+        const lat = parseFloat(markerData.latitude.toString());
+        const lng = parseFloat(markerData.longitude.toString());
+
+        if (isNaN(lat) || isNaN(lng)) {
+          console.warn('유효하지 않은 좌표:', markerData);
+          return;
+        }
+
+        const position = new window.kakao.maps.LatLng(lat, lng);
 
         const marker = new window.kakao.maps.Marker({
           position,
@@ -287,7 +304,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           });
         }
 
-        // 인포윈도우 추가 (필요한 경우)
+        // 인포윈도우 추가
         const infowindow = new window.kakao.maps.InfoWindow({
           content: `<div style="padding:5px;font-size:12px;">${markerData.name}</div>`,
         });
@@ -308,7 +325,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       setMarkers(newMarkers);
       console.log('마커 업데이트 완료:', newMarkers.length);
     },
-    [kakaoMap, onMarkerClick], // markers를 의존성 배열에서 제거
+    [kakaoMap, onMarkerClick],
   );
 
   // 위치 기반 게시글 조회 함수 - 중복 요청 방지 로직 추가

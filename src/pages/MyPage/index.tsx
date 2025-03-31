@@ -485,7 +485,7 @@ const MyPage: React.FC = () => {
   // 개인정보 약관 이동 핸들러
   const moveToPrivacyPolicy = () => {
     // 개인정보 약관 페이지로 이동 (임시로 외부 링크로 처리)
-    window.open('https://www.notion.so', '_blank');
+    window.open('https://matajo.notion.site/termsandconditions?pvs=4', '_blank');
   };
 
   // 로그아웃 모달 열기

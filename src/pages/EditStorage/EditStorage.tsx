@@ -9,8 +9,7 @@ import {
   DaumAddressData,
   convertKakaoToDaumAddress as autoConvertAddress,
 } from '../../services/KakaoMapService';
-import { updateStorage, base64ToFile } from '../../services/api/modules/storage';
-import { getStorageDetail } from '../../services/api/modules/place';
+import { getStorageDetail, updateStorage } from '../../services/api/modules/place';
 import { convertTagsToStrings } from '../../services/domain/tag/TagMappingService';
 
 // 테마 컬러 상수 정의
@@ -823,23 +822,57 @@ const EditStorage: React.FC = () => {
   };
 
   // 업데이트 확인 핸들러
-  const handleUpdateConfirm = () => {
-    // 여기서 API 호출을 통해 DB를 업데이트합니다
-    console.log('보관소 정보가 업데이트됐습니다:', storageData);
+  const handleUpdateConfirm = async () => {
+    try {
+      setIsLoading(true);
 
-    // API 호출 예시 (실제로는 구현해야 함)
-    // updateStorage(storageData)
-    //   .then(() => {
-    //     navigate(`/storage/${storageData.id}`);
-    //   })
-    //   .catch(error => {
-    //     console.error('업데이트 오류:', error);
-    //   });
+      // FormData 생성
+      const formData = new FormData();
 
-    // 테스트용 코드
-    setTimeout(() => {
-      navigate(`/storage`);
-    }, 1000);
+      // postData 객체 생성
+      const postData = {
+        post_title: storageData.postTitle,
+        post_content: storageData.postContent,
+        post_address: storageData.postAddress,
+        prefer_price: Number(storageData.preferPrice),
+        post_tags: [
+          storageData.storageLocation,
+          ...storageData.selectedItemTypes,
+          ...storageData.selectedStorageTypes,
+          ...storageData.selectedDurationOptions,
+          ...(storageData.isValuableSelected ? ['귀중품'] : []),
+        ],
+      };
+
+      // postData를 FormData에 추가
+      formData.append('postData', JSON.stringify(postData));
+
+      // 메인 이미지 추가
+      if (mainImageFile) {
+        formData.append('mainImage', mainImageFile);
+      }
+
+      // 상세 이미지 추가
+      detailImageFiles.forEach((file, index) => {
+        formData.append('detailImage', file);
+      });
+
+      // API 호출
+      const response = await updateStorage(storageData.postId, formData);
+
+      if (response.data.success) {
+        showToast('보관소가 성공적으로 수정되었습니다.');
+        navigate(`/storage/${storageData.postId}`);
+      } else {
+        showToast('보관소 수정에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('보관소 수정 오류:', error);
+      showToast('보관소 수정 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+      setIsUpdateModalOpen(false);
+    }
   };
 
   // 모달 내용 컴포넌트 - 업데이트 확인

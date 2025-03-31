@@ -5,7 +5,11 @@ import Header, { HeaderDropdownOption } from '../../../components/layout/Header'
 import BottomNavigation from '../../../components/layout/BottomNavigation';
 import Modal from '../../../components/common/Modal';
 import KakaoMap from '../../../components/feature/map/KakaoMap';
-import { getStorageDetail, deleteStorage } from '../../../services/api/modules/place';
+import {
+  getStorageDetail,
+  deleteStorage,
+  toggleStorageVisibility,
+} from '../../../services/api/modules/place';
 import { transformStorageDetail } from '../../../utils/dataTransformers';
 import ChatService from '../../../services/ChatService';
 
@@ -369,6 +373,57 @@ const Toast = styled.div<{ visible: boolean }>`
   white-space: nowrap;
 `;
 
+// 드롭다운 메뉴 스타일 컴포넌트 추가
+const DropdownMenu = styled.div`
+  width: 83px;
+  height: 78px;
+  position: relative;
+  background: white;
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.15);
+`;
+
+const DropdownItem = styled.div`
+  width: 100%;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  padding: 0 7px;
+  cursor: pointer;
+  position: relative;
+  color: #2a2a2a;
+  font-size: 10px;
+  font-family: Noto Sans KR;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  word-wrap: break-word;
+
+  &:hover {
+    background-color: #f5f5f5;
+  }
+`;
+
+const DropdownDivider = styled.div`
+  width: 83px;
+  height: 1px;
+  background-color: #d9d9d9;
+  position: absolute;
+`;
+
+const DropdownIcon = styled.div`
+  width: 15px;
+  height: 15px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const DeleteItem = styled(DropdownItem)`
+  color: #ff0000;
+`;
+
 // 백엔드 API 응답 데이터 타입 정의
 interface StorageDetailData {
   postId: string | number;
@@ -418,6 +473,9 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  const [isAuthor, setIsAuthor] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+
   // API에서 보관소 상세 정보 로드
   useEffect(() => {
     const fetchStorageDetail = async () => {
@@ -436,16 +494,34 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
         // API 응답 데이터 추출
         if (response.data && response.data.success) {
-          // Transform the data from snake_case to camelCase
           const transformedData = transformStorageDetail(response.data.data);
 
-          // 응답 데이터에서 post_images가 있을 경우 직접 postImages에 할당
           if (response.data.data.post_images && Array.isArray(response.data.data.post_images)) {
             transformedData.postImages = response.data.data.post_images;
           }
 
           setStorageDetail(transformedData);
-          console.log('보관소 상세 정보:', transformedData);
+
+          // accessToken에서 userId 추출
+          const token = localStorage.getItem('accessToken');
+          if (token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(c => {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                })
+                .join(''),
+            );
+            const payload = JSON.parse(jsonPayload);
+
+            // userId 비교
+            const isAuthorCheck = payload.userId === transformedData.userId;
+            setIsAuthor(isAuthorCheck);
+            setIsHidden(transformedData.hiddenStatus);
+          }
         } else {
           throw new Error('데이터를 불러오는 데 실패했습니다.');
         }
@@ -710,28 +786,75 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     }
   };
 
-  // 헤더 드롭다운 옵션 정의
-  const headerDropdownOptions: HeaderDropdownOption[] = [
-    {
-      id: 'edit',
-      label: '보관소 수정',
-      icon: '✓',
-      onClick: () => console.log('보관소 수정'),
-    },
-    {
-      id: 'hidden',
-      label: '비공개',
-      icon: '➦',
-      onClick: () => console.log('비공개 처리'),
-    },
-    {
-      id: 'delete',
-      label: '삭제',
-      icon: '✕',
-      color: '#ff4b4b',
-      onClick: () => openDeleteModal(),
-    },
-  ];
+  // 헤더 드롭다운 옵션 정의 수정
+  const headerDropdownOptions: HeaderDropdownOption[] = isAuthor
+    ? [
+        {
+          id: 'edit',
+          label: '보관소 수정',
+          icon: (
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 13 13"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M0.875 9.78113V12.1249H3.21875L10.1313 5.21238L7.7875 2.86863L0.875 9.78113ZM11.944 3.39961C12.1878 3.15586 12.1878 2.76211 11.944 2.51836L10.4815 1.05586C10.2378 0.812109 9.84402 0.812109 9.60027 1.05586L8.45652 2.19961L10.8003 4.54336L11.944 3.39961Z"
+                fill="#020202"
+              />
+            </svg>
+          ),
+          onClick: () => navigate(`/edit-storage/${id}`),
+        },
+        {
+          id: 'visibility',
+          label: isHidden ? '공개하기' : '비공개',
+          icon: (
+            <svg
+              width="16"
+              height="12"
+              viewBox="0 0 16 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M3.25714 0.937622C2.94655 0.638122 2.45197 0.647114 2.15247 0.957707C1.85297 1.2683 1.86196 1.76288 2.17255 2.06238C2.53721 2.41402 2.95322 2.81343 3.40503 3.24519C2.28345 4.19916 1.56522 5.34604 1.06365 6.14695C1.02701 6.20546 0.991397 6.26233 0.956995 6.31693C0.733103 6.67232 0.839699 7.14191 1.19508 7.36581C1.28446 7.42212 1.38107 7.45752 1.47917 7.47332L1.96152 8.67918C1.97512 8.78469 2.0112 8.88902 2.07137 8.9851C2.62551 9.86985 3.33735 10.6302 4.37312 11.158C5.3984 11.6804 6.68146 11.9447 8.3323 11.9447C9.7853 11.9447 10.9628 11.5982 11.9238 11.0771C12.3246 11.4106 12.6622 11.6747 12.9065 11.8375C13.2655 12.0769 13.7505 11.9799 13.9899 11.6209C14.2292 11.2619 14.1322 10.7768 13.7732 10.5375C13.6457 10.4525 13.4712 10.3209 13.2549 10.1475C14.3369 9.20348 15.0346 8.08275 15.524 7.29659L15.5261 7.29329C15.5619 7.23575 15.5968 7.17974 15.6304 7.12602L15.8398 6.79161L15.6871 6.42782C14.9572 4.69003 12.7412 1.5 8.29317 1.5C6.85365 1.5 5.68318 1.83645 4.72481 2.34498C4.18173 1.82679 3.68409 1.34933 3.25714 0.937622Z"
+                fill="#212121"
+              />
+            </svg>
+          ),
+          onClick: () => handleToggleVisibility(),
+        },
+        {
+          id: 'delete',
+          label: '삭제',
+          icon: (
+            <svg
+              width="9"
+              height="9"
+              viewBox="0 0 9 9"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M8.875 1.00625L7.99375 0.125L4.5 3.61875L1.00625 0.125L0.125 1.00625L3.61875 4.5L0.125 7.99375L1.00625 8.875L4.5 5.38125L7.99375 8.875L8.875 7.99375L5.38125 4.5L8.875 1.00625Z"
+                fill="#020202"
+              />
+            </svg>
+          ),
+          color: '#FF0000',
+          onClick: () => openDeleteModal(),
+        },
+      ]
+    : [];
 
   // 모달 상태 관리
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -790,16 +913,48 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     </>
   );
 
+  // 공개/비공개 전환 핸들러
+  const handleToggleVisibility = async () => {
+    try {
+      if (!id) return;
+
+      const response = await toggleStorageVisibility(id);
+      if (response.data.success) {
+        setIsHidden(!isHidden);
+        showToastMessage(isHidden ? '보관소가 공개되었습니다.' : '보관소가 비공개되었습니다.');
+      } else {
+        showToastMessage('공개/비공개 전환에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('공개/비공개 전환 실패:', error);
+      showToastMessage('공개/비공개 전환에 실패했습니다.');
+    }
+  };
+
   return (
     <>
       {/* 상단 헤더 */}
       <Header
         title="보관소 상세 페이지"
         showBackButton={true}
-        showOptionButton={true}
+        showOptionButton={isAuthor}
         onBack={handleBack}
         dropdownOptions={headerDropdownOptions}
       />
+
+      {/* 디버깅을 위한 임시 표시 */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          background: 'white',
+          padding: '5px',
+          zIndex: 9999,
+        }}
+      >
+        isAuthor: {isAuthor.toString()}
+      </div>
 
       <Container ref={containerRef}>
         {/* 게시글 삭제 모달 */}
@@ -977,7 +1132,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
             <KeeperSection>
               <KeeperCard>
                 <KeeperImageContainer>
-                  <KeeperImage src="https://placehold.co/28x29" alt="보관인 프로필" />
+                  <KeeperImage src="/tajo-logo.png" alt="보관인 프로필" />
                 </KeeperImageContainer>
                 <KeeperInfo>
                   <KeeperLabel>보관인</KeeperLabel>

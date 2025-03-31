@@ -299,7 +299,7 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
 
       const initializeLocations = async () => {
         try {
-          const savedLocations = localStorage.getItem('recentLocationSearches');
+          const savedLocations = localStorage.getItem('recentLocations');
           let recentLocations: LocationInfo[] = [];
 
           if (savedLocations) {
@@ -331,7 +331,7 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
     }
 
     if (!searchTerm.trim()) {
-      const savedLocations = localStorage.getItem('recentLocationSearches');
+      const savedLocations = localStorage.getItem('recentLocations');
       setSearchResults(savedLocations ? JSON.parse(savedLocations) : []);
       setLoading(false);
       return;
@@ -381,18 +381,24 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
 
   const handleResultClick = async (location: LocationInfo) => {
     try {
-      const response = await getLocationId(location.formatted_address);
-      const locationResponse = response as unknown as LocationIdResponse;
+      // 현재 위치인 경우 좌표로 조회
+      const isCurrentLocation = location.formatted_address === '현재 위치';
+      const searchQuery = isCurrentLocation
+        ? `${location.latitude},${location.longitude}`
+        : location.formatted_address;
 
-      if (locationResponse?.success && locationResponse.data?.[0]) {
-        const locationData = locationResponse.data[0];
+      console.log('위치 검색 쿼리:', searchQuery);
+      const response = await getLocationId(searchQuery);
+
+      if (response && response.latitude && response.longitude) {
         const updatedLocation = {
           ...location,
-          latitude: locationData.latitude.toString(),
-          longitude: locationData.longitude.toString(),
-          location_id: locationData.id,
+          latitude: response.latitude.toString(),
+          longitude: response.longitude.toString(),
+          location_id: response.id || 0,
         };
 
+        console.log('업데이트된 위치 정보:', updatedLocation);
         saveRecentLocation(updatedLocation);
         onSelectLocation(
           updatedLocation.formatted_address,
@@ -401,6 +407,8 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
           updatedLocation.location_id,
         );
       } else {
+        console.warn('위치 ID 조회 실패 또는 좌표 정보 없음:', response);
+        // 위치 ID 조회 실패 시에도 기본 정보로 저장
         saveRecentLocation(location);
         onSelectLocation(
           location.formatted_address,
@@ -412,6 +420,7 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
       onClose();
     } catch (error) {
       console.error('위치 ID 조회 실패:', error);
+      // 오류 발생 시에도 기본 정보로 저장
       saveRecentLocation(location);
       onSelectLocation(
         location.formatted_address,
@@ -425,20 +434,23 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
 
   const saveRecentLocation = (location: LocationInfo) => {
     try {
-      const savedLocations = localStorage.getItem('recentLocationSearches');
+      const savedLocations = localStorage.getItem('recentLocations');
       let recentLocations: LocationInfo[] = savedLocations ? JSON.parse(savedLocations) : [];
 
+      // 중복 제거
       recentLocations = recentLocations.filter(
         loc => loc.formatted_address !== location.formatted_address,
       );
 
+      // 새 위치를 배열 앞에 추가
       recentLocations.unshift(location);
 
+      // 최대 5개만 유지
       if (recentLocations.length > 5) {
         recentLocations = recentLocations.slice(0, 5);
       }
 
-      localStorage.setItem('recentLocationSearches', JSON.stringify(recentLocations));
+      localStorage.setItem('recentLocations', JSON.stringify(recentLocations));
     } catch (error) {
       console.error('최근 위치 저장 오류:', error);
     }
