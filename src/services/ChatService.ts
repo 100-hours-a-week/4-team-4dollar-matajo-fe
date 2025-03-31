@@ -589,17 +589,14 @@ class ChatService {
   public confirmTrade(roomId: number, tradeData: TradeData): Promise<number> {
     const url = `${API_PATHS.CHAT.TRADE_INFO}`;
 
-    // Get userId from localStorage
-    //const userId = localStorage.getItem('userId') || '1';
-
     // Prepare data in the format expected by backend
     const requestData = {
       room_id: roomId,
       product_name: tradeData.itemName,
-      trade_price: tradeData.price,
+      category: tradeData.category,
       start_date: tradeData.startDate,
       storage_period: tradeData.storagePeriod,
-      category: tradeData.category,
+      trade_price: tradeData.price,
     };
 
     console.log('Sending trade confirmation:', requestData);

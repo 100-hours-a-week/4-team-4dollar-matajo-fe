@@ -3,13 +3,12 @@ import { API_PATHS } from '../../../constants/api';
 
 // 거래 생성 요청 인터페이스
 export interface CreateTradeRequest {
+  room_id: number; // 채팅방 ID
   product_name: string; // 상품명
-  storage_category: string; // 보관 카테고리
+  category: string; // 카테고리
   start_date: string; // 시작 일자 (YYYY-MM-DD)
-  end_date: string; // 종료 일자 (YYYY-MM-DD)
+  storage_period: number; // 보관 기간
   trade_price: number; // 거래 가격
-  message?: string; // 추가 메시지 (선택 사항)
-  chatroom_id: number; // 채팅방 ID
 }
 
 // 거래 생성 응답 인터페이스

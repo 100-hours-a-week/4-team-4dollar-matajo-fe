@@ -423,15 +423,14 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
     setIsLoading(true);
 
     try {
-      // API 요청 데이터 형식 수정 - CreateTradeRequest 인터페이스에 맞춤
+      // API 요청 데이터 형식 수정 - API 명세에 맞춤
       const requestData: CreateTradeRequest = {
+        room_id: chatroomId,
         product_name: itemName,
-        storage_category: selectedItemType || '기타', // 카테고리는 선택된 물품 종류 사용
+        category: selectedItemType || '기타',
         start_date: startDate ? format(startDate, 'yyyy-MM-dd') : '',
-        end_date: endDate ? format(endDate, 'yyyy-MM-dd') : '', // end_date 추가
+        storage_period: storagePeriod,
         trade_price: Number(price),
-        message: message, // 선택적 메시지
-        chatroom_id: chatroomId, // room_id 대신 chatroom_id 사용
       };
 
       // API 호출

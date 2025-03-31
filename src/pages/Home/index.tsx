@@ -19,6 +19,7 @@ import { Marker } from './MapBottomSheet';
 import LocationSearchModal from './LocationSearchModal';
 import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet';
 import { ROUTES } from '../../constants/routes';
+import { createTrade, CreateTradeRequest } from '../../services/api/modules/trades';
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
