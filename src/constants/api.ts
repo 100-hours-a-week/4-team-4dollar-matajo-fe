@@ -72,6 +72,9 @@ export const API_PATHS = {
     SEND: '/app/:roomId/message',
     TRADE_INFO: '/api/trades',
     UPLOAD_IMAGE: '/api/chats/image',
+    READ: '/api/chats/:roomId/read',
+    LEAVE: '/api/chat/:roomId',
+    DETAIL: '/api/chats/:roomId',
   },
   KEEPER: {
     REGISTER: '/api/keeper/register',

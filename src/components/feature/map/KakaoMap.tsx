@@ -345,9 +345,16 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
         const position = new window.kakao.maps.LatLng(lat, lng);
 
+        // 마커 이미지 설정 (보라색 마커 아이콘)
+        const imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png';
+        const imageSize = new window.kakao.maps.Size(24, 35);
+        const imageOption = { offset: new window.kakao.maps.Point(12, 35) };
+        const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+
         const marker = new window.kakao.maps.Marker({
           position,
           map: kakaoMap,
+          image: markerImage,
         });
 
         // 클릭 이벤트 추가
