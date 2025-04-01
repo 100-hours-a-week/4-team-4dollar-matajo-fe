@@ -151,7 +151,7 @@ const UnitText = styled.span`
 
 const ChatButton = styled.div`
   width: 94px;
-  height: 35px;
+  height: 24px;
   padding: 8px 0;
   position: absolute;
   right: 25px;
@@ -169,7 +169,7 @@ const ChatButtonText = styled.div`
   font-size: 16px;
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 700;
-  line-height: 18.84px;
+  line-height: 14px;
   letter-spacing: 0.32px;
   word-wrap: break-word;
 `;
@@ -942,20 +942,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
         dropdownOptions={headerDropdownOptions}
       />
 
-      {/* 디버깅을 위한 임시 표시 */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          background: 'white',
-          padding: '5px',
-          zIndex: 9999,
-        }}
-      >
-        isAuthor: {isAuthor.toString()}
-      </div>
-
       <Container ref={containerRef}>
         {/* 게시글 삭제 모달 */}
         <Modal
@@ -1060,7 +1046,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'flex-start',
+                  alignItems: 'center',
                 }}
               >
                 <PriceContainer>
