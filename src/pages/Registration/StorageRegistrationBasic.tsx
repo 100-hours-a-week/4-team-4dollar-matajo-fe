@@ -585,11 +585,13 @@ const StorageRegistrationBasic: React.FC = () => {
     setTimeout(() => setToastVisible(false), 3000);
   };
 
-  // 입력 변경 핸들러
+  // 가격 입력란에서 사용할 최대 자릿수 상수 추가
+  const PRICE_MAX_LENGTH = 7;
+
+  // handleInputChange 수정 - preferPrice 7자리 제한 및 헬퍼 텍스트 표시
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
 
-    // 글자수 제한 처리
     if (name === 'postTitle' && value.length > DESCRIPTION_MAX_LENGTH) {
       return;
     }
@@ -598,17 +600,33 @@ const StorageRegistrationBasic: React.FC = () => {
       return;
     }
 
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'preferPrice') {
+      // 숫자만 허용하고, 길이 제한 적용
+      const numericValue = value.replace(/[^0-9]/g, '');
+      if (numericValue.length > PRICE_MAX_LENGTH) {
+        // 에러 상태 업데이트: 헬퍼 텍스트가 보이도록
+        setErrors(prev => ({
+          ...prev,
+          preferPrice: '최대 7자리까지 입력 가능합니다.',
+        }));
+        return;
+      } else {
+        // 7자리 이하로 입력 시 에러 해제
+        setErrors(prev => ({ ...prev, preferPrice: '' }));
+      }
 
-    // 입력 시 해당 필드의 에러 메시지 초기화
-    setErrors(prev => ({ ...prev, [name]: '' }));
+      setFormData(prev => ({ ...prev, [name]: numericValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
 
-    // 로컬 스토리지에 데이터 저장 (자동 저장)
+    // 로컬 스토리지 업데이트
     localStorage.setItem(
       'storage_register_basic',
       JSON.stringify({
         ...formData,
-        [name]: value,
+        [name]: name === 'preferPrice' ? value.replace(/[^0-9]/g, '') : value,
       }),
     );
   };
@@ -829,7 +847,6 @@ const StorageRegistrationBasic: React.FC = () => {
                 }}
               />
             </div>
-
             {/* 한줄 소개 */}
             <div onClick={e => e.stopPropagation()}>
               <InputLabel>
@@ -856,7 +873,6 @@ const StorageRegistrationBasic: React.FC = () => {
                 onClick={e => e.stopPropagation()}
               />
             </div>
-
             {/* 상세 내용 */}
             <div onClick={e => e.stopPropagation()}>
               <InputLabel>
@@ -887,30 +903,30 @@ const StorageRegistrationBasic: React.FC = () => {
                 onClick={e => e.stopPropagation()}
               />
             </div>
-
             {/* 가격 입력 */}
             <div onClick={e => e.stopPropagation()}>
               <InputLabel>
                 희망 가격 입력 <RequiredMark>*</RequiredMark>
               </InputLabel>
               <HelperText visible={!!errors.preferPrice}>
-                {errors.preferPrice || '헬퍼 텍스트입니다.'}
+                {errors.preferPrice || '숫자만 입력할 수 있으며, 최대 7자리까지 입력 가능합니다.'}
               </HelperText>
               <InputField
-                type="number"
+                type="text"
                 name="preferPrice"
                 value={formData.preferPrice}
                 onChange={handleInputChange}
                 onFocus={e => {
-                  e.stopPropagation(); // 이벤트 버블링 방지
+                  e.stopPropagation();
                   const { name } = e.target;
                   setFocused(prev => ({ ...prev, [name]: true }));
                 }}
                 onBlur={handleBlur}
-                placeholder="가격을 입력해주세요 (숫자만 입력해주세요)"
+                placeholder="가격을 입력해주세요 (최대 7자리 숫자만 입력)"
                 isError={!!errors.preferPrice}
                 isFocused={focused.preferPrice}
                 onClick={e => e.stopPropagation()}
+                inputMode="numeric"
               />
             </div>
           </FormContainer>
