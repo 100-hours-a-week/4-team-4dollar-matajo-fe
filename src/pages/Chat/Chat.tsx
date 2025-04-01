@@ -475,12 +475,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           console.log('새 메시지 수신:', message);
           setMessages(prev => {
             // 중복 메시지 방지
-            const messageId = message.messageId || message.messageId;
-            const isDuplicate = prev.some(
-              m =>
-                (m.messageId && m.messageId === messageId) ||
-                (m.messageId && m.messageId === messageId),
-            );
+            const isDuplicate = prev.some(m => m.messageId === message.messageId);
 
             if (isDuplicate) {
               console.log('중복 메시지 무시');
@@ -521,12 +516,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           if (!mounted) return;
 
           setMessages(prev => {
-            const messageId = message.messageId || message.messageId;
-            const isDuplicate = prev.some(
-              m =>
-                (m.messageId && m.messageId === messageId) ||
-                (m.messageId && m.messageId === messageId),
-            );
+            const isDuplicate = prev.some(m => m.messageId === message.messageId);
 
             if (isDuplicate) return prev;
             return [...prev, message];
@@ -600,13 +590,31 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 채팅 스크롤을 항상 아래로 유지
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      const container = chatContainerRef.current;
+      const shouldScroll =
+        container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+
+      if (shouldScroll) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
     }
   }, [messages]);
 
   // 메시지 전송 핸들러
   const handleSendMessage = async () => {
-    if (!roomId || inputMessage.trim() === '') return;
+    if (!roomId) return;
+
+    const trimmedMessage = inputMessage.trim();
+    if (!trimmedMessage) return;
+
+    // 메시지 길이 제한 (500자)
+    if (trimmedMessage.length > 500) {
+      setError('메시지는 500자를 초과할 수 없습니다.');
+      return;
+    }
 
     // 연결이 끊어진 경우 재연결 시도
     if (!isConnected) {
@@ -622,7 +630,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       setError(null);
 
       // WebSocket을 통해 메시지 전송
-      await chatService.sendTextMessage(roomId, currentUserId, inputMessage);
+      await chatService.sendTextMessage(roomId, currentUserId, trimmedMessage);
 
       // 입력창 초기화
       setInputMessage('');

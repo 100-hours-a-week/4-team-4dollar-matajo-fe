@@ -412,7 +412,7 @@ const HomePage: React.FC = () => {
 
   // 보관인 등록 확인 핸들러
   const handleKeeperConfirm = () => {
-    navigate('/mypage/keeper-registration', { replace: true });
+    navigate('/keeper-registration', { replace: true });
     setShowKeeperModal(false);
   };
 

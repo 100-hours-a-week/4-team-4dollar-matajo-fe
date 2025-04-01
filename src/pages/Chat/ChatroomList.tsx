@@ -368,44 +368,36 @@ const ChatroomList: React.FC = () => {
     loadChatrooms();
   };
 
-  // 채팅방 나가기 확인 핸들러 수정
+  // 채팅방 나가기 확인 핸들러
   const handleLeaveChatroom = async () => {
     if (selectedChatroomId) {
       try {
+        // 나가기 진행 중 상태 설정
         setLeavingChatroomId(selectedChatroomId);
+
+        // 모달 닫기 (진행 중 UI는 채팅방 리스트에 표시)
         setIsLeaveModalOpen(false);
 
-        const result = await chatService.leaveChatRoom(selectedChatroomId);
+        // API 호출로 채팅방 나가기
+        const success = await chatService.leaveChatRoom(selectedChatroomId);
 
-        if (result.success) {
-          // 성공적으로 나가기 처리된 경우
+        if (success) {
+          // 화면에서 해당 채팅방 제거
           setChatrooms(prev => prev.filter(room => room.chatRoomId !== selectedChatroomId));
           console.log(`채팅방 ${selectedChatroomId} 나가기 처리됨`);
         } else {
-          // 에러 메시지에 따른 사용자 친화적인 메시지 표시
-          let errorMessage = '채팅방 나가기에 실패했습니다.';
-          switch (result.message) {
-            case 'required_permission':
-              errorMessage = '보관인은 채팅방을 나갈 수 없습니다.';
-              break;
-            case 'chat_user_already_left':
-              errorMessage = '이미 나간 채팅방입니다.';
-              break;
-            case 'not_found_chat_room':
-            case 'not_found_chat_user':
-              errorMessage = '존재하지 않는 채팅방입니다.';
-              break;
-          }
-          setError(errorMessage);
+          setError('채팅방 나가기에 실패했습니다. 다시 시도해주세요.');
         }
       } catch (error) {
         console.error(`채팅방 나가기 실패:`, error);
         setError('채팅방 나가기에 실패했습니다. 다시 시도해주세요.');
       } finally {
+        // 나가기 진행 중 상태 초기화
         setLeavingChatroomId(null);
         setSelectedChatroomId(null);
       }
     } else {
+      // 모달 닫기
       setIsLeaveModalOpen(false);
     }
   };
