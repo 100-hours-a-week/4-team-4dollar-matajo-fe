@@ -7,9 +7,9 @@ import axios from 'axios';
 
 // 메시지 타입 정의 - 백엔드와 일치
 export enum MessageType {
-  TEXT = 1,
-  IMAGE = 2,
-  SYSTEM = 3,
+  TEXT = 'TEXT',
+  IMAGE = 'IMAGE',
+  SYSTEM = 'SYSTEM',
 }
 
 // 백엔드 DTO와 일치하는 인터페이스 정의
