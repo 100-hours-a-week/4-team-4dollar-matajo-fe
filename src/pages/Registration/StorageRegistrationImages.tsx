@@ -354,6 +354,9 @@ const Registration3: React.FC = () => {
   // 첫 렌더링 체크 (useEffect 첫 실행시 저장 방지)
   const [isInitialRender, setIsInitialRender] = useState(true);
 
+  // post_id를 저장할 state 추가
+  const [postId, setPostId] = useState<string | null>(null);
+
   // 이전 단계 데이터 로드
   useEffect(() => {
     if (location.state) {
@@ -561,6 +564,7 @@ const Registration3: React.FC = () => {
         localStorage.removeItem('storage_register_basic');
         localStorage.removeItem('storage_register_details');
         localStorage.removeItem('storage_register_images');
+        setPostId(response.id); // 성공 응답에서 post_id 저장
         openConfirmModal();
       } else {
         showToast(response?.message || '보관소 등록에 실패했습니다.');
@@ -575,7 +579,13 @@ const Registration3: React.FC = () => {
 
   // 등록 확인 처리
   const handleConfirmConfirm = () => {
-    navigate('/myplace');
+    if (postId) {
+      // post_id가 있으면 상세 페이지로 이동
+      navigate(`/storage/${postId}`);
+    } else {
+      // post_id가 없으면 기존처럼 내 보관소 페이지로 이동
+      navigate('/storage');
+    }
   };
 
   // 취소 처리
