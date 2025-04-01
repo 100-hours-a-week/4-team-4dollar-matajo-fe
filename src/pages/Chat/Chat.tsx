@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import TradeConfirmModal, { TradeData } from './TradeConfirmModal';
 import ChatService, { ChatMessageResponseDto, MessageType } from '../../services/ChatService';
-import { API_BACKEND_URL } from '../../constants/api';
+import { API_BACKEND_URL, API_PATHS } from '../../constants/api';
 import axios from 'axios';
 import moment from 'moment-timezone';
 import client from '../../services/api/client';
@@ -72,6 +72,7 @@ const MessageGroup = styled.div`
   flex-direction: column;
   max-width: 70%;
   margin-bottom: 15px;
+  position: relative;
 `;
 
 // 보낸 메시지 그룹
@@ -344,6 +345,14 @@ const RetryButton = styled.button`
   }
 `;
 
+// 읽음 표시 컴포넌트 추가
+const ReadStatus = styled.div`
+  font-size: 10px;
+  color: ${THEME.grayText};
+  margin-top: 2px;
+  text-align: right;
+`;
+
 interface ChatProps {
   onBack?: () => void;
 }
@@ -369,8 +378,21 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     return 1;
   });
 
-  // 메시지 상태 관리
-  const [messages, setMessages] = useState<ChatMessageResponseDto[]>([]);
+  // 메시지 상태 관리 - localStorage에서 로드
+  const [messages, setMessages] = useState<ChatMessageResponseDto[]>(() => {
+    if (!roomId) return [];
+
+    // localStorage에서 저장된 메시지 로드
+    const savedMessagesJson = localStorage.getItem(`chat_messages_${roomId}`);
+    if (savedMessagesJson) {
+      try {
+        return JSON.parse(savedMessagesJson);
+      } catch (e) {
+        console.error('저장된 메시지 파싱 실패:', e);
+      }
+    }
+    return [];
+  });
 
   // 현재 입력 메시지
   const [inputMessage, setInputMessage] = useState('');
@@ -398,6 +420,25 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     keeper_id: number;
     client_id: number;
   } | null>(null);
+
+  // 메시지 저장을 위한 상태 추가 - localStorage에서 로드
+  const [savedMessages, setSavedMessages] = useState<ChatMessageResponseDto[]>(() => {
+    if (!roomId) return [];
+
+    // localStorage에서 저장된 메시지 로드
+    const savedMessagesJson = localStorage.getItem(`chat_messages_${roomId}`);
+    if (savedMessagesJson) {
+      try {
+        return JSON.parse(savedMessagesJson);
+      } catch (e) {
+        console.error('저장된 메시지 파싱 실패:', e);
+      }
+    }
+    return [];
+  });
+
+  // 채팅방 재입장 시 마지막 접속 시간 확인
+  const [lastAccessTime, setLastAccessTime] = useState<string | null>(null);
 
   // API 요청 헤더에 userId 추가
   useEffect(() => {
@@ -461,8 +502,10 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
         // 메시지 읽음 상태 업데이트
         try {
-          await chatService.markMessagesAsRead(roomId, currentUserId);
-          console.log('메시지 읽음 처리 완료');
+          if (roomId) {
+            await chatService.markMessagesAsRead(roomId, currentUserId);
+            console.log('메시지 읽음 처리 완료');
+          }
         } catch (error) {
           console.error('메시지 읽음 처리 실패:', error);
         }
@@ -473,16 +516,29 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           if (!mounted) return;
 
           console.log('새 메시지 수신:', message);
+
+          // 입장 메시지는 화면에 표시하지 않음
+          if (
+            message.message_type === MessageType.SYSTEM &&
+            message.content.includes('사용자가 채팅방에 입장했습니다')
+          ) {
+            console.log('입장 메시지는 화면에 표시하지 않음');
+            return;
+          }
+
           setMessages(prev => {
             // 중복 메시지 방지
-            const isDuplicate = prev.some(m => m.messageId === message.messageId);
+            const isDuplicate = prev.some(m => m.message_id === message.message_id);
 
             if (isDuplicate) {
               console.log('중복 메시지 무시');
               return prev;
             }
 
-            return [...prev, message];
+            const newMessages = [...prev, message];
+            // WebSocket으로 받은 메시지도 savedMessages에 저장
+            setSavedMessages(newMessages);
+            return newMessages;
           });
         });
 
@@ -516,7 +572,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           if (!mounted) return;
 
           setMessages(prev => {
-            const isDuplicate = prev.some(m => m.messageId === message.messageId);
+            const isDuplicate = prev.some(m => m.message_id === message.message_id);
 
             if (isDuplicate) return prev;
             return [...prev, message];
@@ -550,19 +606,46 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     };
   }, [roomId, currentUserId]);
 
-  // 이전 메시지 로드 함수
+  // 메시지 로드 함수 수정
   const loadPreviousMessages = async () => {
     if (!roomId) return;
 
     try {
-      const previousMessages = await chatService.loadMessages(roomId);
+      console.log('이전 메시지 로드 시작...');
 
-      if (previousMessages.length > 0) {
-        console.log('이전 메시지 로드 성공:', previousMessages.length);
-        setMessages(previousMessages);
-      } else {
-        console.log('이전 메시지가 없습니다.');
+      // 로컬 스토리지에서 메시지 로드
+      let localMessages: ChatMessageResponseDto[] = [];
+      const savedMessagesJson = localStorage.getItem(`chat_messages_${roomId}`);
+      if (savedMessagesJson) {
+        try {
+          localMessages = JSON.parse(savedMessagesJson);
+          console.log('로컬 스토리지에서 로드된 메시지:', localMessages.length);
+        } catch (e) {
+          console.error('저장된 메시지 파싱 실패:', e);
+        }
       }
+
+      // 서버에서 메시지 로드
+      const serverMessages = await chatService.loadMessages(roomId);
+      console.log('서버에서 받은 메시지:', serverMessages.length);
+
+      // 모든 메시지 병합
+      const allMessages = [...localMessages, ...serverMessages];
+
+      // 중복 제거 및 정렬
+      const uniqueMessages = Array.from(
+        new Map(allMessages.map(msg => [msg.message_id, msg])).values(),
+      ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      console.log('정렬된 메시지:', uniqueMessages.length);
+
+      // 메시지 상태 업데이트
+      setMessages(uniqueMessages);
+      setSavedMessages(uniqueMessages);
+
+      // localStorage에 저장
+      localStorage.setItem(`chat_messages_${roomId}`, JSON.stringify(uniqueMessages));
+      console.log('메시지 상태 업데이트 완료');
     } catch (error) {
       console.error('이전 메시지 로드 실패:', error);
       setError('메시지를 불러오는데 실패했습니다. 새로고침 후 다시 시도해주세요.');
@@ -631,6 +714,27 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
       // WebSocket을 통해 메시지 전송
       await chatService.sendTextMessage(roomId, currentUserId, trimmedMessage);
+
+      // 메시지 상태 업데이트
+      const newMessage: ChatMessageResponseDto = {
+        message_id: Date.now(), // 임시 ID
+        room_id: roomId,
+        sender_id: currentUserId,
+        content: trimmedMessage,
+        message_type: MessageType.TEXT,
+        read_status: false,
+        created_at: new Date().toISOString(),
+        sender_nickname: '나', // 임시 닉네임
+      };
+
+      // 새 메시지 추가
+      const updatedMessages = [...messages, newMessage];
+      setMessages(updatedMessages);
+      setSavedMessages(updatedMessages);
+
+      // localStorage에 저장
+      localStorage.setItem(`chat_messages_${roomId}`, JSON.stringify(updatedMessages));
+      console.log('보낸 메시지를 로컬 스토리지에 저장');
 
       // 입력창 초기화
       setInputMessage('');
@@ -761,10 +865,19 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     const result: (ChatMessageResponseDto | { isDateHeader: true; date: string })[] = [];
     let currentDate = '';
 
-    messages.forEach(message => {
-      if (!message.createdAt) return;
+    // 입장 메시지를 필터링한 메시지 배열 사용
+    const filteredMessages = messages.filter(
+      msg =>
+        !(
+          msg.message_type === MessageType.SYSTEM &&
+          msg.content.includes('사용자가 채팅방에 입장했습니다')
+        ),
+    );
 
-      const messageDate = formatDateHeader(message.createdAt);
+    filteredMessages.forEach(message => {
+      if (!message.created_at) return;
+
+      const messageDate = formatDateHeader(message.created_at);
 
       // 새로운 날짜인 경우 날짜 헤더 추가
       if (messageDate !== currentDate) {
@@ -783,7 +896,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // 메시지가 현재 사용자가 보낸 것인지 확인
   const isSentByCurrentUser = (message: ChatMessageResponseDto): boolean => {
-    return message.senderId === currentUserId;
+    return message.sender_id === currentUserId;
   };
 
   // 현재 사용자가 보관인인지 확인하는 함수
@@ -810,6 +923,79 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
     loadChatRoomDetail();
   }, [roomId]);
+
+  // 읽음 상태 처리 함수 추가
+  const handleReadStatus = async (message: ChatMessageResponseDto) => {
+    if (!message.read_status && message.sender_id !== currentUserId && roomId) {
+      try {
+        await chatService.markMessagesAsRead(roomId, currentUserId);
+        // 메시지 상태 업데이트
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.message_id === message.message_id ? { ...msg, read_status: true } : msg,
+          ),
+        );
+      } catch (error) {
+        console.error('읽음 처리 실패:', error);
+      }
+    }
+  };
+
+  // 채팅방 재입장 시 마지막 접속 시간 확인
+  useEffect(() => {
+    const checkLastAccess = async () => {
+      if (!roomId) return;
+
+      try {
+        const response = await client.get(
+          `${API_PATHS.CHAT.DETAIL.replace(':roomId', roomId.toString())}`,
+        );
+        if (response.data.success) {
+          const lastAccess = response.data.data.last_access_time;
+          setLastAccessTime(lastAccess);
+
+          // 채팅방 삭제 여부 확인
+          const isDeleted = response.data.data.is_deleted;
+
+          if (isDeleted) {
+            // 채팅방이 삭제된 경우, 마지막 접속 시간 이후의 메시지만 로드
+            const messages = await chatService.loadMessages(roomId);
+            const filteredMessages = messages.filter(
+              msg => new Date(msg.created_at) > new Date(lastAccess),
+            );
+            setMessages(filteredMessages);
+            setSavedMessages(filteredMessages);
+          } else {
+            // 단순 나가기 후 재입장의 경우, 모든 메시지 로드
+            await loadPreviousMessages();
+          }
+        }
+      } catch (error) {
+        console.error('마지막 접속 시간 확인 실패:', error);
+      }
+    };
+
+    checkLastAccess();
+  }, [roomId]);
+
+  // 메시지 렌더링 시 읽음 상태 처리
+  useEffect(() => {
+    const unreadMessages = messages.filter(
+      message => !message.read_status && message.sender_id !== currentUserId,
+    );
+
+    if (unreadMessages.length > 0 && roomId) {
+      handleReadStatus(unreadMessages[0]);
+    }
+  }, [messages, currentUserId, roomId]);
+
+  // savedMessages가 변경될 때마다 localStorage에 저장
+  useEffect(() => {
+    if (roomId && savedMessages.length > 0) {
+      localStorage.setItem(`chat_messages_${roomId}`, JSON.stringify(savedMessages));
+      console.log('메시지를 로컬 스토리지에 저장:', savedMessages.length);
+    }
+  }, [savedMessages, roomId]);
 
   return (
     <Container>
@@ -842,7 +1028,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         )}
 
         {groupedMessages.map((item, index) => {
-          // 날짜 헤더 처리
           if ('isDateHeader' in item) {
             return (
               <DateDivider key={`date-${index}`}>
@@ -853,26 +1038,24 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
           const message = item as ChatMessageResponseDto;
 
-          // 시스템 메시지 처리
-          if (message.messageType === MessageType.SYSTEM) {
+          if (message.message_type === MessageType.SYSTEM) {
             return (
-              <SentMessageGroup key={message.messageId || index}>
+              <SentMessageGroup key={message.message_id || index}>
                 <SystemMessageBubble>
                   <MessageContent>{message.content}</MessageContent>
                 </SystemMessageBubble>
-                {message.createdAt && (
-                  <MessageTime>{formatMessageTime(message.createdAt)}</MessageTime>
+                {message.created_at && (
+                  <MessageTime>{formatMessageTime(message.created_at)}</MessageTime>
                 )}
               </SentMessageGroup>
             );
           }
 
-          // 현재 사용자가 보낸 메시지
           if (isSentByCurrentUser(message)) {
             return (
-              <SentMessageGroup key={message.messageId || index}>
+              <SentMessageGroup key={message.message_id || index}>
                 <SentMessageBubble>
-                  {message.messageType === MessageType.IMAGE ? (
+                  {message.message_type === MessageType.IMAGE ? (
                     <ImageMessage
                       src={`${message.content.startsWith('http') ? '' : API_BACKEND_URL}${message.content}`}
                       alt="첨부된 이미지"
@@ -881,21 +1064,21 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
                     <MessageContent>{message.content}</MessageContent>
                   )}
                 </SentMessageBubble>
-                {message.createdAt && (
-                  <MessageTime>{formatMessageTime(message.createdAt)}</MessageTime>
+                {message.created_at && (
+                  <MessageTime>{formatMessageTime(message.created_at)}</MessageTime>
                 )}
+                {message.read_status && <ReadStatus>읽음</ReadStatus>}
               </SentMessageGroup>
             );
           }
 
-          // 다른 사용자가 보낸 메시지
           return (
-            <ReceivedMessageGroup key={message.messageId || index}>
+            <ReceivedMessageGroup key={message.message_id || index}>
               <ReceivedMessageBubble>
-                {message.senderNickname && (
-                  <MessageNickname>{message.senderNickname}</MessageNickname>
+                {message.sender_nickname && (
+                  <MessageNickname>{message.sender_nickname}</MessageNickname>
                 )}
-                {message.messageType === MessageType.IMAGE ? (
+                {message.message_type === MessageType.IMAGE ? (
                   <ImageMessage
                     src={`${message.content.startsWith('http') ? '' : API_BACKEND_URL}${message.content}`}
                     alt="첨부된 이미지"
@@ -904,8 +1087,8 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
                   <MessageContent>{message.content}</MessageContent>
                 )}
               </ReceivedMessageBubble>
-              {message.createdAt && (
-                <MessageTime>{formatMessageTime(message.createdAt)}</MessageTime>
+              {message.created_at && (
+                <MessageTime>{formatMessageTime(message.created_at)}</MessageTime>
               )}
             </ReceivedMessageGroup>
           );
