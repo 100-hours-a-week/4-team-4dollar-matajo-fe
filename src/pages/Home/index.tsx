@@ -21,7 +21,7 @@ import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet
 import { ROUTES } from '../../constants/routes';
 import { createTrade, CreateTradeRequest } from '../../services/api/modules/trades';
 import { LocalDeal } from '../../types/place.types';
-import axios from 'axios';
+import client from '../../services/api/client';
 import { API_PATHS } from '../../constants/api';
 
 // 컨테이너 컴포넌트
@@ -132,14 +132,8 @@ const HomePage: React.FC = () => {
   // 최근 거래내역 조회
   const fetchRecentTrades = async (locationInfoId: number) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
+      const response = await client.get(
         `${API_PATHS.TRADES.RECENT_BY_LOCATION}?locationInfoId=${locationInfoId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
       );
 
       if (response.data.success) {
@@ -149,7 +143,7 @@ const HomePage: React.FC = () => {
           price: trade.tradePrice,
           post_tags: [trade.category, `${trade.storagePeriod}일`],
           imageUrl: trade.mainImage,
-          location: location.split(' ')[1] || '여의도동',
+          location: location.split(' ')[1] || ' ',
         }));
         setRecentItems(trades);
       } else {
