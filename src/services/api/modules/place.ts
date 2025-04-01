@@ -285,7 +285,9 @@ export const getPostsByLocation = async (locationInfoId: number): Promise<PostBy
 
 export const getLocalDeals = async (locationInfoId: number) => {
   try {
-    const response = await axios.get(`/api/posts/promotion?locationInfoId=${locationInfoId}`);
+    const response = await client.get(API_PATHS.POSTS.PROMOTION, {
+      params: { locationInfoId },
+    });
     return response.data;
   } catch (error) {
     throw error;
