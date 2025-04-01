@@ -122,10 +122,11 @@ const TagsContainer = styled.div`
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 400;
   word-wrap: break-word;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 `;
 
 const PriceContainer = styled.div`
+  padding: 8px 0;
   display: flex;
   align-items: baseline;
 `;
@@ -153,9 +154,7 @@ const ChatButton = styled.div`
   width: 94px;
   height: 24px;
   padding: 8px 0;
-  position: absolute;
-  right: 25px;
-  top: 80px;
+  position: relative;
   background: ${THEME.primaryTransparent};
   border-radius: 10px;
   display: flex;
@@ -166,7 +165,7 @@ const ChatButton = styled.div`
 
 const ChatButtonText = styled.div`
   color: white;
-  font-size: 16px;
+  font-size: 14px;
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 700;
   line-height: 14px;
@@ -1046,7 +1045,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                 }}
               >
                 <PriceContainer>
