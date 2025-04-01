@@ -390,14 +390,29 @@ const Registration3: React.FC = () => {
     saveToLocalStorage();
   }, [mainImage, detailImages]);
 
-  // 로컬 스토리지에 데이터 저장
   const saveToLocalStorage = () => {
     const dataToSave = {
       mainImage,
       detailImages,
     };
 
-    localStorage.setItem('storage_register_images', JSON.stringify(dataToSave));
+    try {
+      const json = JSON.stringify(dataToSave);
+
+      // 바이트 기준으로 정확하게 계산
+      const sizeInBytes = new Blob([json]).size;
+      const MAX_LOCALSTORAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+      if (sizeInBytes > MAX_LOCALSTORAGE_SIZE) {
+        showToast('이미지 데이터가 너무 커서 저장할 수 없습니다. 일부 이미지를 삭제해주세요.');
+        return;
+      }
+
+      localStorage.setItem('storage_register_images', json);
+    } catch (error) {
+      console.error('로컬 스토리지 저장 오류:', error);
+      showToast('저장 중 문제가 발생했습니다.');
+    }
   };
 
   // 토스트 메시지 표시 함수
@@ -421,53 +436,98 @@ const Registration3: React.FC = () => {
     }
   };
 
-  // 메인 이미지 변경 핸들러
-  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // 원본 파일 저장
-      setMainImageFile(file);
+  const MAX_TOTAL_SIZE = 5 * 1024 * 1024; // 5MB
+  const MAX_SINGLE_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageData = reader.result as string;
-        setMainImage(imageData);
-        // useEffect에서 로컬 스토리지 저장 처리됨
-      };
-      reader.readAsDataURL(file);
+  // 대표 이미지(mainImageFile) + 서브 이미지(detailImageFiles) 용량 총합 구하기
+  const getTotalUploadedSize = () => {
+    let total = 0;
+    if (mainImageFile) {
+      total += mainImageFile.size;
     }
+    detailImageFiles.forEach(file => {
+      total += file.size;
+    });
+    return total;
   };
 
-  // 서브 이미지 변경 핸들러
+  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 새로 올리는 대표이미지를 포함한 총 용량 계산
+    const currentSize = getTotalUploadedSize(); // 현재까지 올린 모든 파일 크기
+    const newTotalSize = currentSize + file.size; // 여기서 새 파일을 더함
+
+    // 1) 새 총 용량이 5MB 초과인지 확인
+    if (newTotalSize > MAX_TOTAL_SIZE) {
+      showToast('이미지 총 용량이 5MB를 초과했습니다.');
+      e.target.value = '';
+      return;
+    }
+
+    // 2) 한 장당 제한(있다면)도 확인해도 됨
+    if (file.size > MAX_SINGLE_FILE_SIZE) {
+      showToast('대표 이미지는 1MB 이하만 업로드 가능합니다.');
+      e.target.value = '';
+      return;
+    }
+
+    // 3) 문제가 없으면 정상 업로드
+    setMainImageFile(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setMainImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleDetailImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      // 최대 4개까지만 허용
-      const remainingSlots = 4 - detailImages.length;
-      const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    if (!files) return;
 
-      if (filesToProcess.length > 0) {
-        // 원본 파일 저장
-        setDetailImageFiles(prev => [...prev, ...filesToProcess]);
+    // 1) 현재까지 올린 이미지(대표 + 서브)의 용량
+    const currentSize = getTotalUploadedSize();
 
-        const newImages = [...detailImages];
-        let processed = 0;
+    // 2) 최대 4장까지 가능이라 가정
+    const remainingSlots = 4 - detailImages.length;
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
-        filesToProcess.forEach(file => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            newImages.push(reader.result as string);
-            processed++;
+    // 업로드할 새 파일들 크기 합
+    const incomingSize = filesToProcess.reduce((acc, file) => acc + file.size, 0);
+    // 3) 새 총 용량
+    const newTotalSize = currentSize + incomingSize;
 
-            if (processed === filesToProcess.length) {
-              setDetailImages(newImages);
-              // useEffect에서 로컬 스토리지 저장 처리됨
-            }
-          };
-          reader.readAsDataURL(file);
-        });
-      }
+    if (newTotalSize > MAX_TOTAL_SIZE) {
+      showToast('이미지 총 용량이 5MB를 초과했습니다.');
+      e.target.value = '';
+      return;
     }
+
+    // --- 문제 없다면 업로드 처리 ---
+    const newFileList = [...detailImageFiles];
+    const newImages = [...detailImages];
+    let processedCount = 0;
+
+    filesToProcess.forEach(file => {
+      if (file.size > MAX_SINGLE_FILE_SIZE) {
+        showToast('이미지 중 1MB를 초과하는 파일이 있습니다.');
+        return;
+      }
+
+      newFileList.push(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newImages.push(reader.result as string);
+        processedCount++;
+        if (processedCount === filesToProcess.length) {
+          setDetailImageFiles(newFileList);
+          setDetailImages(newImages);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   // 메인 이미지 삭제 핸들러
