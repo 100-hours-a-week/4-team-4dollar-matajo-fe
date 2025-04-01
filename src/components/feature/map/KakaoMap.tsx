@@ -55,6 +55,15 @@ interface Marker {
   address: string;
 }
 
+// 주소 검색 결과 인터페이스
+interface AddressSearchResult {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
 // 컴포넌트 속성 정의
 interface KakaoMapProps {
   center: { lat: number; lng: number };
@@ -96,6 +105,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   const [locationPosts, setLocationPosts] = useState<LocationPost[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [lastFetchedLocationId, setLastFetchedLocationId] = useState<string | null>(null);
+  const [geocoder, setGeocoder] = useState<any>(null);
 
   // 지도 초기화 - 최초 한 번만 실행
   useEffect(() => {
@@ -112,6 +122,11 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     const map = new window.kakao.maps.Map(mapRef.current, options);
     setKakaoMap(map);
     console.log('카카오맵 인스턴스 생성 완료');
+
+    // 주소-좌표 변환 객체 생성
+    const geocoderInstance = new window.kakao.maps.services.Geocoder();
+    setGeocoder(geocoderInstance);
+    console.log('Geocoder 인스턴스 생성 완료');
 
     // 상세 페이지 모드인 경우 지도 컨트롤러 숨기기
     if (detailMode) {
@@ -167,6 +182,35 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       // 필요시 정리 작업 추가
     };
   }, []); // 빈 의존성 배열로 최초 한 번만 실행
+
+  // 주소로 좌표 검색하는 함수
+  const getCoordinatesByAddress = useCallback(
+    (address: string): Promise<{ lat: number; lng: number } | null> => {
+      return new Promise((resolve, reject) => {
+        if (!geocoder) {
+          console.error('Geocoder가 초기화되지 않았습니다.');
+          reject(new Error('Geocoder가 초기화되지 않았습니다.'));
+          return;
+        }
+
+        geocoder.addressSearch(address, (result: any, status: any) => {
+          if (status === 'OK') {
+            // 정상적으로 검색이 완료됐으면
+            const coords = {
+              lat: parseFloat(result[0].y),
+              lng: parseFloat(result[0].x),
+            };
+            console.log(`주소 [${address}] 좌표 변환 성공:`, coords);
+            resolve(coords);
+          } else {
+            console.error(`주소 [${address}] 좌표 변환 실패:`, status);
+            resolve(null);
+          }
+        });
+      });
+    },
+    [geocoder],
+  );
 
   // 사용자 위치 마커 추가 함수 - 의존성 문제 해결
   const addUserLocationMarker = useCallback(
@@ -322,7 +366,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
         // 인포윈도우 추가
         const infowindow = new window.kakao.maps.InfoWindow({
-          content: `<div style="padding:5px;font-size:12px;">${markerData.name}</div>`,
+          content: `<div style="padding:5px;font-size:12px;">${markerData.name || markerData.address}</div>`,
         });
 
         // 마우스 오버 시 인포윈도우 표시
@@ -346,7 +390,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
   // 위치 기반 게시글 조회 함수 - 중복 요청 방지 로직 추가
   const fetchLocationPosts = useCallback(async () => {
-    if (!locationInfoId || !kakaoMap) return;
+    if (!locationInfoId || !kakaoMap || !geocoder) return;
 
     // 이미 가져온 위치 정보인 경우 스킵
     if (locationInfoId === lastFetchedLocationId) {
@@ -358,19 +402,75 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     setIsLoading(true);
     try {
       const response = await getLocationPosts(locationInfoId);
-      if (response.success && response.data.posts) {
-        console.log('위치 기반 게시글 조회 성공:', response.data.posts.length);
-        setLocationPosts(response.data.posts);
+      if (response.success && response.data) {
+        // API 응답 구조가 { posts: [] } 형태이므로 posts 배열 추출
+        const postsData = response.data.posts || [];
+        console.log('위치 기반 게시글 조회 성공:', postsData.length);
+
+        // 주소만 있고 좌표가 없는 게시글 좌표 변환 작업
+        const addressesToSearch = postsData.filter(
+          (post: LocationPost) => !post.latitude || !post.longitude,
+        );
+
+        console.log('좌표 변환이 필요한 게시글:', addressesToSearch.length);
+
+        // 주소로 좌표 검색 (병렬 처리)
+        const coordinatesPromises = addressesToSearch.map(async (post: LocationPost) => {
+          if (!post.post_address) return null;
+
+          try {
+            const coords = await getCoordinatesByAddress(post.post_address);
+            if (coords) {
+              return {
+                post_id: post.post_id,
+                coords: coords,
+              };
+            }
+            return null;
+          } catch (error) {
+            console.error(`게시글 ${post.post_id} 주소 변환 오류:`, error);
+            return null;
+          }
+        });
+
+        const coordsResults = await Promise.all(coordinatesPromises);
+
+        // 좌표 매핑
+        const postsWithCoords = postsData.map((post: LocationPost) => {
+          // 이미 좌표가 있는 경우 그대로 사용
+          if (post.latitude && post.longitude) {
+            return post;
+          }
+
+          // 좌표 검색 결과 찾기
+          const coordsResult = coordsResults.find(
+            result => result && result.post_id === post.post_id,
+          );
+          if (coordsResult && coordsResult.coords) {
+            return {
+              ...post,
+              latitude: coordsResult.coords.lat,
+              longitude: coordsResult.coords.lng,
+            };
+          }
+
+          // 좌표 검색 실패한 경우 원본 반환
+          return post;
+        });
+
+        setLocationPosts(postsWithCoords);
         setLastFetchedLocationId(locationInfoId);
 
         // 게시글 데이터를 마커로 변환
-        const newMarkers = response.data.posts.map(post => ({
-          id: post.post_id.toString(),
-          name: post.post_title,
-          latitude: post.latitude,
-          longitude: post.longitude,
-          address: post.post_address || '',
-        }));
+        const newMarkers = postsWithCoords
+          .filter((post: LocationPost) => post.latitude && post.longitude) // 좌표가 있는 게시글만 필터링
+          .map((post: LocationPost) => ({
+            id: post.post_id.toString(),
+            name: post.post_title || '게시글',
+            latitude: post.latitude,
+            longitude: post.longitude,
+            address: post.post_address || '',
+          }));
 
         // 마커 업데이트 - 이미 메모이제이션된 함수를 사용
         updateKakaoMapMarkers(newMarkers);
@@ -382,15 +482,22 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [locationInfoId, kakaoMap, updateKakaoMapMarkers, lastFetchedLocationId]);
+  }, [
+    locationInfoId,
+    kakaoMap,
+    updateKakaoMapMarkers,
+    lastFetchedLocationId,
+    geocoder,
+    getCoordinatesByAddress,
+  ]);
 
   // locationInfoId 변경 시 API 호출 - 중복 요청 방지 조건 추가
   useEffect(() => {
-    if (locationInfoId && kakaoMap && locationInfoId !== lastFetchedLocationId) {
+    if (locationInfoId && kakaoMap && geocoder && locationInfoId !== lastFetchedLocationId) {
       console.log('위치 정보 ID 변경 감지:', locationInfoId);
       fetchLocationPosts();
     }
-  }, [locationInfoId, fetchLocationPosts, kakaoMap, lastFetchedLocationId]);
+  }, [locationInfoId, fetchLocationPosts, kakaoMap, lastFetchedLocationId, geocoder]);
 
   // 기본 마커 업데이트 - 조건부 실행 로직 개선
   useEffect(() => {
