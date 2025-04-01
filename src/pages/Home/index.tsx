@@ -190,28 +190,12 @@ const HomePage: React.FC = () => {
           await fetchRecentTrades(locationId);
         } catch (err) {
           console.error('데이터 조회 오류:', err);
-          // 오류 시 기본 마커 제공
-          const defaultMarker = {
-            id: 'default-1',
-            name: '기본 보관소',
-            latitude: mapCenter.lat,
-            longitude: mapCenter.lng,
-            address: location,
-          };
-          setMarkers([defaultMarker]);
+          // 오류 시 빈 마커 배열 설정
+          setMarkers([]);
           setDiscountItems([]);
           setRecentItems([]);
         }
       } else {
-        // 위치 ID가 없으면 기본 마커 생성
-        const defaultMarker = {
-          id: 'default-1',
-          name: '기본 보관소',
-          latitude: mapCenter.lat,
-          longitude: mapCenter.lng,
-          address: location,
-        };
-        setMarkers([defaultMarker]);
         setDiscountItems([]);
         setRecentItems([]);
       }
