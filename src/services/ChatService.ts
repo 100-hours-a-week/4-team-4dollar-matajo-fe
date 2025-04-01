@@ -7,28 +7,28 @@ import axios from 'axios';
 
 // 메시지 타입 정의 - 백엔드와 일치
 export enum MessageType {
-  TEXT = 'TEXT',
-  IMAGE = 'IMAGE',
-  SYSTEM = 'SYSTEM',
+  TEXT = 1,
+  IMAGE = 2,
+  SYSTEM = 3,
 }
 
 // 백엔드 DTO와 일치하는 인터페이스 정의
 export interface ChatMessageRequestDto {
-  senderId: number; // 카멜케이스로 변경
+  sender_id: number;
   content: string;
-  messageType: MessageType; // 카멜케이스로 변경
+  message_type: MessageType;
 }
 
 // 백엔드 응답과 일치하도록 수정
 export interface ChatMessageResponseDto {
-  messageId: number; // 카멜케이스로 변경
-  roomId: number; // 카멜케이스로 변경
-  senderId: number; // 카멜케이스로 변경
+  message_id: number;
+  room_id: number;
+  sender_id: number;
   content: string;
-  messageType: MessageType; // 카멜케이스로 변경
-  readStatus: boolean; // 카멜케이스로 변경
-  createdAt: string; // 카멜케이스로 변경
-  senderNickname: string; // 카멜케이스로 변경
+  message_type: MessageType;
+  read_status: boolean;
+  created_at: string;
+  sender_nickname: string;
 }
 
 // 채팅방 응답 DTO - 백엔드와 일치하도록 수정
@@ -91,6 +91,19 @@ export interface TradeData {
 export interface TradeConfirmationResponseDto {
   tradeId: number;
   status: string;
+}
+
+export interface ChatRoomDetailDto {
+  room_id: number;
+  post_id: number;
+  post_title: string;
+  post_main_image: string;
+  post_address: string;
+  prefer_price: number;
+  keeper_id: number;
+  keeper_nickname: string;
+  client_id: number;
+  client_nickname: string;
 }
 
 class ChatService {
@@ -345,15 +358,33 @@ class ChatService {
     // 현재 시간을 ISO 문자열로 변환
     const now = new Date().toISOString();
 
+    // message_type 문자열을 숫자로 변환
+    let messageType = data.messageType || data.message_type;
+    if (typeof messageType === 'string') {
+      switch (messageType.toUpperCase()) {
+        case 'TEXT':
+          messageType = MessageType.TEXT;
+          break;
+        case 'IMAGE':
+          messageType = MessageType.IMAGE;
+          break;
+        case 'SYSTEM':
+          messageType = MessageType.SYSTEM;
+          break;
+        default:
+          messageType = MessageType.TEXT;
+      }
+    }
+
     return {
-      messageId: data.messageId || data.message_id,
-      roomId: data.roomId || data.room_id,
-      senderId: data.senderId || data.sender_id,
+      message_id: data.messageId || data.message_id,
+      room_id: data.roomId || data.room_id,
+      sender_id: data.senderId || data.sender_id,
       content: data.content,
-      messageType: data.messageType || data.message_type,
-      readStatus: data.readStatus || data.read_status,
-      createdAt: data.createdAt || data.created_at,
-      senderNickname: data.senderNickname || data.sender_nickname,
+      message_type: messageType,
+      read_status: data.readStatus || data.read_status,
+      created_at: data.createdAt || data.created_at,
+      sender_nickname: data.senderNickname || data.sender_nickname,
     };
   }
 
@@ -371,9 +402,9 @@ class ChatService {
   // 텍스트 메시지 전송 - 수정된 DTO 형식 사용
   public sendTextMessage(roomId: number, senderId: number, content: string): Promise<boolean> {
     return this.sendMessage(roomId, {
-      senderId: senderId,
+      sender_id: senderId,
       content: content,
-      messageType: MessageType.TEXT,
+      message_type: MessageType.TEXT,
     });
   }
 
@@ -383,18 +414,18 @@ class ChatService {
     const systemSenderId = 0;
 
     return this.sendMessage(roomId, {
-      senderId: systemSenderId,
+      sender_id: systemSenderId,
       content: content,
-      messageType: MessageType.SYSTEM,
+      message_type: MessageType.SYSTEM,
     });
   }
 
   // 이미지 메시지 전송 - 수정된 DTO 형식 사용
   public sendImageMessage(roomId: number, senderId: number, imageUrl: string): Promise<boolean> {
     return this.sendMessage(roomId, {
-      senderId: senderId,
+      sender_id: senderId,
       content: imageUrl,
-      messageType: MessageType.IMAGE,
+      message_type: MessageType.IMAGE,
     });
   }
 
@@ -422,9 +453,9 @@ class ChatService {
 
       // 백엔드 형식에 맞춰 변환
       const backendMessage = {
-        sender_id: message.senderId,
+        sender_id: message.sender_id,
         content: message.content,
-        message_type: message.messageType,
+        message_type: message.message_type,
       };
 
       const userId = this.getUserIdFromToken();
@@ -520,7 +551,7 @@ class ChatService {
   public async leaveChatRoom(roomId: number): Promise<{ success: boolean; message: string }> {
     try {
       const response = await client.delete<CommonResponse<null>>(
-        `${API_PATHS.CHAT.ROOMS}/${roomId}`,
+        API_PATHS.CHAT.LEAVE.replace(':roomId', roomId.toString()),
       );
       return {
         success: response.data.success,
@@ -558,9 +589,13 @@ class ChatService {
   // 메시지 읽음 처리 - 수정된 파라미터 이름
   public markMessagesAsRead(roomId: number, userId: number): Promise<boolean> {
     return client
-      .put<CommonResponse<null>>(`/api/chat/${roomId}/read`, null, {
-        params: { userId },
-      })
+      .put<CommonResponse<null>>(
+        `${API_PATHS.CHAT.READ.replace(':roomId', roomId.toString())}`,
+        null,
+        {
+          params: { userId },
+        },
+      )
       .then(response => {
         return response.data.success === true;
       })
