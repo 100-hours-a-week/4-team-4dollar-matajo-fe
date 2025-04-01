@@ -1,5 +1,6 @@
 import { API_PATHS } from '../../../constants/api';
 import axios from 'axios';
+import client from '../client';
 
 export interface Trade {
   mainImage: string;
@@ -17,7 +18,7 @@ export interface TradeResponse {
 }
 
 export const getRecentTrades = async (locationInfoId: number): Promise<TradeResponse> => {
-  const response = await axios.get(`${API_PATHS.TRADES.RECENT_BY_LOCATION}`, {
+  const response = await client.get(`${API_PATHS.TRADES.RECENT_BY_LOCATION}`, {
     params: { locationInfoId },
   });
   return response.data;
