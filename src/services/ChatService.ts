@@ -2,6 +2,8 @@ import SockJS from 'sockjs-client';
 import { Client, IFrame, IMessage, StompSubscription } from '@stomp/stompjs';
 import client from '../services/api/client';
 import { API_BACKEND_URL, API_PATHS } from '../constants/api';
+import { getUserId } from '../utils/formatting/decodeJWT';
+import axios from 'axios';
 
 // 메시지 타입 정의 - 백엔드와 일치
 export enum MessageType {
@@ -31,25 +33,40 @@ export interface ChatMessageResponseDto {
 
 // 채팅방 응답 DTO - 백엔드와 일치하도록 수정
 export interface ChatRoomResponseDto {
-  chatRoomId: number; // 카멜케이스로 변경
-  postId: number; // 카멜케이스로 변경
-  keeperStatus: boolean; // 카멜케이스로 변경
-  userNickname: string; // 카멜케이스로 변경
-  postMainImage: string; // 카멜케이스로 변경
-  postAddress: string; // 카멜케이스로 변경
-  lastMessage: string; // 카멜케이스로 변경
-  lastMessageTime: string; // 카멜케이스로 변경
-  hasUnreadMessages: boolean; // 필요한 필드 추가
+  chatRoomId: number;
+  keeperStatus: boolean;
+  userNickname: string;
+  postMainImage: string;
+  postAddress: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
 }
 
-// 채팅방 생성 요청 DTO
-export interface ChatRoomCreateRequestDto {
-  postId: number; // 카멜케이스로 변경
+// 백엔드 응답 형식에 맞는 인터페이스 추가
+interface ChatRoomBackendDto {
+  chat_room_id: number;
+  keeper_status: boolean;
+  user_nickname: string;
+  post_main_image: string;
+  post_address: string;
+  last_message: string;
+  last_message_time: string;
+  unread_count: number;
 }
 
-// 채팅방 생성 응답 DTO
-export interface ChatRoomCreateResponseDto {
-  id: number; // 백엔드 응답과 일치
+// 채팅방 생성 요청 인터페이스
+interface CreateChatRoomRequest {
+  post_id: number;
+}
+
+// 채팅방 생성 응답 인터페이스
+interface CreateChatRoomResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+  };
 }
 
 // API 응답 공통 형식
@@ -103,6 +120,20 @@ class ChatService {
   // 연결 상태를 더 명확하게 관리
   private connectionPromise: Promise<boolean> | null = null;
 
+  private getUserIdFromToken(): string {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      throw new Error('인증이 필요합니다.');
+    }
+
+    const userId = getUserId(accessToken);
+    if (userId === null) {
+      throw new Error('유효하지 않은 토큰입니다.');
+    }
+
+    return userId.toString();
+  }
+
   // WebSocket 연결
   public connect(): Promise<boolean> {
     // 이미 연결 중인 경우 진행 중인 Promise 반환
@@ -120,26 +151,48 @@ class ChatService {
       this.connectionStatus = 'connecting';
       console.log('연결 시도 중...');
 
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) {
+        throw new Error('인증이 필요합니다.');
+      }
+
+      const userId = getUserId(accessToken);
+      if (userId === null) {
+        throw new Error('유효하지 않은 토큰입니다.');
+      }
+
       try {
         // SockJS 옵션 설정
         const sockJSOptions: any = {
           transports: ['websocket', 'xhr-streaming', 'xhr-polling'],
           timeout: 10000,
           withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
         };
-
-        // userId 가져오기
-        const userId = localStorage.getItem('userId') || '1';
 
         // STOMP 클라이언트 생성
         this.stompClient = new Client({
-          webSocketFactory: () => new SockJS(`${API_BACKEND_URL}/ws-chat`, null, sockJSOptions),
+          webSocketFactory: () =>
+            new SockJS(
+              `${API_BACKEND_URL}ws-chat?userId=${userId}&token=${accessToken}`,
+              null,
+              sockJSOptions,
+            ),
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
           connectHeaders: {
-            'X-Requested-With': 'XMLHttpRequest',
-            userId: userId, // WebSocket 연결 시 userId 헤더 추가
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           },
 
           debug: msg => {
@@ -374,8 +427,7 @@ class ChatService {
         message_type: message.messageType,
       };
 
-      // userId 가져오기
-      const userId = localStorage.getItem('userId') || '1';
+      const userId = this.getUserIdFromToken();
 
       // 메시지 전송 - userId 헤더 추가
       this.stompClient.publish({
@@ -383,6 +435,7 @@ class ChatService {
         body: JSON.stringify(backendMessage),
         headers: {
           'content-type': 'application/json',
+          userId: userId,
         },
       });
 
@@ -420,57 +473,86 @@ class ChatService {
   }
 
   // 채팅방 목록 로드 - 응답 변환 로직 추가
-  public loadChatRooms(): Promise<ChatRoomResponseDto[]> {
-    return client
-      .get<CommonResponse<any[]>>(API_PATHS.CHAT.ROOMS)
-      .then(response => {
-        if (response.data.success && response.data.data) {
-          console.log('채팅방 데이터 수신:', response.data.data);
-          // 백엔드 응답을 프론트엔드 형식으로 변환
-          return response.data.data.map(item => ({
-            chatRoomId: item.chatRoomId || item.chat_room_id,
-            postId: item.postId || item.post_id,
-            keeperStatus: item.keeperStatus || item.keeper_status || false,
-            userNickname: item.userNickname || item.user_nickname,
-            postMainImage: item.postMainImage || item.post_main_image,
-            postAddress: item.postAddress || item.post_address,
-            lastMessage: item.lastMessage || item.last_message,
-            lastMessageTime: item.lastMessageTime || item.last_message_time,
-            hasUnreadMessages: item.hasUnreadMessages || item.has_unread_messages,
-          }));
-        }
-        console.error('Error loading chat rooms:', response.data.message);
-        return [];
-      })
-      .catch(error => {
-        console.error('Error fetching chat rooms:', error);
-        return [];
+  public async loadChatRooms(): Promise<ChatRoomResponseDto[]> {
+    try {
+      const response = await client.get<CommonResponse<ChatRoomBackendDto[]>>('/api/chats', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
       });
+
+      if (response.data.success && response.data.data) {
+        // 백엔드 응답을 프론트엔드 형식으로 변환
+        return response.data.data.map(room => ({
+          chatRoomId: room.chat_room_id,
+          keeperStatus: room.keeper_status,
+          userNickname: room.user_nickname,
+          postMainImage: room.post_main_image,
+          postAddress: room.post_address,
+          lastMessage: room.last_message,
+          lastMessageTime: room.last_message_time,
+          unreadCount: room.unread_count,
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('채팅방 목록 로드 실패:', error);
+      throw error;
+    }
   }
 
-  // 채팅방 생성 - 수정된 DTO 형식 사용
-  public createChatRoom(postId: number): Promise<number> {
-    return client
-      .post<CommonResponse<ChatRoomCreateResponseDto>>('/api/chat', { postId })
-      .then(response => {
-        if (response.data.success && response.data.data) {
-          return response.data.data.id;
-        }
-        throw new Error(response.data.message || 'Failed to create chat room');
+  // 채팅방 생성 메서드 수정
+  public async createChatRoom(request: CreateChatRoomRequest): Promise<CreateChatRoomResponse> {
+    try {
+      const response = await client.post<CreateChatRoomResponse>('/api/chats', request, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
       });
+      return response.data;
+    } catch (error) {
+      console.error('채팅방 생성 실패:', error);
+      throw error;
+    }
   }
 
-  // 채팅방 나가기
-  public leaveChatRoom(roomId: number): Promise<boolean> {
-    return client
-      .delete<CommonResponse<null>>(`/api/chat/${roomId}`)
-      .then(response => {
-        return response.data.success === true;
-      })
-      .catch(error => {
-        console.error('Error leaving chat room:', error);
-        return false;
-      });
+  // 채팅방 나가기 메서드 수정
+  public async leaveChatRoom(roomId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await client.delete<CommonResponse<null>>(
+        `${API_PATHS.CHAT.ROOMS}/${roomId}`,
+      );
+      return {
+        success: response.data.success,
+        message: response.data.message,
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const response = error.response?.data;
+        // API 명세에 따른 에러 처리
+        switch (error.response?.status) {
+          case 400:
+            console.error('잘못된 채팅방 ID');
+            return { success: false, message: 'invalid_chat_room_id' };
+          case 401:
+            console.error('인증 필요');
+            return { success: false, message: 'required_authorization' };
+          case 403:
+            console.error('권한 없음 (보관인은 나갈 수 없음)');
+            return { success: false, message: 'required_permission' };
+          case 404:
+            console.error('채팅방 또는 사용자를 찾을 수 없음');
+            return { success: false, message: response?.message || 'not_found_chat_room' };
+          case 409:
+            console.error('이미 나간 채팅방');
+            return { success: false, message: 'chat_user_already_left' };
+          default:
+            console.error('서버 에러');
+            return { success: false, message: 'internal_server_error' };
+        }
+      }
+      return { success: false, message: 'internal_server_error' };
+    }
   }
 
   // 메시지 읽음 처리 - 수정된 파라미터 이름
@@ -494,9 +576,10 @@ class ChatService {
     formData.append('chatImage', file);
 
     return client
-      .post<CommonResponse<string>>('/api/chat/images/upload', formData, {
+      .post<CommonResponse<string>>(API_PATHS.CHAT.UPLOAD_IMAGE, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       })
       .then(response => {
@@ -510,17 +593,14 @@ class ChatService {
   public confirmTrade(roomId: number, tradeData: TradeData): Promise<number> {
     const url = `${API_PATHS.CHAT.TRADE_INFO}`;
 
-    // Get userId from localStorage
-    const userId = localStorage.getItem('userId') || '1';
-
     // Prepare data in the format expected by backend
     const requestData = {
       room_id: roomId,
       product_name: tradeData.itemName,
-      trade_price: tradeData.price,
+      category: tradeData.category,
       start_date: tradeData.startDate,
       storage_period: tradeData.storagePeriod,
-      category: tradeData.category,
+      trade_price: tradeData.price,
     };
 
     console.log('Sending trade confirmation:', requestData);

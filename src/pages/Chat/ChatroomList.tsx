@@ -7,6 +7,7 @@ import Modal from '../../components/common/Modal';
 import ChatService, { ChatRoomResponseDto } from '../../services/ChatService';
 import axios from 'axios';
 import moment from 'moment-timezone';
+import { getUserId } from '../../utils/formatting/decodeJWT';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -192,24 +193,55 @@ const MessageContent = styled.div<{ isUnread?: boolean }>`
   max-width: 230px; /* 적절한 너비로 조정 */
 `;
 
+// 읽지 않은 메시지 수 표시를 위한 스타일 컴포넌트 추가
+const UnreadCount = styled.div`
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #ff4b4b;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+`;
+
 const ChatroomList: React.FC = () => {
   const navigate = useNavigate();
 
   // 채팅 서비스 인스턴스
   const chatService = ChatService.getInstance();
 
-  // 현재 사용자 ID - localStorage에서 가져오거나 설정
+  // 현재 사용자 ID - accessToken에서 추출
   const [currentUserId, setCurrentUserId] = useState<number>(() => {
-    // localStorage에서 userId 확인
-    const savedUserId = localStorage.getItem('userId');
-    if (savedUserId) {
-      return parseInt(savedUserId);
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      navigate('/login');
+      return 0;
     }
 
-    // 없으면 기본값 1 설정 및 저장
-    localStorage.setItem('userId', '1');
-    return 1;
+    const userId = getUserId(accessToken);
+    if (userId === null) {
+      navigate('/login');
+      return 0;
+    }
+
+    // userId를 localStorage에 저장
+    localStorage.setItem('userId', userId.toString());
+    return userId;
   });
+
+  // userId가 0인 경우(인증 실패) 처리
+  useEffect(() => {
+    if (currentUserId === 0) {
+      navigate('/login');
+    }
+  }, [currentUserId, navigate]);
 
   // 채팅방 데이터 상태
   const [chatrooms, setChatrooms] = useState<ChatRoomResponseDto[]>([]);
@@ -259,7 +291,6 @@ const ChatroomList: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // 채팅방 목록 불러오기
       const chatRooms = await chatService.loadChatRooms();
       console.log('로드된 채팅방 목록:', chatRooms);
       setChatrooms(chatRooms);
@@ -434,10 +465,13 @@ const ChatroomList: React.FC = () => {
       // 실제 구현에서는 보관소 선택 모달을 띄우거나 postId를 입력받는 로직이 필요합니다.
       // 지금은 테스트용으로 postId를 1로 고정합니다.
       const postId = 1;
-      const roomId = await chatService.createChatRoom(postId);
-      if (roomId) {
+      const response = await chatService.createChatRoom({
+        post_id: postId,
+      });
+
+      if (response.success && response.data) {
         // 생성 후 채팅방으로 이동
-        navigate(`/chat/${roomId}`);
+        navigate(`/chat/${response.data.id}`);
       }
     } catch (error) {
       console.error('채팅방 생성 실패:', error);
@@ -539,11 +573,13 @@ const ChatroomList: React.FC = () => {
                   <Time>{formatTime(chatroom.lastMessageTime)}</Time>
                 </TopInfo>
 
-                <MessageContent isUnread={chatroom.hasUnreadMessages}>
+                <MessageContent isUnread={chatroom.unreadCount > 0}>
                   {formatMessage(chatroom.lastMessage || '(메시지 없음)')}
                 </MessageContent>
 
                 <Location>{chatroom.postAddress || ''}</Location>
+
+                {chatroom.unreadCount > 0 && <UnreadCount>{chatroom.unreadCount}</UnreadCount>}
               </ChatInfo>
 
               {/* 나가기 진행 중 상태 표시 */}

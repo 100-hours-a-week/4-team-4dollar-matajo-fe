@@ -1,5 +1,5 @@
 // routes/index.tsx
-import { RouteObject } from 'react-router-dom';
+import { RouteObject, Navigate } from 'react-router-dom';
 import { UserRole } from '../contexts/auth';
 
 // 페이지 컴포넌트 가져오기
@@ -9,10 +9,6 @@ import MyPage from '../pages/MyPage';
 import StorageList from '../pages/StorageList/StorageList';
 import StorageDetail from '../pages/MyPage/subpages/StorageDetail';
 import KeeperRegistration from '../pages/MyPage/subpages/KeeperRegistration';
-import Registration1 from '../pages/MyPage/subpages/Registration/Registration1';
-import Registration2 from '../pages/MyPage/subpages/Registration/Registration2';
-import Registration3 from '../pages/MyPage/subpages/Registration/Registration3';
-import SearchAddress from '../pages/Home/SearchAddress';
 import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
 import EditStorage from '../pages/EditStorage/EditStorage';
@@ -31,6 +27,11 @@ import PublicRoute from './PublicRoute';
 
 // 라우트 정의
 import { ROUTES } from '../constants/routes';
+
+// 새로운 import 추가
+import StorageRegistrationBasic from '../pages/Registration/StorageRegistrationBasic';
+import StorageRegistrationDetails from '../pages/Registration/StorageRegistrationDetails';
+import StorageRegistrationImages from '../pages/Registration/StorageRegistrationImages';
 
 const routes: RouteObject[] = [
   // 메인 리다이렉트 라우트 (초기 진입점)
@@ -61,33 +62,68 @@ const routes: RouteObject[] = [
     path: ROUTES.HOME,
     element: <PrivateRoute />,
     children: [
+      // MainLayout이 적용되는 라우트들
       {
-        path: ROUTES.HOME,
         element: <MainLayout />,
         children: [
           { path: ROUTES.MAIN, element: <HomePage /> },
-          { path: ROUTES.MYPAGE, element: <MyPage /> },
-          { path: ROUTES.MYTRADE, element: <MyTrade /> },
           { path: ROUTES.STORAGE, element: <StorageList /> },
           { path: ROUTES.STORAGE_DETAIL, element: <StorageDetail /> },
           { path: ROUTES.CHAT_LIST, element: <ChatroomList /> },
+          { path: ROUTES.CHAT, element: <Chat onBack={() => window.history.back()} /> },
+          { path: ROUTES.CHAT_DETAIL, element: <Chat onBack={() => window.history.back()} /> },
+          { path: ROUTES.KEEPER_REGISTRATION, element: <KeeperRegistration /> },
+          // MyPage와 관련 라우트들을 MainLayout 안으로 이동
+          {
+            path: ROUTES.MYPAGE,
+            element: <MyPage />,
+            children: [
+              { path: ROUTES.MYTRADE, element: <MyTrade /> },
+              { path: ROUTES.MYTRADE_DETAIL, element: <MyTrade /> },
+            ],
+          },
         ],
       },
-      { path: ROUTES.CHAT, element: <Chat onBack={() => window.history.back()} /> },
-      { path: ROUTES.CHAT_DETAIL, element: <Chat onBack={() => window.history.back()} /> },
-      { path: ROUTES.KEEPER_REGISTRATION, element: <KeeperRegistration /> },
-      { path: ROUTES.SEARCH_ADDRESS, element: <SearchAddress /> },
     ],
   },
 
-  // 보관인만 접근 가능한 라우트
+  // 보관인 등록 라우트 (일반 사용자)
   {
-    path: '/',
+    path: '/registration',
+    element: <PrivateRoute />,
+    children: [
+      {
+        path: 'step1',
+        element: <StorageRegistrationBasic />,
+      },
+      {
+        path: 'step2',
+        element: <StorageRegistrationDetails />,
+      },
+      {
+        path: 'step3',
+        element: <StorageRegistrationImages />,
+      },
+    ],
+  },
+
+  // 보관소 등록 라우트 (보관인 전용)
+  {
+    path: '/storage',
     element: <PrivateRoute requiredRole={UserRole.Keeper} />,
     children: [
-      { path: ROUTES.REGISTRATION_STEP1, element: <Registration1 /> },
-      { path: ROUTES.REGISTRATION_STEP2, element: <Registration2 /> },
-      { path: ROUTES.REGISTRATION_STEP3, element: <Registration3 /> },
+      {
+        path: 'register',
+        element: <StorageRegistrationBasic />,
+      },
+      {
+        path: 'register/details',
+        element: <StorageRegistrationDetails />,
+      },
+      {
+        path: 'register/images',
+        element: <StorageRegistrationImages />,
+      },
       { path: ROUTES.EDIT_STORAGE, element: <EditStorage /> },
       { path: ROUTES.MYPLACE, element: <MyPlace /> },
     ],

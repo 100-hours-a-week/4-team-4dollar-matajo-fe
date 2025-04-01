@@ -5,9 +5,11 @@ import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
-import { DaumAddressData, autoConvertAddress } from '../../utils/api/kakaoToDaum';
-import { updateStorage, base64ToFile } from '../../services/api/modules/storage';
-import { getStorageDetail } from '../../services/api/modules/place';
+import {
+  DaumAddressData,
+  convertKakaoToDaumAddress as autoConvertAddress,
+} from '../../services/KakaoMapService';
+import { getStorageDetail, updateStorage } from '../../services/api/modules/place';
 import { convertTagsToStrings } from '../../services/domain/tag/TagMappingService';
 
 // 테마 컬러 상수 정의
@@ -820,23 +822,57 @@ const EditStorage: React.FC = () => {
   };
 
   // 업데이트 확인 핸들러
-  const handleUpdateConfirm = () => {
-    // 여기서 API 호출을 통해 DB를 업데이트합니다
-    console.log('보관소 정보가 업데이트됐습니다:', storageData);
+  const handleUpdateConfirm = async () => {
+    try {
+      setIsLoading(true);
 
-    // API 호출 예시 (실제로는 구현해야 함)
-    // updateStorage(storageData)
-    //   .then(() => {
-    //     navigate(`/storage/${storageData.id}`);
-    //   })
-    //   .catch(error => {
-    //     console.error('업데이트 오류:', error);
-    //   });
+      // FormData 생성
+      const formData = new FormData();
 
-    // 테스트용 코드
-    setTimeout(() => {
-      navigate(`/storage`);
-    }, 1000);
+      // postData 객체 생성
+      const postData = {
+        post_title: storageData.postTitle,
+        post_content: storageData.postContent,
+        post_address: storageData.postAddress,
+        prefer_price: Number(storageData.preferPrice),
+        post_tags: [
+          storageData.storageLocation,
+          ...storageData.selectedItemTypes,
+          ...storageData.selectedStorageTypes,
+          ...storageData.selectedDurationOptions,
+          ...(storageData.isValuableSelected ? ['귀중품'] : []),
+        ],
+      };
+
+      // postData를 FormData에 추가
+      formData.append('postData', JSON.stringify(postData));
+
+      // 메인 이미지 추가
+      if (mainImageFile) {
+        formData.append('mainImage', mainImageFile);
+      }
+
+      // 상세 이미지 추가
+      detailImageFiles.forEach((file, index) => {
+        formData.append('detailImage', file);
+      });
+
+      // API 호출
+      const response = await updateStorage(storageData.postId, formData);
+
+      if (response.data.success) {
+        showToast('보관소가 성공적으로 수정되었습니다.');
+        navigate(`/storage/${storageData.postId}`);
+      } else {
+        showToast('보관소 수정에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('보관소 수정 오류:', error);
+      showToast('보관소 수정 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+      setIsUpdateModalOpen(false);
+    }
   };
 
   // 모달 내용 컴포넌트 - 업데이트 확인
@@ -954,7 +990,30 @@ const EditStorage: React.FC = () => {
                 onClick={() => handleLocationSelect('실내')}
               >
                 <IconContainer>
-                  <img src="https://placehold.co/24x24" alt="실내 아이콘" />
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 18H4V6H20V18Z"
+                      fill={storageData.storageLocation === '실내' ? '#5E5CFD' : '#868686'}
+                    />
+                    <path
+                      d="M7 12H9V16H7V12Z"
+                      fill={storageData.storageLocation === '실내' ? '#5E5CFD' : '#868686'}
+                    />
+                    <path
+                      d="M11 8H13V16H11V8Z"
+                      fill={storageData.storageLocation === '실내' ? '#5E5CFD' : '#868686'}
+                    />
+                    <path
+                      d="M15 10H17V16H15V10Z"
+                      fill={storageData.storageLocation === '실내' ? '#5E5CFD' : '#868686'}
+                    />
+                  </svg>
                 </IconContainer>
                 <LocationOptionText>실내</LocationOptionText>
               </LocationOptionButton>
@@ -963,7 +1022,26 @@ const EditStorage: React.FC = () => {
                 onClick={() => handleLocationSelect('실외')}
               >
                 <IconContainer>
-                  <img src="https://placehold.co/21x21" alt="실외 아이콘" />
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z"
+                      fill={storageData.storageLocation === '실외' ? '#5E5CFD' : '#868686'}
+                    />
+                    <path
+                      d="M12 6C8.69 6 6 8.69 6 12C6 15.31 8.69 18 12 18C15.31 18 18 15.31 18 12C18 8.69 15.31 6 12 6ZM12 16C9.79 16 8 14.21 8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16Z"
+                      fill={storageData.storageLocation === '실외' ? '#5E5CFD' : '#868686'}
+                    />
+                    <path
+                      d="M12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10Z"
+                      fill={storageData.storageLocation === '실외' ? '#5E5CFD' : '#868686'}
+                    />
+                  </svg>
                 </IconContainer>
                 <LocationOptionText>실외</LocationOptionText>
               </LocationOptionButton>

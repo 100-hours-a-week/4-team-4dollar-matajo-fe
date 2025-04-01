@@ -1,6 +1,38 @@
-// src/pages/Home/LocationSearchModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
+import { searchDong, getLocationId } from '../../services/api/modules/place';
+import MapBottomSheet, { handleRegisterStorage } from './MapBottomSheet';
+
+// API 응답 타입 정의
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+export interface LocationIdData {
+  id: number;
+  latitude: number;
+  longitude: number;
+  address?: string;
+}
+
+// API 응답 타입 수정
+interface LocationSearchResponse {
+  success: boolean;
+  message: string;
+  data: string[]; // 자동완성 결과 문자열 배열
+}
+
+interface LocationIdResponse {
+  success: boolean;
+  message: string;
+  data: Array<{
+    id: number;
+    latitude: number;
+    longitude: number;
+  }>;
+}
 
 // 모달 오버레이 - 화면 전체를 덮는 반투명 배경
 const ModalOverlay = styled.div`
@@ -71,6 +103,8 @@ const SearchInputWrapper = styled.div`
   position: relative;
   width: 85%;
   margin: 0 auto 20px auto;
+  display: flex;
+  justify-content: center;
 `;
 
 const SearchInput = styled.input`
@@ -81,6 +115,7 @@ const SearchInput = styled.input`
   padding: 0 28px 0 10px;
   font-size: 13px;
   font-family: 'Noto Sans KR', sans-serif;
+  text-align: left;
 
   &:focus {
     outline: none;
@@ -89,6 +124,7 @@ const SearchInput = styled.input`
 
   &::placeholder {
     color: #999;
+    text-align: left;
   }
 `;
 
@@ -102,6 +138,7 @@ const SearchIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 `;
 
 const SearchResultList = styled.div`
@@ -168,20 +205,80 @@ const LoadingText = styled.p`
   font-family: 'Noto Sans KR', sans-serif;
 `;
 
-// 위치 정보 인터페이스
+// LocationInfo 인터페이스 수정
 interface LocationInfo {
   formatted_address: string;
   display_name: string;
   latitude: string;
   longitude: string;
+  location_id: number; // optional 제거
 }
 
 // 인터페이스 정의
 interface LocationSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectLocation: (location: string, latitude?: string, longitude?: string) => void;
+  onSelectLocation: (
+    location: string,
+    latitude?: string,
+    longitude?: string,
+    locationId?: number,
+  ) => void;
 }
+
+const getCurrentLocationData = async (): Promise<LocationInfo[]> => {
+  try {
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+      });
+    });
+
+    const { latitude, longitude } = position.coords;
+    console.log('현재 위치 좌표:', latitude, longitude);
+
+    const response = await getLocationId(`${latitude},${longitude}`);
+    console.log('현재 위치 API 응답:', response);
+
+    // 응답 타입 체크 및 안전한 변환
+    if (
+      response &&
+      typeof response === 'object' &&
+      'data' in response &&
+      Array.isArray(response.data) &&
+      response.data.length > 0
+    ) {
+      const locationData = response.data[0] as LocationIdData;
+      if ('id' in locationData && 'latitude' in locationData && 'longitude' in locationData) {
+        return [
+          {
+            formatted_address: locationData.address || '현재 위치',
+            display_name: locationData.address || '현재 위치',
+            latitude: locationData.latitude.toString(),
+            longitude: locationData.longitude.toString(),
+            location_id: locationData.id,
+          },
+        ];
+      }
+    }
+
+    // 위치 정보를 가져왔지만 변환에 실패한 경우
+    return [
+      {
+        formatted_address: '현재 위치',
+        display_name: '현재 위치',
+        latitude: latitude.toString(),
+        longitude: longitude.toString(),
+        location_id: 0,
+      },
+    ];
+  } catch (error) {
+    console.error('현재 위치 정보 가져오기 실패:', error);
+    return [];
+  }
+};
 
 const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   isOpen,
@@ -190,135 +287,154 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [searchResults, setSearchResults] = useState<LocationInfo[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 최근 검색 위치 가져오기
   useEffect(() => {
     if (isOpen) {
       setLoading(true);
       setError(null);
 
-      try {
-        // 최근 검색 목록 가져오기
-        const savedLocations = localStorage.getItem('recentLocationSearches');
-        const recentLocations = savedLocations
-          ? JSON.parse(savedLocations)
-          : generateDefaultLocations();
+      const initializeLocations = async () => {
+        try {
+          const savedLocations = localStorage.getItem('recentLocations');
+          let recentLocations: LocationInfo[] = [];
 
-        setSearchResults(recentLocations);
-        setLoading(false);
+          if (savedLocations) {
+            recentLocations = JSON.parse(savedLocations);
+          } else {
+            // 저장된 위치가 없으면 현재 위치 정보 가져오기
+            recentLocations = await getCurrentLocationData();
+          }
 
-        // 검색창에 포커스
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 100);
-      } catch (err) {
-        console.error('최근 검색 목록 로드 오류:', err);
-        setError('최근 검색 목록을 불러올 수 없습니다.');
-        setLoading(false);
-      }
+          setSearchResults(recentLocations);
+        } catch (err) {
+          console.error('위치 정보 로드 오류:', err);
+          setError('위치 정보를 불러올 수 없습니다.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      initializeLocations();
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   }, [isOpen]);
 
-  // 기본 위치 생성
-  const generateDefaultLocations = (): LocationInfo[] => {
-    return [
-      {
-        formatted_address: '서울특별시 종로구 청운동',
-        display_name: '청운동, 청운효자동, 종로구, 서울특별시, 대한민국',
-        latitude: '37.58895',
-        longitude: '126.96784',
-      },
-      {
-        formatted_address: '서울특별시 종로구 신교동',
-        display_name: '신교동, 청운효자동, 종로구, 서울특별시, 대한민국',
-        latitude: '37.58416',
-        longitude: '126.96723',
-      },
-    ];
-  };
+  const handleSearch = async () => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
 
-  // 검색 타이머 ref
-  const searchTimerRef = useRef<number | null>(null);
-
-  // 검색 함수
-  const handleSearch = () => {
     if (!searchTerm.trim()) {
-      // 검색어가 없으면 최근 검색 목록 표시
-      const savedLocations = localStorage.getItem('recentLocationSearches');
-      const recentLocations = savedLocations
-        ? JSON.parse(savedLocations)
-        : generateDefaultLocations();
-
-      setSearchResults(recentLocations);
+      const savedLocations = localStorage.getItem('recentLocations');
+      setSearchResults(savedLocations ? JSON.parse(savedLocations) : []);
+      setLoading(false);
       return;
     }
 
-    // 이전 타이머 취소
-    if (searchTimerRef.current !== null) {
-      window.clearTimeout(searchTimerRef.current);
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 동 검색 API 호출
+      const searchResponse = await searchDong(searchTerm);
+      console.log('동 검색 응답:', searchResponse);
+
+      if (Array.isArray(searchResponse) && searchResponse.length > 0) {
+        // 검색 결과를 바로 LocationInfo 형태로 변환하여 표시
+        const formattedResults = searchResponse.map(address => ({
+          formatted_address: address,
+          display_name: address,
+          latitude: '0',
+          longitude: '0',
+          location_id: 0,
+        }));
+        setSearchResults(formattedResults);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('검색 오류:', error);
+      setError('검색 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
     }
 
-    setLoading(true);
+    searchTimerRef.current = setTimeout(() => {
+      handleSearch();
+    }, 500); // 디바운스 시간을 500ms로 증가
+  };
 
-    // 디바운스 적용 (300ms)
-    searchTimerRef.current = window.setTimeout(() => {
-      try {
-        setError(null);
+  const handleResultClick = async (location: LocationInfo) => {
+    try {
+      // 현재 위치인 경우 좌표로 조회
+      const isCurrentLocation = location.formatted_address === '현재 위치';
+      const searchQuery = isCurrentLocation
+        ? `${location.latitude},${location.longitude}`
+        : location.formatted_address;
 
-        // 더미 검색 결과
-        const results: LocationInfo[] = searchDummyLocations(searchTerm);
-        setSearchResults(results);
-        setLoading(false);
-      } catch (error) {
-        console.error('검색 오류:', error);
-        setError('검색 중 오류가 발생했습니다.');
-        setLoading(false);
+      console.log('위치 검색 쿼리:', searchQuery);
+      const response = await getLocationId(searchQuery);
+
+      if (response && response.latitude && response.longitude) {
+        const updatedLocation = {
+          ...location,
+          latitude: response.latitude.toString(),
+          longitude: response.longitude.toString(),
+          location_id: response.id || 0,
+        };
+
+        console.log('업데이트된 위치 정보:', updatedLocation);
+        saveRecentLocation(updatedLocation);
+        onSelectLocation(
+          updatedLocation.formatted_address,
+          updatedLocation.latitude,
+          updatedLocation.longitude,
+          updatedLocation.location_id,
+        );
+      } else {
+        console.warn('위치 ID 조회 실패 또는 좌표 정보 없음:', response);
+        // 위치 ID 조회 실패 시에도 기본 정보로 저장
+        saveRecentLocation(location);
+        onSelectLocation(
+          location.formatted_address,
+          location.latitude,
+          location.longitude,
+          location.location_id,
+        );
       }
-    }, 300);
+      onClose();
+    } catch (error) {
+      console.error('위치 ID 조회 실패:', error);
+      // 오류 발생 시에도 기본 정보로 저장
+      saveRecentLocation(location);
+      onSelectLocation(
+        location.formatted_address,
+        location.latitude,
+        location.longitude,
+        location.location_id,
+      );
+      onClose();
+    }
   };
 
-  // 더미 검색 결과 생성
-  const searchDummyLocations = (term: string): LocationInfo[] => {
-    return [
-      {
-        formatted_address: `서울특별시 종로구 ${term}동`,
-        display_name: `${term}동, 종로구, 서울특별시, 대한민국`,
-        latitude: '37.5631',
-        longitude: '126.9847',
-      },
-      {
-        formatted_address: `서울특별시 마포구 ${term}동`,
-        display_name: `${term}동, 마포구, 서울특별시, 대한민국`,
-        latitude: '37.5536',
-        longitude: '126.9154',
-      },
-    ];
-  };
-
-  // 검색어 변경 핸들러
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    handleSearch();
-  };
-
-  // 검색 결과 클릭 핸들러
-  const handleResultClick = (location: LocationInfo) => {
-    // 선택한 위치 저장
-    saveRecentLocation(location);
-
-    // 선택한 위치 전달
-    onSelectLocation(location.formatted_address, location.latitude, location.longitude);
-    onClose();
-  };
-
-  // 최근 검색 위치 저장
   const saveRecentLocation = (location: LocationInfo) => {
     try {
-      // 기존 저장된 최근 검색 가져오기
-      const savedLocations = localStorage.getItem('recentLocationSearches');
+      const savedLocations = localStorage.getItem('recentLocations');
       let recentLocations: LocationInfo[] = savedLocations ? JSON.parse(savedLocations) : [];
 
       // 중복 제거
@@ -326,29 +442,26 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
         loc => loc.formatted_address !== location.formatted_address,
       );
 
-      // 앞에 추가
+      // 새 위치를 배열 앞에 추가
       recentLocations.unshift(location);
 
-      // 최대 5개까지만 저장
+      // 최대 5개만 유지
       if (recentLocations.length > 5) {
         recentLocations = recentLocations.slice(0, 5);
       }
 
-      // 로컬 스토리지에 저장
-      localStorage.setItem('recentLocationSearches', JSON.stringify(recentLocations));
+      localStorage.setItem('recentLocations', JSON.stringify(recentLocations));
     } catch (error) {
       console.error('최근 위치 저장 오류:', error);
     }
   };
 
-  // 배경 클릭 시 모달 닫기
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
 
-  // 엔터 키 처리
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearch();

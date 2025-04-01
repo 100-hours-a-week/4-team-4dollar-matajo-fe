@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Header from '../../../../components/layout/Header';
-import BottomNavigation from '../../../../components/layout/BottomNavigation';
-import Modal from '../../../../components/common/Modal';
-import Toast from '../../../../components/common/Toast';
+import Header from '../../components/layout/Header';
+import BottomNavigation from '../../components/layout/BottomNavigation';
+import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
 import {
   registerStorage,
   base64ToFile,
   StorageRegistrationRequest,
-} from '../../../../services/api/modules/storage';
-import { DaumAddressData } from '../../../../utils/api/kakaoToDaum';
+} from '../../services/api/modules/storage';
+import { DaumAddressData } from '../../services/KakaoMapService';
+import { ROUTES } from '../../constants/routes';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -363,7 +364,7 @@ const Registration3: React.FC = () => {
 
   // 로컬 스토리지에서 이미지 데이터 불러오기
   useEffect(() => {
-    const savedData = localStorage.getItem('registration_step3');
+    const savedData = localStorage.getItem('storage_register_images');
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
@@ -393,7 +394,7 @@ const Registration3: React.FC = () => {
       detailImages,
     };
 
-    localStorage.setItem('registration_step3', JSON.stringify(dataToSave));
+    localStorage.setItem('storage_register_images', JSON.stringify(dataToSave));
   };
 
   // 토스트 메시지 표시 함수
@@ -489,13 +490,17 @@ const Registration3: React.FC = () => {
 
   // 뒤로가기 핸들러
   const handleBack = () => {
-    // 변경 사항은 로컬 스토리지에 자동 저장됨
-    navigate('/registration/step2');
+    navigate(`/storage/register/details`);
   };
 
   // 등록 확인 모달 열기
   const openConfirmModal = () => {
-    setIsConfirmModalOpen(true);
+    console.log('모달 열기 시도');
+    // 약간의 지연을 두고 모달 열기 (UI 업데이트 보장)
+    setTimeout(() => {
+      setIsConfirmModalOpen(true);
+      console.log('모달 상태 설정됨:', true);
+    }, 300);
   };
 
   // 폼 제출 핸들러
@@ -513,9 +518,9 @@ const Registration3: React.FC = () => {
 
     try {
       setIsLoading(true);
+      console.log('보관소 등록 시작...');
 
       // 이미지 파일 준비
-      // base64 이미지 데이터를 File 객체로 변환하거나 기존 File 객체 사용
       let mainImageFileObj: File;
       if (mainImageFile) {
         mainImageFileObj = mainImageFile;
@@ -527,62 +532,56 @@ const Registration3: React.FC = () => {
 
       // 상세 이미지 파일 배열 준비
       const detailImageFilesArray: File[] = [];
-
-      // 기존 File 객체가 있으면 사용, 없으면 base64 데이터에서 변환
       if (detailImageFiles.length === detailImages.length) {
         detailImageFilesArray.push(...detailImageFiles);
       } else {
-        detailImages.forEach((img, index) => {
-          if (detailImageFiles[index]) {
-            detailImageFilesArray.push(detailImageFiles[index]);
+        for (let i = 0; i < detailImages.length; i++) {
+          if (detailImageFiles[i]) {
+            detailImageFilesArray.push(detailImageFiles[i]);
           } else {
-            detailImageFilesArray.push(base64ToFile(img, `detail-image-${index}.jpg`));
+            detailImageFilesArray.push(base64ToFile(detailImages[i], `detail-image-${i}.jpg`));
           }
-        });
+        }
       }
 
-      // API 요청 데이터 준비 - postTags를 문자열 배열로 전달
-      const requestData: StorageRegistrationRequest = {
+      // API 요청 데이터 준비 (snake_case로 변환)
+      const requestData = {
         postTitle: prevFormData.postTitle,
         postContent: prevFormData.postContent,
-        preferPrice: prevFormData.preferPrice,
+        preferPrice: Number(prevFormData.preferPrice),
         postAddressData: prevFormData.postAddressData,
-        postTags: prevFormData.postTags, // 문자열 태그 배열 사용
+        postTags: prevFormData.postTags,
+        storageLocation: prevFormData.storageLocation,
       };
 
-      // API 호출
       const response = await registerStorage(requestData, mainImageFileObj, detailImageFilesArray);
 
-      // 응답 처리
       if (response.success) {
         console.log('보관소 등록 성공:', response);
-
-        // 로컬 스토리지 데이터 삭제
-        localStorage.removeItem('registration_step1');
-        localStorage.removeItem('registration_step2');
-        localStorage.removeItem('registration_step3');
-
-        // 등록 확인 모달 표시
+        localStorage.removeItem('storage_register_basic');
+        localStorage.removeItem('storage_register_details');
+        localStorage.removeItem('storage_register_images');
         openConfirmModal();
       } else {
-        showToast(response.message || '보관소 등록에 실패했습니다. 다시 시도해주세요.');
+        showToast(response?.message || '보관소 등록에 실패했습니다.');
       }
     } catch (error) {
       console.error('보관소 등록 오류:', error);
-      showToast('보관소 등록 중 오류가 발생했습니다. 다시 시도해주세요.');
+      showToast('보관소 등록 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 등록 확인 처리 (내 보관소로 이동)
+  // 등록 확인 처리
   const handleConfirmConfirm = () => {
     navigate('/myplace');
   };
 
-  // 등록 확인 취소 처리 (홈으로 이동)
+  // 취소 처리
   const handleConfirmCancel = () => {
     navigate('/');
+    navigate(ROUTES.HOME);
   };
 
   // 모달 내용 컴포넌트 - 등록 확인
@@ -599,6 +598,17 @@ const Registration3: React.FC = () => {
     <>
       {/* 상단 헤더 */}
       <Header title="보관소 등록" showBackButton={true} onBack={handleBack} />
+
+      {/* 등록 완료 확인 모달 */}
+      <Modal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        content={confirmModalContent}
+        cancelText="홈으로 가기"
+        confirmText="내 보관소로 이동"
+        onCancel={handleConfirmCancel}
+        onConfirm={handleConfirmConfirm}
+      />
 
       {/* 로딩 오버레이 */}
       {isLoading && (
@@ -619,17 +629,6 @@ const Registration3: React.FC = () => {
             </ProgressBackground>
             <ProgressText>3/3</ProgressText>
           </ProgressContainer>
-
-          {/* 등록 완료 확인 모달 */}
-          <Modal
-            isOpen={isConfirmModalOpen}
-            onClose={() => setIsConfirmModalOpen(false)}
-            content={confirmModalContent}
-            cancelText="홈으로 가기"
-            confirmText="내 보관소로 이동"
-            onCancel={handleConfirmCancel}
-            onConfirm={handleConfirmConfirm}
-          />
 
           {/* 폼 컨테이너 */}
           <FormContainer>

@@ -7,6 +7,7 @@ import ChatService, { ChatMessageResponseDto, MessageType } from '../../services
 import { API_BACKEND_URL } from '../../constants/api';
 import axios from 'axios';
 import moment from 'moment-timezone';
+import client from '../../services/api/client';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -349,8 +350,8 @@ interface ChatProps {
 
 const Chat: React.FC<ChatProps> = ({ onBack }) => {
   const navigate = useNavigate();
-  const { id: roomIdParam } = useParams<{ id: string }>();
-  const roomId = roomIdParam ? parseInt(roomIdParam) : null;
+  const { id: tradeId } = useParams();
+  const roomId = tradeId ? parseInt(tradeId) : null;
 
   // 채팅 서비스 인스턴스
   const chatService = ChatService.getInstance();
@@ -391,6 +392,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // 이미지 입력 참조
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 채팅방 상세 정보 상태 추가
+  const [chatRoomDetail, setChatRoomDetail] = useState<{
+    keeper_id: number;
+    client_id: number;
+  } | null>(null);
 
   // API 요청 헤더에 userId 추가
   useEffect(() => {
@@ -468,12 +475,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           console.log('새 메시지 수신:', message);
           setMessages(prev => {
             // 중복 메시지 방지
-            const messageId = message.messageId || message.messageId;
-            const isDuplicate = prev.some(
-              m =>
-                (m.messageId && m.messageId === messageId) ||
-                (m.messageId && m.messageId === messageId),
-            );
+            const isDuplicate = prev.some(m => m.messageId === message.messageId);
 
             if (isDuplicate) {
               console.log('중복 메시지 무시');
@@ -514,12 +516,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           if (!mounted) return;
 
           setMessages(prev => {
-            const messageId = message.messageId || message.messageId;
-            const isDuplicate = prev.some(
-              m =>
-                (m.messageId && m.messageId === messageId) ||
-                (m.messageId && m.messageId === messageId),
-            );
+            const isDuplicate = prev.some(m => m.messageId === message.messageId);
 
             if (isDuplicate) return prev;
             return [...prev, message];
@@ -593,13 +590,31 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 채팅 스크롤을 항상 아래로 유지
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      const container = chatContainerRef.current;
+      const shouldScroll =
+        container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+
+      if (shouldScroll) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
     }
   }, [messages]);
 
   // 메시지 전송 핸들러
   const handleSendMessage = async () => {
-    if (!roomId || inputMessage.trim() === '') return;
+    if (!roomId) return;
+
+    const trimmedMessage = inputMessage.trim();
+    if (!trimmedMessage) return;
+
+    // 메시지 길이 제한 (500자)
+    if (trimmedMessage.length > 500) {
+      setError('메시지는 500자를 초과할 수 없습니다.');
+      return;
+    }
 
     // 연결이 끊어진 경우 재연결 시도
     if (!isConnected) {
@@ -615,7 +630,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       setError(null);
 
       // WebSocket을 통해 메시지 전송
-      await chatService.sendTextMessage(roomId, currentUserId, inputMessage);
+      await chatService.sendTextMessage(roomId, currentUserId, trimmedMessage);
 
       // 입력창 초기화
       setInputMessage('');
@@ -771,6 +786,31 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     return message.senderId === currentUserId;
   };
 
+  // 현재 사용자가 보관인인지 확인하는 함수
+  const isKeeper = () => {
+    if (!chatRoomDetail) return false;
+    const currentUserId = Number(localStorage.getItem('userId'));
+    return currentUserId === chatRoomDetail.keeper_id;
+  };
+
+  // 채팅방 상세 정보 로드
+  useEffect(() => {
+    const loadChatRoomDetail = async () => {
+      if (!roomId) return;
+
+      try {
+        const response = await client.get(`/api/chats/${roomId}`);
+        if (response.data.success) {
+          setChatRoomDetail(response.data.data);
+        }
+      } catch (error) {
+        console.error('채팅방 상세 정보 로드 실패:', error);
+      }
+    };
+
+    loadChatRoomDetail();
+  }, [roomId]);
+
   return (
     <Container>
       {/* 상단 헤더 */}
@@ -781,10 +821,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         {isConnected ? '연결됨' : '연결 끊김'}
       </ConnectionStatus>
 
-      {/* 확정하기 버튼 */}
-      <ConfirmButton onClick={handleConfirm}>
-        <ConfirmButtonText>확정하기</ConfirmButtonText>
-      </ConfirmButton>
+      {/* 확정하기 버튼 - 보관인일 때만 표시 */}
+      {isKeeper() && (
+        <ConfirmButton onClick={handleConfirm}>
+          <ConfirmButtonText>확정하기</ConfirmButtonText>
+        </ConfirmButton>
+      )}
 
       {/* 채팅 영역 */}
       <ChatContainer ref={chatContainerRef}>
@@ -906,6 +948,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={handleTradeConfirm}
+        chatroomId={roomId || 0}
       />
     </Container>
   );

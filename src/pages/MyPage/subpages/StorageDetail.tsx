@@ -5,8 +5,13 @@ import Header, { HeaderDropdownOption } from '../../../components/layout/Header'
 import BottomNavigation from '../../../components/layout/BottomNavigation';
 import Modal from '../../../components/common/Modal';
 import KakaoMap from '../../../components/feature/map/KakaoMap';
-import { getStorageDetail, deleteStorage } from '../../../services/api/modules/place';
+import {
+  getStorageDetail,
+  deleteStorage,
+  toggleStorageVisibility,
+} from '../../../services/api/modules/place';
 import { transformStorageDetail } from '../../../utils/dataTransformers';
+import ChatService from '../../../services/ChatService';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -150,7 +155,7 @@ const ChatButton = styled.div`
   padding: 8px 0;
   position: absolute;
   right: 25px;
-  top: 50px;
+  top: 80px;
   background: ${THEME.primaryTransparent};
   border-radius: 10px;
   display: flex;
@@ -198,10 +203,13 @@ const LocationInfo = styled.div`
   margin-bottom: 15px;
 `;
 
-const LocationIcon = styled.img`
+const LocationIcon = styled.div`
   width: 20px;
   height: 20px;
   margin-right: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const LocationLabel = styled.div`
@@ -292,42 +300,128 @@ const KeeperImage = styled.img`
 
 const ImageIndicator = styled.div`
   position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 15px;
+  left: 0;
+  right: 0;
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 11px;
   z-index: 10;
 `;
 
 const Dot = styled.div<{ isActive: boolean }>`
-  width: 10px;
-  height: 9px;
-  opacity: 0.8;
-  background: ${props => (props.isActive ? '#9e9dfe' : '#efeff0')};
-  border-radius: 9999px;
-  transition: background-color 0.2s ease;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: ${props => (props.isActive ? THEME.primary : 'rgba(255, 255, 255, 0.6)')};
+  margin: 0 5px;
   cursor: pointer;
-  padding: 8px; /* 클릭 영역 확장 */
-  margin: -4px; /* 간격 유지를 위한 네거티브 마진 */
-  box-sizing: content-box;
-
-  &:hover {
-    opacity: 1;
-  }
+  transition: background-color 0.3s ease;
 `;
 
-const ScrollToTopButton = styled.img`
+const ScrollToTopButton = styled.div`
   width: 59px;
   height: 55px;
   position: fixed;
   left: 310px;
   bottom: 90px;
   opacity: 0.8;
-  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
   cursor: pointer;
   z-index: 99;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    opacity: 1;
+  }
+`;
+
+// 위치 아이콘 SVG 컴포넌트 추가
+const LocationIconSVG = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M10 1.875C6.89844 1.875 4.375 4.39844 4.375 7.5C4.375 11.5625 10 18.125 10 18.125C10 18.125 15.625 11.5625 15.625 7.5C15.625 4.39844 13.1016 1.875 10 1.875ZM10 9.375C8.96484 9.375 8.125 8.53516 8.125 7.5C8.125 6.46484 8.96484 5.625 10 5.625C11.0352 5.625 11.875 6.46484 11.875 7.5C11.875 8.53516 11.0352 9.375 10 9.375Z"
+      fill="#5E5CFD"
+    />
+  </svg>
+);
+
+// 스크롤 상단 이동 버튼 SVG 컴포넌트 수정 (화살표 방향 위로)
+const ScrollTopIconSVG = () => (
+  <svg width="59" height="55" viewBox="0 0 59 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="29.5" cy="27.5" r="27.5" fill="#5E5CFD" fillOpacity="0.9" />
+    <path d="M29.5 15L17 27.5H25.375V40H33.625V27.5H42L29.5 15Z" fill="white" />
+  </svg>
+);
+
+// Toast 메시지 스타일 컴포넌트 추가 (Container 바로 아래에 추가)
+const Toast = styled.div<{ visible: boolean }>`
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  opacity: ${props => (props.visible ? 1 : 0)};
+  transition: opacity 0.3s ease;
+  z-index: 1000;
+  white-space: nowrap;
+`;
+
+// 드롭다운 메뉴 스타일 컴포넌트 추가
+const DropdownMenu = styled.div`
+  width: 83px;
+  height: 78px;
+  position: relative;
+  background: white;
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.15);
+`;
+
+const DropdownItem = styled.div`
+  width: 100%;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  padding: 0 7px;
+  cursor: pointer;
+  position: relative;
+  color: #2a2a2a;
+  font-size: 10px;
+  font-family: Noto Sans KR;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  word-wrap: break-word;
+
+  &:hover {
+    background-color: #f5f5f5;
+  }
+`;
+
+const DropdownDivider = styled.div`
+  width: 83px;
+  height: 1px;
+  background-color: #d9d9d9;
+  position: absolute;
+`;
+
+const DropdownIcon = styled.div`
+  width: 15px;
+  height: 15px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const DeleteItem = styled(DropdownItem)`
+  color: #ff0000;
 `;
 
 // 백엔드 API 응답 데이터 타입 정의
@@ -341,7 +435,7 @@ interface StorageDetailData {
   postAddress: string;
   nickname: string;
   hiddenStatus: boolean;
-  // 지도 표시를 위한 필드 (API에서 제공되지 않는 경우 기본값 사용)
+  userId: number; // 게시글 작성자 ID 추가
   latitude?: number;
   longitude?: number;
 }
@@ -376,6 +470,12 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const [isAuthor, setIsAuthor] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+
   // API에서 보관소 상세 정보 로드
   useEffect(() => {
     const fetchStorageDetail = async () => {
@@ -394,9 +494,34 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
         // API 응답 데이터 추출
         if (response.data && response.data.success) {
-          // Transform the data from snake_case to camelCase
           const transformedData = transformStorageDetail(response.data.data);
+
+          if (response.data.data.post_images && Array.isArray(response.data.data.post_images)) {
+            transformedData.postImages = response.data.data.post_images;
+          }
+
           setStorageDetail(transformedData);
+
+          // accessToken에서 userId 추출
+          const token = localStorage.getItem('accessToken');
+          if (token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(c => {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                })
+                .join(''),
+            );
+            const payload = JSON.parse(jsonPayload);
+
+            // userId 비교
+            const isAuthorCheck = payload.userId === transformedData.userId;
+            setIsAuthor(isAuthorCheck);
+            setIsHidden(transformedData.hiddenStatus);
+          }
         } else {
           throw new Error('데이터를 불러오는 데 실패했습니다.');
         }
@@ -412,9 +537,44 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     fetchStorageDetail();
   }, [id]);
 
-  const handleChatClick = () => {
-    console.log('Chat button clicked');
-    // 채팅 기능 구현
+  // 토스트 메시지 표시 함수
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  // 채팅하기 버튼 클릭 핸들러 수정
+  const handleChatClick = async () => {
+    if (!storageDetail) return;
+
+    try {
+      // 작성자와 현재 사용자가 같은지 확인
+      if (storageDetail.userId === Number(localStorage.getItem('userId'))) {
+        showToastMessage('본인의 장소에는 채팅을 생성할 수 없습니다.');
+        return;
+      }
+
+      // ChatService 인스턴스 생성
+      const chatService = ChatService.getInstance();
+
+      // 채팅방 생성 요청
+      const response = await chatService.createChatRoom({
+        post_id: Number(storageDetail.postId),
+      });
+
+      if (response.success && response.data) {
+        // 채팅방으로 이동
+        navigate(`/chat/${response.data.id}`);
+      } else {
+        showToastMessage('채팅방 생성에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('채팅방 생성 실패:', error);
+      showToastMessage('채팅방 생성에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleScrollToTop = () => {
@@ -626,28 +786,75 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     }
   };
 
-  // 헤더 드롭다운 옵션 정의
-  const headerDropdownOptions: HeaderDropdownOption[] = [
-    {
-      id: 'edit',
-      label: '보관소 수정',
-      icon: '✓',
-      onClick: () => console.log('보관소 수정'),
-    },
-    {
-      id: 'hidden',
-      label: '비공개',
-      icon: '➦',
-      onClick: () => console.log('비공개 처리'),
-    },
-    {
-      id: 'delete',
-      label: '삭제',
-      icon: '✕',
-      color: '#ff4b4b',
-      onClick: () => openDeleteModal(),
-    },
-  ];
+  // 헤더 드롭다운 옵션 정의 수정
+  const headerDropdownOptions: HeaderDropdownOption[] = isAuthor
+    ? [
+        {
+          id: 'edit',
+          label: '보관소 수정',
+          icon: (
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 13 13"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M0.875 9.78113V12.1249H3.21875L10.1313 5.21238L7.7875 2.86863L0.875 9.78113ZM11.944 3.39961C12.1878 3.15586 12.1878 2.76211 11.944 2.51836L10.4815 1.05586C10.2378 0.812109 9.84402 0.812109 9.60027 1.05586L8.45652 2.19961L10.8003 4.54336L11.944 3.39961Z"
+                fill="#020202"
+              />
+            </svg>
+          ),
+          onClick: () => navigate(`/edit-storage/${id}`),
+        },
+        {
+          id: 'visibility',
+          label: isHidden ? '공개하기' : '비공개',
+          icon: (
+            <svg
+              width="16"
+              height="12"
+              viewBox="0 0 16 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M3.25714 0.937622C2.94655 0.638122 2.45197 0.647114 2.15247 0.957707C1.85297 1.2683 1.86196 1.76288 2.17255 2.06238C2.53721 2.41402 2.95322 2.81343 3.40503 3.24519C2.28345 4.19916 1.56522 5.34604 1.06365 6.14695C1.02701 6.20546 0.991397 6.26233 0.956995 6.31693C0.733103 6.67232 0.839699 7.14191 1.19508 7.36581C1.28446 7.42212 1.38107 7.45752 1.47917 7.47332L1.96152 8.67918C1.97512 8.78469 2.0112 8.88902 2.07137 8.9851C2.62551 9.86985 3.33735 10.6302 4.37312 11.158C5.3984 11.6804 6.68146 11.9447 8.3323 11.9447C9.7853 11.9447 10.9628 11.5982 11.9238 11.0771C12.3246 11.4106 12.6622 11.6747 12.9065 11.8375C13.2655 12.0769 13.7505 11.9799 13.9899 11.6209C14.2292 11.2619 14.1322 10.7768 13.7732 10.5375C13.6457 10.4525 13.4712 10.3209 13.2549 10.1475C14.3369 9.20348 15.0346 8.08275 15.524 7.29659L15.5261 7.29329C15.5619 7.23575 15.5968 7.17974 15.6304 7.12602L15.8398 6.79161L15.6871 6.42782C14.9572 4.69003 12.7412 1.5 8.29317 1.5C6.85365 1.5 5.68318 1.83645 4.72481 2.34498C4.18173 1.82679 3.68409 1.34933 3.25714 0.937622Z"
+                fill="#212121"
+              />
+            </svg>
+          ),
+          onClick: () => handleToggleVisibility(),
+        },
+        {
+          id: 'delete',
+          label: '삭제',
+          icon: (
+            <svg
+              width="9"
+              height="9"
+              viewBox="0 0 9 9"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M8.875 1.00625L7.99375 0.125L4.5 3.61875L1.00625 0.125L0.125 1.00625L3.61875 4.5L0.125 7.99375L1.00625 8.875L4.5 5.38125L7.99375 8.875L8.875 7.99375L5.38125 4.5L8.875 1.00625Z"
+                fill="#020202"
+              />
+            </svg>
+          ),
+          color: '#FF0000',
+          onClick: () => openDeleteModal(),
+        },
+      ]
+    : [];
 
   // 모달 상태 관리
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -706,16 +913,48 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     </>
   );
 
+  // 공개/비공개 전환 핸들러
+  const handleToggleVisibility = async () => {
+    try {
+      if (!id) return;
+
+      const response = await toggleStorageVisibility(id);
+      if (response.data.success) {
+        setIsHidden(!isHidden);
+        showToastMessage(isHidden ? '보관소가 공개되었습니다.' : '보관소가 비공개되었습니다.');
+      } else {
+        showToastMessage('공개/비공개 전환에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('공개/비공개 전환 실패:', error);
+      showToastMessage('공개/비공개 전환에 실패했습니다.');
+    }
+  };
+
   return (
     <>
       {/* 상단 헤더 */}
       <Header
         title="보관소 상세 페이지"
         showBackButton={true}
-        showOptionButton={true}
+        showOptionButton={isAuthor}
         onBack={handleBack}
         dropdownOptions={headerDropdownOptions}
       />
+
+      {/* 디버깅을 위한 임시 표시 */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          background: 'white',
+          padding: '5px',
+          zIndex: 9999,
+        }}
+      >
+        isAuthor: {isAuthor.toString()}
+      </div>
 
       <Container ref={containerRef}>
         {/* 게시글 삭제 모달 */}
@@ -793,7 +1032,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                   </ImageSlider>
 
                   {/* 이미지 인디케이터 - 이미지가 2개 이상일 때만 표시 */}
-                  {storageDetail.postImages.length > 1 && (
+                  {storageDetail.postImages && storageDetail.postImages.length > 1 && (
                     <ImageIndicator>
                       {storageDetail.postImages.map((_, index) => (
                         <Dot
@@ -829,7 +1068,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                   <UnitText>/일</UnitText>
                 </PriceContainer>
 
-                {/* 채팅 버튼 */}
+                {/* 채팅하기 버튼 */}
                 <ChatButton onClick={handleChatClick}>
                   <ChatButtonText>채팅하기</ChatButtonText>
                 </ChatButton>
@@ -855,7 +1094,9 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
             {/* 위치 정보 */}
             <LocationSection>
               <LocationInfo>
-                <LocationIcon src="https://placehold.co/20x20" alt="위치 아이콘" />
+                <LocationIcon>
+                  <LocationIconSVG />
+                </LocationIcon>
                 <LocationLabel>위치</LocationLabel>
                 <LocationText>{storageDetail.postAddress || '위치 정보 없음'}</LocationText>
               </LocationInfo>
@@ -891,7 +1132,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
             <KeeperSection>
               <KeeperCard>
                 <KeeperImageContainer>
-                  <KeeperImage src="https://placehold.co/28x29" alt="보관인 프로필" />
+                  <KeeperImage src="/tajo-logo.png" alt="보관인 프로필" />
                 </KeeperImageContainer>
                 <KeeperInfo>
                   <KeeperLabel>보관인</KeeperLabel>
@@ -912,14 +1153,15 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
             <div>보관소 정보가 없습니다.</div>
           </div>
         )}
+
+        {/* 토스트 메시지 */}
+        <Toast visible={showToast}>{toastMessage}</Toast>
       </Container>
 
       {/* 스크롤 상단 이동 버튼 */}
-      <ScrollToTopButton
-        src="https://placehold.co/59x55"
-        alt="상단으로 이동"
-        onClick={handleScrollToTop}
-      />
+      <ScrollToTopButton onClick={handleScrollToTop}>
+        <ScrollTopIconSVG />
+      </ScrollToTopButton>
       <BottomNavigation activeTab="보관소" />
     </>
   );

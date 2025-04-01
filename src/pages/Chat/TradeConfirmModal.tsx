@@ -4,6 +4,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ko } from 'date-fns/locale/ko';
 import { format, differenceInDays } from 'date-fns';
+import Toast from '../../components/common/Toast';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -249,13 +250,39 @@ const CompleteButton = styled.button`
   float: right;
 `;
 
-// 아이템 유형 옵션
-const itemTypes = ['식물', '전자기기', '가전', '스포츠', '식품', '의류', '서적', '취미', '가구'];
+// 로딩 인디케이터
+const LoadingSpinner = styled.div`
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid ${THEME.primary};
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+// 로딩 버튼 컨테이너
+const ButtonWithSpinner = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  float: right;
+`;
 
 interface TradeConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (data: TradeData) => void;
+  chatroomId: number;
 }
 
 export interface TradeData {
@@ -266,187 +293,253 @@ export interface TradeData {
   endDate: string;
   storagePeriod: number;
   price: number;
+  // 서버 전송용 필드 추가
+  product_name?: string;
+  start_date?: string;
+  trade_price?: number;
+  message?: string;
 }
 
-const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({ isOpen, onClose, onConfirm }) => {
-  // 기본 날짜 설정 (오늘부터 30일 후)
-  const today = new Date();
-  const defaultEndDate = new Date();
-  defaultEndDate.setDate(today.getDate() + 30);
-
-  // 폼 상태 관리
-  const [itemName, setItemName] = useState('');
-  // 수정: 단일 아이템 유형 선택을 위해 string[]에서 string으로 변경
+const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  chatroomId,
+}) => {
+  const [itemName, setItemName] = useState<string>('');
   const [selectedItemType, setSelectedItemType] = useState<string>('');
-  const [startDateObj, setStartDateObj] = useState<Date>(today);
-  const [endDateObj, setEndDateObj] = useState<Date>(defaultEndDate);
-  const [price, setPrice] = useState('10000');
-  const [storagePeriod, setStoragePeriod] = useState(30);
+  const [startDate, setStartDate] = useState<Date | null>(new Date());
+  const [endDate, setEndDate] = useState<Date | null>(
+    new Date(new Date().setDate(new Date().getDate() + 7)),
+  );
+  const [storagePeriod, setStoragePeriod] = useState<number>(7);
+  const [price, setPrice] = useState<string>('10000');
+  const [message, setMessage] = useState<string>('');
 
   // 유효성 검사 상태
-  const [errors, setErrors] = useState({
-    itemName: false,
-    itemType: false,
-    dates: false,
-    price: false,
-  });
+  const [itemNameError, setItemNameError] = useState<string>('');
+  const [dateError, setDateError] = useState<string>('');
+  const [priceError, setPriceError] = useState<string>('');
 
-  // 모달이 닫혀있으면 아무것도 렌더링하지 않음
-  if (!isOpen) return null;
+  // 로딩 상태
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // 날짜가 변경될 때마다 보관 기간 계산
+  // 토스트 상태
+  const [toastMessage, setToastMessage] = useState<string>('');
+  const [showToast, setShowToast] = useState<boolean>(false);
+
+  // 카테고리 목록
+  const itemTypes = ['냉장', '냉동', '상온', '귀중품'];
+
+  // 토스트 메시지 표시 함수
+  const displayToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+
+    // 3초 후 자동으로 숨김
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  // 보관 기간 계산
   const calculateStoragePeriod = (start: Date, end: Date) => {
-    const days = differenceInDays(end, start);
-    return Math.max(1, days); // 최소 1일
+    return differenceInDays(end, start) + 1; // 종료일도 포함
   };
 
-  // 시작 날짜 변경 핸들러
+  // 시작일 변경 핸들러
   const handleStartDateChange = (date: Date | null) => {
-    if (!date) return;
-
-    setStartDateObj(date);
-    // 종료일이 시작일보다 빠르면 종료일을 시작일로 설정
-    if (date > endDateObj) {
-      setEndDateObj(date);
+    if (date) {
+      setStartDate(date);
+      if (endDate && date > endDate) {
+        setEndDate(date);
+        setStoragePeriod(1);
+      } else if (endDate) {
+        setStoragePeriod(calculateStoragePeriod(date, endDate));
+      }
+      setDateError('');
     }
-    // 보관 기간 업데이트
-    setStoragePeriod(calculateStoragePeriod(date, endDateObj));
   };
 
-  // 종료 날짜 변경 핸들러
+  // 종료일 변경 핸들러
   const handleEndDateChange = (date: Date | null) => {
-    if (!date) return;
-
-    // 시작일보다 빠른 날짜 선택 방지
-    if (date < startDateObj) return;
-
-    setEndDateObj(date);
-    // 보관 기간 업데이트
-    setStoragePeriod(calculateStoragePeriod(startDateObj, date));
-  };
-
-  // 태그 선택 핸들러 - 수정: 단일 선택으로 변경
-  const selectItemType = (itemType: string) => {
-    setSelectedItemType(itemType);
-    // 에러 상태 업데이트
-    if (errors.itemType) {
-      setErrors(prev => ({ ...prev, itemType: false }));
+    if (date && startDate) {
+      if (date < startDate) {
+        setDateError('종료일은 시작일 이후여야 합니다');
+        return;
+      }
+      setEndDate(date);
+      setStoragePeriod(calculateStoragePeriod(startDate, date));
+      setDateError('');
     }
   };
 
-  // 폼 제출 핸들러
-  const handleSubmit = () => {
-    // 유효성 검사
-    const newErrors = {
-      itemName: !itemName.trim(),
-      itemType: !selectedItemType,
-      dates: !startDateObj || !endDateObj,
-      price: !price || isNaN(Number(price)) || Number(price) <= 0,
-    };
+  // 카테고리 선택 핸들러
+  const selectItemType = (itemType: string) => {
+    setSelectedItemType(itemType === selectedItemType ? '' : itemType);
+  };
 
-    setErrors(newErrors);
+  // 유효성 검사
+  const validateForm = (): boolean => {
+    let isValid = true;
 
-    // 에러가 있으면 제출 중단
-    if (Object.values(newErrors).some(error => error)) {
+    // 상품명 검사
+    if (!itemName.trim()) {
+      setItemNameError('상품명을 입력해주세요');
+      isValid = false;
+    } else {
+      setItemNameError('');
+    }
+
+    // 날짜 검사
+    if (!startDate || !endDate) {
+      setDateError('날짜를 모두 선택해주세요');
+      isValid = false;
+    } else if (endDate < startDate) {
+      setDateError('종료일은 시작일 이후여야 합니다');
+      isValid = false;
+    } else {
+      setDateError('');
+    }
+
+    // 가격 검사
+    if (!price.trim() || isNaN(Number(price)) || Number(price) <= 0) {
+      setPriceError('유효한 가격을 입력해주세요');
+      isValid = false;
+    } else {
+      setPriceError('');
+    }
+
+    return isValid;
+  };
+
+  // 제출 핸들러
+  const handleSubmit = async () => {
+    if (!validateForm()) {
       return;
     }
 
-    // 날짜 형식 변환 (YYYY-MM-DD)
-    const formattedStartDate = format(startDateObj, 'yyyy-MM-dd');
-    const formattedEndDate = format(endDateObj, 'yyyy-MM-dd');
+    setIsLoading(true);
 
-    // 데이터 전송 - 단일 선택이지만 API 호환성을 위해 배열로 변환
-    onConfirm({
-      itemName,
-      itemTypes: [selectedItemType], // 배열로 변환하여 전달
-      category: selectedItemType,
-      startDate: formattedStartDate,
-      endDate: formattedEndDate,
-      storagePeriod: storagePeriod,
-      price: Number(price),
-    });
+    try {
+      // TradeData 형식으로 변환하여 콜백 호출
+      const tradeData: TradeData = {
+        itemName,
+        itemTypes: selectedItemType ? [selectedItemType] : [],
+        category: selectedItemType || '기타',
+        startDate: startDate ? format(startDate, 'yyyy-MM-dd') : '',
+        endDate: endDate ? format(endDate, 'yyyy-MM-dd') : '',
+        storagePeriod,
+        price: Number(price),
+      };
 
-    // 모달 닫기
-    onClose();
+      // 성공 시 토스트 메시지 표시 및 콜백 호출
+      displayToast('거래 정보가 등록되었습니다');
+      onConfirm(tradeData);
+
+      // 잠시 후 모달 닫기
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    } catch (error) {
+      console.error('거래 정보 등록 오류:', error);
+      displayToast('거래 정보 등록 중 오류가 발생했습니다');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <ModalOverlay onClick={onClose}>
-      <ModalContainer onClick={e => e.stopPropagation()}>
-        <CloseButton onClick={onClose} />
+    <>
+      <ModalOverlay>
+        <ModalContainer>
+          <Title>거래 정보 작성</Title>
+          <CloseButton onClick={onClose} />
 
-        <Title>거래 정보 작성</Title>
-
-        {/* 물건 이름 입력 */}
-        <Label>물건의 이름을 작성해주세요</Label>
-        {errors.itemName && <HelperText>물건 이름을 입력해주세요</HelperText>}
-        <Input
-          type="text"
-          value={itemName}
-          onChange={e => setItemName(e.target.value)}
-          placeholder="물건 이름을 입력해주세요"
-        />
-
-        {/* 물건 유형 선택 - 수정: 단일 선택으로 변경 */}
-        <Label>물건의 유형을 선택해주세요</Label>
-        {errors.itemType && <HelperText>물건 유형을 선택해주세요</HelperText>}
-        <TagContainer>
-          {itemTypes.map(type => (
-            <TagButton
-              key={type}
-              isSelected={selectedItemType === type}
-              onClick={() => selectItemType(type)}
-            >
-              {type}
-            </TagButton>
-          ))}
-        </TagContainer>
-
-        {/* 보관 기간 설정 */}
-        <Label>보관 기간을 설정해주세요</Label>
-        {errors.dates && <HelperText>시작일과 종료일을 선택해주세요</HelperText>}
-        <DateInputContainer>
-          <StyledDatePickerContainer>
-            <DatePicker
-              selected={startDateObj}
-              onChange={handleStartDateChange}
-              dateFormat="yyyy-MM-dd"
-              locale={ko}
-              minDate={today}
-              placeholderText="시작일"
-            />
-          </StyledDatePickerContainer>
-          <StyledDatePickerContainer>
-            <DatePicker
-              selected={endDateObj}
-              onChange={handleEndDateChange}
-              dateFormat="yyyy-MM-dd"
-              locale={ko}
-              minDate={startDateObj}
-              placeholderText="종료일"
-            />
-          </StyledDatePickerContainer>
-        </DateInputContainer>
-
-        {/* 보관 기간 표시 */}
-        <StoragePeriodDisplay>총 보관 기간: {storagePeriod}일</StoragePeriodDisplay>
-
-        {/* 거래 가격 설정 */}
-        <Label>최종 가격을 작성해주세요</Label>
-        {errors.price && <HelperText>유효한 가격을 입력해주세요</HelperText>}
-        <PriceContainer>
-          <PriceInput
+          <Label>보관할 물품</Label>
+          <Input
             type="text"
-            value={price}
-            onChange={e => setPrice(e.target.value.replace(/[^0-9]/g, ''))}
+            value={itemName}
+            onChange={e => setItemName(e.target.value)}
+            placeholder="물품명을 입력해주세요"
           />
-          <WonText>원</WonText>
-        </PriceContainer>
+          {itemNameError && <HelperText>{itemNameError}</HelperText>}
 
-        {/* 완료 버튼 */}
-        <CompleteButton onClick={handleSubmit}>작성 완료</CompleteButton>
-      </ModalContainer>
-    </ModalOverlay>
+          <Label>물품 종류</Label>
+          <TagContainer>
+            {itemTypes.map(type => (
+              <TagButton
+                key={type}
+                isSelected={type === selectedItemType}
+                onClick={() => selectItemType(type)}
+              >
+                {type}
+              </TagButton>
+            ))}
+          </TagContainer>
+
+          <Label>보관 날짜</Label>
+          <DateInputContainer>
+            <StyledDatePickerContainer>
+              <DatePicker
+                selected={startDate}
+                onChange={handleStartDateChange}
+                dateFormat="yyyy.MM.dd"
+                locale={ko}
+                minDate={new Date()}
+              />
+            </StyledDatePickerContainer>
+            <span style={{ margin: '0 5px' }}>~</span>
+            <StyledDatePickerContainer>
+              <DatePicker
+                selected={endDate}
+                onChange={handleEndDateChange}
+                dateFormat="yyyy.MM.dd"
+                locale={ko}
+                minDate={startDate ? startDate : undefined}
+              />
+            </StyledDatePickerContainer>
+          </DateInputContainer>
+          {dateError && <HelperText>{dateError}</HelperText>}
+
+          <StoragePeriodDisplay>보관 기간: {storagePeriod}일</StoragePeriodDisplay>
+
+          <Label>보관 가격</Label>
+          <PriceContainer>
+            <PriceInput
+              type="number"
+              value={price}
+              onChange={e => setPrice(e.target.value)}
+              placeholder="가격을 입력해주세요"
+            />
+            <WonText>원</WonText>
+          </PriceContainer>
+          {priceError && <HelperText>{priceError}</HelperText>}
+
+          <Label>추가 메시지 (선택)</Label>
+          <Input
+            type="text"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            placeholder="보관 시 참고할 내용이 있다면 입력해주세요"
+          />
+
+          {isLoading ? (
+            <ButtonWithSpinner>
+              <LoadingSpinner />
+              <CompleteButton disabled>처리 중...</CompleteButton>
+            </ButtonWithSpinner>
+          ) : (
+            <CompleteButton onClick={handleSubmit}>완료</CompleteButton>
+          )}
+        </ModalContainer>
+      </ModalOverlay>
+
+      {/* 토스트 메시지 */}
+      <Toast message={toastMessage} visible={showToast} onClose={() => setShowToast(false)} />
+    </>
   );
 };
 

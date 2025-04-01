@@ -199,13 +199,16 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   // 현재 위치로 이동하는 함수 - useCallback으로 메모이제이션
   const moveToUserLocation = useCallback(() => {
     if (kakaoMap && currentUserLocation) {
-      kakaoMap.setCenter(
-        new window.kakao.maps.LatLng(currentUserLocation.lat, currentUserLocation.lng),
+      // 현재 위치로 이동하고 약간 위로 조정
+      const currentLatLng = new window.kakao.maps.LatLng(
+        currentUserLocation.lat + 0.01, // 약간 위로 조정
+        currentUserLocation.lng,
       );
+      kakaoMap.setCenter(currentLatLng);
 
       // 이동 후 중심 위치 변경 이벤트 발생
       if (onCenterChanged) {
-        onCenterChanged(currentUserLocation.lat, currentUserLocation.lng);
+        onCenterChanged(currentLatLng.getLat(), currentLatLng.getLng());
       }
 
       // 외부 콜백 호출
@@ -222,12 +225,18 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
             setCurrentUserLocation({ lat: userLat, lng: userLng });
 
             if (kakaoMap) {
-              kakaoMap.setCenter(new window.kakao.maps.LatLng(userLat, userLng));
+              // 현재 위치로 이동하고 약간 위로 조정
+              const currentLatLng = new window.kakao.maps.LatLng(
+                userLat + 0.01, // 약간 위로 조정
+                userLng,
+              );
+              kakaoMap.setCenter(currentLatLng);
+
               addUserLocationMarker(kakaoMap, userLat, userLng);
 
               // 이동 후 중심 위치 변경 이벤트 발생
               if (onCenterChanged) {
-                onCenterChanged(userLat, userLng);
+                onCenterChanged(currentLatLng.getLat(), currentLatLng.getLng());
               }
 
               // 외부 콜백 호출
@@ -261,7 +270,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     }
   }, [center.lat, center.lng, kakaoMap]);
 
-  // 마커 업데이트 함수 - markers를 의존성 배열에서 제거하여 무한 루프 방지
+  // 마커 업데이트 함수
   const updateKakaoMapMarkers = useCallback(
     (newStorageMarkers: Marker[]) => {
       if (!kakaoMap) return;
@@ -271,9 +280,26 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       markers.forEach(marker => marker.setMap(null));
       const newMarkers: any[] = [];
 
+      // 유효한 좌표를 가진 마커만 필터링
+      const validMarkers = newStorageMarkers.filter(marker => {
+        const lat = parseFloat(marker.latitude.toString());
+        const lng = parseFloat(marker.longitude.toString());
+        return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+      });
+
+      console.log('유효한 마커 수:', validMarkers.length);
+
       // 보관소 마커 추가
-      newStorageMarkers.forEach(markerData => {
-        const position = new window.kakao.maps.LatLng(markerData.latitude, markerData.longitude);
+      validMarkers.forEach(markerData => {
+        const lat = parseFloat(markerData.latitude.toString());
+        const lng = parseFloat(markerData.longitude.toString());
+
+        if (isNaN(lat) || isNaN(lng)) {
+          console.warn('유효하지 않은 좌표:', markerData);
+          return;
+        }
+
+        const position = new window.kakao.maps.LatLng(lat, lng);
 
         const marker = new window.kakao.maps.Marker({
           position,
@@ -287,7 +313,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           });
         }
 
-        // 인포윈도우 추가 (필요한 경우)
+        // 인포윈도우 추가
         const infowindow = new window.kakao.maps.InfoWindow({
           content: `<div style="padding:5px;font-size:12px;">${markerData.name}</div>`,
         });
@@ -308,7 +334,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       setMarkers(newMarkers);
       console.log('마커 업데이트 완료:', newMarkers.length);
     },
-    [kakaoMap, onMarkerClick], // markers를 의존성 배열에서 제거
+    [kakaoMap, onMarkerClick],
   );
 
   // 위치 기반 게시글 조회 함수 - 중복 요청 방지 로직 추가
@@ -332,11 +358,11 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
         // 게시글 데이터를 마커로 변환
         const newMarkers = response.data.posts.map(post => ({
-          id: post.id.toString(),
-          name: post.title,
+          id: post.post_id.toString(),
+          name: post.post_title,
           latitude: post.latitude,
           longitude: post.longitude,
-          address: '', // API에서 제공하지 않는 경우 빈 문자열로 설정
+          address: post.post_address || '',
         }));
 
         // 마커 업데이트 - 이미 메모이제이션된 함수를 사용
@@ -397,7 +423,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M20.944 12.979c-.489 4.509-4.306 8.021-8.944 8.021-2.698 0-5.112-1.194-6.763-3.075l1.245-1.245c1.283 1.645 3.276 2.7 5.518 2.7 3.895 0 7.052-3.189 7.049-7.098 0-.143-.007-.283-.018-.423l-1.869 1.868-1.414-1.414 3.535-3.536.707.707.707.707-3.536 3.535-1.414-1.414 1.882-1.883c-1.496-3.583-5.045-6.11-9.179-6.11-5.523 0-10 4.477-10 10s4.477 10 10 10c5.9 0 10.428-4.525 10.949-9.93l1.545.409z"
+              d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
               fill="#3A00E5"
             />
           </svg>

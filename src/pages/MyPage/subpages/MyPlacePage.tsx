@@ -1,19 +1,23 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
 import Header from '../../../components/layout/Header';
 import BottomNavigation from '../../../components/layout/BottomNavigation';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../constants/routes';
+import { getMyStorages } from '../../../services/api/modules/storage';
+import { getUserPlaces, PlaceItem } from '../../../services/api/modules/user';
 
-// 테마 컬러 상수 정의
+// 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
   primary: '#3835FD',
-  primaryLight: '#5E5CFD',
-  tagBackground: '#F5F5F5',
-  tagBlueText: '#5E5CFD',
-  tagGrayText: '#616161',
-  textDark: '#000000',
-  textGray: '#868686',
-  borderColor: '#EFEFEF',
+  primaryLight: '#605EFD',
+  primaryAlpha: 'rgba(56.26, 53.49, 252.61, 0.80)',
+  background: '#F5F5FF',
+  darkText: '#616161',
+  lightGrayText: '#C0BDBD',
+  blackText: '#292929',
+  borderColor: '#E0E0E0',
+  dividerColor: '#DCDCDC',
   white: '#FFFFFF',
 };
 
@@ -32,212 +36,196 @@ const Container = styled.div`
   align-items: center;
 `;
 
-// 거래 아이템 카드 - 중앙 정렬 수정
-const TradeItemCard = styled.div`
-  width: 90%;
-  max-width: 340px;
-  margin: 10px auto;
-  padding: 16px;
+// 장소 카드 스타일
+const PlaceCard = styled.div`
+  width: 326px;
+  height: 96px;
+  margin: 15px auto;
+  background: rgba(217, 217, 217, 0);
   border-radius: 10px;
-  border: 1px solid ${THEME.borderColor};
+  border: 1px ${THEME.borderColor} solid;
+  position: relative;
+  padding: 15px;
   display: flex;
   align-items: center;
-  position: relative;
   cursor: pointer;
 `;
 
-// 거래 이미지
-const TradeImage = styled.div`
-  width: 64px;
-  height: 64px;
-  border-radius: 5px;
-  overflow: hidden;
-  margin-right: 16px;
-  flex-shrink: 0;
+// 장소 이미지
+const PlaceImage = styled.img`
+  width: 69px;
+  height: 66px;
+  border-radius: 2px;
+  object-fit: cover;
 `;
 
-// 태그 스타일
-const StatusTag = styled.div<{ isPublic: boolean }>`
-  display: inline-block;
-  width: fit-content;
-  padding: 2px 8px;
-  background: ${THEME.tagBackground};
-  color: ${props => (props.isPublic ? THEME.tagBlueText : THEME.tagGrayText)};
-  font-size: 12px;
-  font-family: 'Noto Sans KR';
-  border: 1px ${props => (props.isPublic ? THEME.tagBlueText : THEME.tagGrayText)} solid;
-  font-weight: 500;
-  border-radius: 10px;
-  margin-bottom: 8px;
-`;
-
-// 거래 정보 컨테이너
-const TradeInfo = styled.div`
-  flex: 1;
+// 장소 정보 영역
+const PlaceInfo = styled.div`
   display: flex;
   flex-direction: column;
+  margin-left: 15px;
+  flex: 1;
 `;
 
-// 거래 제목
-const TradeTitle = styled.div`
-  color: ${THEME.textDark};
-  font-size: 16px;
+// 장소 제목
+const PlaceTitle = styled.div`
+  color: ${THEME.darkText};
+  font-size: 18px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
-  margin-bottom: 4px;
+  letter-spacing: 0.02px;
+  margin-bottom: 5px;
 `;
 
-// 거래 위치
-const TradeLocation = styled.div`
-  color: ${THEME.textGray};
+// 장소 주소
+const PlaceAddress = styled.div`
+  color: ${THEME.lightGrayText};
+  font-size: 13px;
+  font-family: 'Noto Sans KR';
+  font-weight: 700;
+  letter-spacing: 0.01px;
+`;
+
+// 공개 여부 태그
+const VisibilityTag = styled.div<{ isPublic: boolean }>`
+  width: 45px;
+  height: 17px;
+  padding: 2px 8px;
+  border-radius: 21px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: ${props => (props.isPublic ? THEME.primaryAlpha : THEME.lightGrayText)};
+  border: 1px solid ${props => (props.isPublic ? THEME.primaryAlpha : THEME.lightGrayText)};
   font-size: 12px;
   font-family: 'Noto Sans KR';
-  font-weight: 400;
+  font-weight: 500;
+  margin-bottom: 10px;
 `;
 
-// 오른쪽 화살표 아이콘
+// 화살표 아이콘
 const ArrowIcon = styled.div`
-  width: 8px;
-  height: 16px;
-  position: absolute;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &::before {
-    content: '';
-    width: 8px;
-    height: 8px;
-    border-top: 2px solid ${THEME.textGray};
-    border-right: 2px solid ${THEME.textGray};
-    transform: rotate(45deg);
-  }
+  margin-left: 10px;
+  color: #bbbbbb;
+  opacity: 0.8;
 `;
 
-// 토글 컴포넌트 - 중앙 정렬
-const ToggleContainer = styled.div`
-  width: 238px;
-  height: 40px;
-  position: relative;
-  background: rgba(56.26, 53.49, 252.61, 0.8);
-  overflow: hidden;
-  border-radius: 15px;
-  margin: 15px auto;
+// 로딩 컴포넌트
+const LoadingContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-`;
-
-const ToggleText = styled.span`
-  color: white;
-  font-size: 14px;
+  height: 200px;
+  color: ${THEME.lightGrayText};
+  font-size: 16px;
   font-family: 'Noto Sans KR';
-  font-weight: 700;
-  line-height: 18.84px;
-  letter-spacing: 0.28px;
-  word-wrap: break-word;
 `;
 
-interface MyPlaceProps {
-  onBack?: () => void;
-}
+// 에러 메시지 컴포넌트
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: red;
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+`;
 
-// 거래 아이템 타입 정의
-interface TradeItem {
-  id: number;
-  title: string;
-  location: string;
-  isPublic: boolean;
-  imageUrl: string;
-}
+// 데이터 없음 메시지
+const NoDataMessage = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  color: ${THEME.lightGrayText};
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
+`;
 
-const MyPlace: React.FC<MyPlaceProps> = ({ onBack }) => {
-  // 추가: useNavigate 훅 사용
+// 메인 컴포넌트
+const MyPlace: React.FC = () => {
   const navigate = useNavigate();
+  const [places, setPlaces] = useState<PlaceItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 추가: 뒤로가기 핸들러 함수
-  const handleBack = () => {
-    navigate('/mypage'); // MyPage로 이동
+  // 내 보관소 데이터 조회
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await getMyStorages();
+        console.log('내 보관소 목록:', data);
+        setPlaces(data);
+      } catch (err) {
+        console.error('내 보관소 목록 조회 실패:', err);
+        setError('보관소 목록을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPlaces();
+  }, []);
+
+  // 뒤로가기 핸들러 함수 - MyPage로 이동
+  const handleBackClick = () => {
+    navigate(`/${ROUTES.MYPAGE}`);
   };
 
-  // 더미 거래 데이터
-  const tradeItems: TradeItem[] = [
-    {
-      id: 1,
-      title: '마곡 냉동창고',
-      location: '동두천시 생연동',
-      isPublic: false,
-      imageUrl: 'https://placehold.co/64x64',
-    },
-    {
-      id: 2,
-      title: '마곡 냉동창고',
-      location: '동두천시 생연동',
-      isPublic: true,
-      imageUrl: 'https://placehold.co/64x64',
-    },
-    {
-      id: 3,
-      title: '마곡 냉동창고',
-      location: '동두천시 생연동',
-      isPublic: true,
-      imageUrl: 'https://placehold.co/64x64',
-    },
-    {
-      id: 4,
-      title: '마곡 냉동창고',
-      location: '동두천시 생연동',
-      isPublic: false,
-      imageUrl: 'https://placehold.co/64x64',
-    },
-  ];
-
-  // 보관소 상세 페이지로 이동하는 함수
-  const handleTradeItemClick = (id: number) => {
-    // navigate(`/storage/${id}`);
-    // 또는
-    // navigate('/storage', { state: { id } });
-    console.log(`거래 아이템 ${id} 클릭됨, 상세 페이지로 이동`);
-  };
-
-  // 토글 버튼 클릭 핸들러
-  const handleToggleClick = () => {
-    // 토글 기능 구현
-    console.log('토글 버튼 클릭됨');
+  // 보관소 상세 페이지로 이동
+  const handlePlaceClick = (placeId: number) => {
+    navigate(`/${ROUTES.STORAGE}/${placeId}`);
   };
 
   return (
     <>
-      <Header title="내 보관소" showBackButton={true} onBack={handleBack} />
+      {/* 페이지 헤더 */}
+      <Header title="내 보관소" showBackButton={true} onBack={handleBackClick} />
 
       <Container>
-        {/* 토글 버튼 */}
-        <ToggleContainer onClick={handleToggleClick}>
-          <ToggleText>보관소가 비공개 되었습니다.</ToggleText>
-        </ToggleContainer>
-
-        {tradeItems.map(item => (
-          <TradeItemCard key={item.id} onClick={() => handleTradeItemClick(item.id)}>
-            <TradeImage>
-              <img
-                src={item.imageUrl}
-                alt={item.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        {loading ? (
+          <LoadingContainer>보관소 목록을 불러오는 중...</LoadingContainer>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : places.length === 0 ? (
+          <NoDataMessage>등록된 보관소가 없습니다.</NoDataMessage>
+        ) : (
+          // 보관소 목록
+          places.map(place => (
+            <PlaceCard key={place.post_id} onClick={() => handlePlaceClick(place.post_id)}>
+              <PlaceImage
+                src={place.post_main_image || 'https://via.placeholder.com/69x66'}
+                alt={place.post_title}
               />
-            </TradeImage>
-
-            <TradeInfo>
-              <StatusTag isPublic={item.isPublic}>{item.isPublic ? '공개' : '비공개'}</StatusTag>
-              <TradeTitle>{item.title}</TradeTitle>
-              <TradeLocation>{item.location}</TradeLocation>
-            </TradeInfo>
-
-            <ArrowIcon />
-          </TradeItemCard>
-        ))}
+              <PlaceInfo>
+                <VisibilityTag isPublic={!place.hidden_status}>
+                  {place.hidden_status ? '비공개' : '공개'}
+                </VisibilityTag>
+                <PlaceTitle>{place.post_title}</PlaceTitle>
+                <PlaceAddress>{place.post_address}</PlaceAddress>
+              </PlaceInfo>
+              <ArrowIcon>
+                <svg
+                  width="14"
+                  height="20"
+                  viewBox="0 0 14 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M0.399932 17.1076L9.4541 9.85097L0.233178 2.80748L0.200439 0L13.0968 9.85097L0.433661 20L0.399932 17.1076Z"
+                    fill="#BBBBBB"
+                    fillOpacity="0.8"
+                  />
+                </svg>
+              </ArrowIcon>
+            </PlaceCard>
+          ))
+        )}
       </Container>
 
+      {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="마이페이지" />
     </>
   );

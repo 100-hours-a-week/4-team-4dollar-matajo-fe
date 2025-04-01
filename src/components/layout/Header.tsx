@@ -9,7 +9,7 @@ const HeaderContainer = styled.div`
   transform: translateX(-50%);
   top: 0;
   background: #f5f5ff;
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,7 +69,7 @@ const DropdownContainer = styled.div<{ isVisible: boolean }>`
   background-color: #f5f5ff;
   border-radius: 5px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-  z-index: 200;
+  z-index: 1001;
   display: ${props => (props.isVisible ? 'block' : 'none')};
   padding: 5px 0;
 `;
@@ -115,7 +115,7 @@ const Divider = styled.div<{ top: number }>`
 export interface HeaderDropdownOption {
   id: string;
   label: string;
-  icon: string;
+  icon: string | JSX.Element;
   color?: string;
   onClick: () => void;
 }

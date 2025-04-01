@@ -17,8 +17,9 @@ const THEME = {
 const NavContainer = styled.div`
   position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
-  max-width: 375px;
   height: 76px;
   background: ${THEME.background};
   display: flex;
@@ -27,8 +28,12 @@ const NavContainer = styled.div`
   box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
   z-index: 100;
   margin: 0 auto;
-  left: 50%;
-  transform: translateX(-50%);
+  max-width: 100vw;
+  @media (min-width: 768px) {
+    max-width: 768px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 `;
 
 // 네비게이션 아이템
@@ -66,25 +71,25 @@ interface BottomNavigationProps {
 // SVG 아이콘 컴포넌트 정의
 const HomeIcon = ({ isActive }: { isActive: boolean }) => (
   <NavIcon isActive={isActive} viewBox="0 0 24 24">
-    <path d="M12 2L2 9v12h8v-6h4v6h8V9L12 2zm0 2.83l6 5V19h-4v-6H10v6H6V9.83l6-5z" />
+    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
   </NavIcon>
 );
 
 const StorageIcon = ({ isActive }: { isActive: boolean }) => (
   <NavIcon isActive={isActive} viewBox="0 0 24 24">
-    <path d="M20 2H4a2 2 0 00-2 2v16a2 2 0 002 2h16a2 2 0 002-2V4a2 2 0 00-2-2zM4 4h16v4H4V4zm0 6h16v10H4V10z" />
+    <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" />
   </NavIcon>
 );
 
 const ChatIcon = ({ isActive }: { isActive: boolean }) => (
   <NavIcon isActive={isActive} viewBox="0 0 24 24">
-    <path d="M20 2H4a2 2 0 00-2 2v14l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2zm0 12H6l-2 2V4h16v10z" />
+    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" />
   </NavIcon>
 );
 
 const MyPageIcon = ({ isActive }: { isActive: boolean }) => (
   <NavIcon isActive={isActive} viewBox="0 0 24 24">
-    <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.42 0-8 2.24-8 5v2h16v-2c0-2.76-3.58-5-8-5z" />
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
   </NavIcon>
 );
 
@@ -94,7 +99,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabCha
 
   // 탭 데이터
   const tabs: Array<{ name: TabType; icon: React.FC<{ isActive: boolean }>; path: string }> = [
-    { name: '홈', icon: HomeIcon, path: '/' },
+    { name: '홈', icon: HomeIcon, path: '/main' },
     { name: '보관소', icon: StorageIcon, path: '/storage' },
     { name: '채팅', icon: ChatIcon, path: '/chat/list' },
     { name: '마이페이지', icon: MyPageIcon, path: '/mypage' },
@@ -105,7 +110,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabCha
     if (onTabChange) {
       onTabChange(tab);
     } else {
-      if (!isAuthenticated && path !== '/') {
+      if (!isAuthenticated && path !== '/main') {
         navigate('/login');
         return;
       }

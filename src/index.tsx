@@ -8,7 +8,7 @@ import reportWebVitals from './reportWebVitals';
 import * as Sentry from '@sentry/react';
 
 Sentry.init({
-  dsn: 'https://o4509048071847936.ingest.us.sentry.io/4509048076107776',
+  dsn: 'https://o4509048071847936.ingest.us.sentry.io/4509048227233792',
   integrations: [Sentry.browserTracingIntegration()],
   // Tracing
   tracesSampleRate: 1.0, //  Capture 100% of the transactions

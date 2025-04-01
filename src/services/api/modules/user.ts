@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from 'axios';
 import client from '../client';
 import { API_BACKEND_URL, API_PATHS } from '../../../constants/api';
+import { registerKeeperTerms } from './keeper';
 
 // 거래 내역 데이터 인터페이스
 export interface TradeItem {
@@ -23,7 +24,7 @@ interface ApiResponse<T> {
 }
 
 // 백엔드 거래 내역 응답 타입 정의
-interface BackendTradeItem {
+export interface BackendTradeItem {
   trade_id: number;
   keeper_status: boolean;
   product_name: string;
@@ -106,28 +107,44 @@ interface KeeperRegistrationData {
   privacy_policy: boolean;
 }
 
+/**
+ * 보관인 등록 함수 (keeper.ts의 registerKeeperTerms 함수 사용)
+ * @deprecated - keeper.ts의 registerKeeperTerms 함수를 사용하세요.
+ */
 export const registerAsKeeper = async (termsData: {
   terms_of_service: boolean;
   privacy_policy: boolean;
 }) => {
-  try {
-    console.log('보관인 등록 시도');
-    const registrationData: KeeperRegistrationData = {
-      terms_of_service: termsData.terms_of_service,
-      privacy_policy: termsData.privacy_policy,
-    };
+  console.warn(
+    'registerAsKeeper 함수는 deprecated 되었습니다. keeper.ts의 registerKeeperTerms 함수를 사용해주세요.',
+  );
+  return registerKeeperTerms(termsData);
+};
 
-    const response = await client.post(`${API_PATHS.USER.REGISTER_AS_KEEPER}`, registrationData);
+export interface PlaceItem {
+  post_id: number;
+  post_title: string;
+  post_address: string;
+  post_main_image: string;
+  hidden_status: boolean;
+  prefer_price: number;
+  created_at: string;
+}
 
-    // 새로운 accessToken을 로컬 스토리지에 저장
-    if (response.data.accessToken) {
-      localStorage.setItem('accessToken', response.data.accessToken);
-    }
+export const getUserPlaces = async (): Promise<PlaceItem[]> => {
+  // 임시 목업 데이터
+  const mockData: PlaceItem[] = [
+    {
+      post_id: 13,
+      post_title: '케아네집',
+      post_address: '부산 부산진구 신천대로 241',
+      post_main_image:
+        'https://matajo-image.s3.ap-northeast-2.amazonaws.com/post/2e807462-62eb-44cd-8939-1651734adc15.jpg',
+      hidden_status: false,
+      prefer_price: 32324,
+      created_at: '2025.03.27 13:26:27',
+    },
+  ];
 
-    console.log('보관인 등록 응답:', response.data);
-    return response;
-  } catch (error) {
-    console.error('보관인 등록 오류:', error);
-    throw error;
-  }
+  return Promise.resolve(mockData);
 };

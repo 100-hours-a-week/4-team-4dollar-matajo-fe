@@ -9,14 +9,20 @@ import KakaoMap from '../../components/feature/map/KakaoMap';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import LocationService, {
   LocationInfo,
-  LocationIdInfo,
   DEFAULT_COORDINATES,
   DEFAULT_LOCATION,
 } from '../../services/LocationService';
-import { getLocationId, getPostsByLocation } from '../../services/api/modules/place';
+import { getLocationId, getPostsByLocation, getLocalDeals } from '../../services/api/modules/place';
+import { getLocationPosts, LocationPost } from '../../services/api/modules/storage';
+import { Marker } from './MapBottomSheet';
 
 import LocationSearchModal from './LocationSearchModal';
 import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet';
+import { ROUTES } from '../../constants/routes';
+import { createTrade, CreateTradeRequest } from '../../services/api/modules/trades';
+import { LocalDeal } from '../../types/place.types';
+import axios from 'axios';
+import { API_PATHS } from '../../constants/api';
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
@@ -27,6 +33,8 @@ const Container = styled.div`
   overflow: hidden;
   margin: 0 auto;
   max-width: 480px; // 모바일 환경 고려
+  display: flex; // flex 추가
+  flex-direction: column; // column 방향으로 설정
 `;
 
 // 로딩 인디케이터
@@ -78,6 +86,8 @@ const MapWrapper = styled.div`
   right: 0;
   bottom: 0;
   z-index: 1;
+  width: 100%;
+  height: 100%;
 `;
 
 // 헤더 래퍼
@@ -87,27 +97,8 @@ const HeaderWrapper = styled.div`
   left: 0;
   right: 0;
   z-index: 5;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: transparent;
 `;
-
-// 마커 아이템 인터페이스
-interface StorageMarker {
-  id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  address: string;
-}
-
-// 특가 아이템 인터페이스
-interface DiscountItem {
-  id: string;
-  title: string;
-  originalPrice: number;
-  discountPrice: number;
-  discountRate: number;
-  imageUrl?: string;
-}
 
 // 최근 거래 아이템 인터페이스
 interface RecentItem {
@@ -128,102 +119,114 @@ const HomePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<string>(DEFAULT_LOCATION);
   const [locationId, setLocationId] = useState<number | null>(null);
-  const [markers, setMarkers] = useState<StorageMarker[]>([]);
-  const [discountItems, setDiscountItems] = useState<DiscountItem[]>([]);
+  const [markers, setMarkers] = useState<Marker[]>([]);
+  const [discountItems, setDiscountItems] = useState<LocalDeal[]>([]);
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
   const [showKeeperModal, setShowKeeperModal] = useState<boolean>(false);
 
   // 지도 중심 좌표
-  const [mapCenter, setMapCenter] = useState(DEFAULT_COORDINATES);
-  const [mapLevel] = useState(4); // 초기 지도 레벨은 4로 설정
+  const [mapCenter, setMapCenter] = useState({ lat: 37.5665, lng: 126.978 });
+  const [mapLevel, setMapLevel] = useState(3);
+
+  // 최근 거래내역 조회
+  const fetchRecentTrades = async (locationInfoId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API_PATHS.TRADES.RECENT_BY_LOCATION}?locationInfoId=${locationInfoId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.data.success) {
+        const trades = response.data.data.map((trade: any) => ({
+          id: trade.id,
+          name: trade.productName,
+          price: trade.tradePrice,
+          post_tags: [trade.category, `${trade.storagePeriod}일`],
+          imageUrl: trade.mainImage,
+          location: location.split(' ')[1] || '여의도동',
+        }));
+        setRecentItems(trades);
+      } else {
+        setRecentItems([]);
+      }
+    } catch (error) {
+      console.error('최근 거래내역 조회 실패:', error);
+      setRecentItems([]);
+    }
+  };
 
   // 지도 마커 및 데이터 로드
   const loadMapData = async () => {
     try {
       // 마커 배열 초기화
-      let newMarkers: StorageMarker[] = [];
+      let newMarkers: Marker[] = [];
 
       // 위치 ID가 있을 경우 API 호출
       if (locationId) {
-        // 위치 ID 기반 게시글 조회
-        const postsData = await getPostsByLocation(locationId);
+        try {
+          // 위치 ID 기반 게시글 조회
+          const postsData = await getPostsByLocation(locationId);
 
-        // 게시글 데이터를 마커 형식으로 변환
-        newMarkers = postsData.map((post, index) => ({
-          id: post.post_id.toString(),
-          name: `보관소 ${index + 1}`, // 실제 이름이 없으므로 임시 이름 사용
-          latitude: mapCenter.lat + (Math.random() * 0.01 - 0.005), // 임시 좌표 (실제로는 API에서 제공하는 좌표 사용)
-          longitude: mapCenter.lng + (Math.random() * 0.01 - 0.005), // 임시 좌표 (실제로는 API에서 제공하는 좌표 사용)
-          address: post.address,
-        }));
-      }
+          // 게시글 데이터를 마커 형식으로 변환
+          newMarkers = postsData.map((post, index) => ({
+            id: post.post_id.toString(),
+            name: `보관소 ${index + 1}`,
+            latitude: mapCenter.lat + (Math.random() * 0.01 - 0.005),
+            longitude: mapCenter.lng + (Math.random() * 0.01 - 0.005),
+            address: post.address,
+          }));
 
-      // 마커가 없을 경우 기본 마커 생성 (개발용)
-      if (newMarkers.length === 0) {
-        newMarkers = [
-          {
+          setMarkers(newMarkers);
+
+          // 지역 특가 데이터 조회
+          const dealsResponse = await getLocalDeals(locationId);
+          if (dealsResponse.success && dealsResponse.data.posts) {
+            setDiscountItems(dealsResponse.data.posts);
+          } else {
+            setDiscountItems([]);
+          }
+
+          // 최근 거래내역 조회
+          await fetchRecentTrades(locationId);
+        } catch (err) {
+          console.error('데이터 조회 오류:', err);
+          // 오류 시 기본 마커 제공
+          const defaultMarker = {
             id: 'default-1',
             name: '기본 보관소',
             latitude: mapCenter.lat,
             longitude: mapCenter.lng,
             address: location,
-          },
-        ];
+          };
+          setMarkers([defaultMarker]);
+          setDiscountItems([]);
+          setRecentItems([]);
+        }
+      } else {
+        // 위치 ID가 없으면 기본 마커 생성
+        const defaultMarker = {
+          id: 'default-1',
+          name: '기본 보관소',
+          latitude: mapCenter.lat,
+          longitude: mapCenter.lng,
+          address: location,
+        };
+        setMarkers([defaultMarker]);
+        setDiscountItems([]);
+        setRecentItems([]);
       }
 
-      // 상태 업데이트
-      setMarkers(newMarkers);
-
-      // 이후에는 특가 아이템이나 최근 거래 내역도 API로 가져와서 업데이트
-      // 현재는 더미 데이터 사용
-
-      // 특가 아이템 더미 데이터
-      const dummyDiscountItems: DiscountItem[] = [
-        {
-          id: '1',
-          title: '중앙 보관소 특가',
-          originalPrice: 15000,
-          discountPrice: 8250,
-          discountRate: 45,
-          imageUrl: 'https://placehold.co/300x200',
-        },
-        {
-          id: '2',
-          title: '북쪽 보관소 특가',
-          originalPrice: 12000,
-          discountPrice: 7800,
-          discountRate: 35,
-          imageUrl: 'https://placehold.co/300x200',
-        },
-      ];
-
-      // 최근 거래 내역 더미 데이터
-      const dummyRecentItems: RecentItem[] = [
-        {
-          id: '1',
-          name: '플레이스테이션',
-          price: 12000,
-          post_tags: ['전자기기', '일주일 이내'],
-          imageUrl: 'https://placehold.co/64x64',
-          location: location.split(' ')[1] || '여의도동',
-        },
-        {
-          id: '2',
-          name: '캐리어',
-          price: 8000,
-          post_tags: ['여행', '장기'],
-          imageUrl: 'https://placehold.co/64x64',
-          location: location.split(' ')[1] || '여의도동',
-        },
-      ];
-
-      // 상태 업데이트
-      setDiscountItems(dummyDiscountItems);
-      setRecentItems(dummyRecentItems);
+      setLoading(false);
     } catch (error) {
       console.error('데이터 로드 오류:', error);
       setError('데이터를 불러오는 중 오류가 발생했습니다');
+      setLoading(false);
     }
   };
 
@@ -241,79 +244,98 @@ const HomePage: React.FC = () => {
         setError(null);
 
         // 현재 위치 가져오기
-        const currentLocation = await locationService.getCurrentLocation();
+        await getCurrentLocation();
 
-        if (currentLocation) {
-          setLocation(currentLocation.formatted_address);
-
-          // 위치 정보로 ID 조회
-          const locationIdInfo = await locationService.getLocationIdByAddress(
-            currentLocation.formatted_address,
-          );
-
-          if (locationIdInfo) {
-            setLocationId(locationIdInfo.id);
-          }
-
-          // 지도 좌표 설정
-          if (currentLocation.latitude && currentLocation.longitude) {
-            setMapCenter({
-              lat: parseFloat(currentLocation.latitude),
-              lng: parseFloat(currentLocation.longitude),
-            });
-          }
+        // 위치 정보가 변경되면 LocationId 조회
+        if (location !== DEFAULT_LOCATION) {
+          await fetchLocationId(location);
+        } else {
+          // 기본 위치에 대한 LocationId 조회 시도
+          await fetchLocationId(DEFAULT_LOCATION);
         }
 
-        // 지도 마커 및 데이터 초기화
+        // 지도 데이터 로드
         await loadMapData();
       } catch (error) {
-        console.error('초기 데이터 로드 실패:', error);
-        setError('데이터를 불러오는 중 오류가 발생했습니다');
-      } finally {
+        console.error('앱 초기화 오류:', error);
+        setError('앱을 초기화하는 중 오류가 발생했습니다');
         setLoading(false);
       }
     };
 
     initializeApp();
-  }, [navigate]);
+  }, []);
+
+  // LocationId가 변경될 때마다 지도 데이터 다시 로드
+  useEffect(() => {
+    if (locationId !== null) {
+      loadMapData();
+    }
+  }, [locationId]);
+
+  // 위치 정보 ID 조회 함수
+  const fetchLocationId = async (address: string) => {
+    try {
+      if (!address) return;
+
+      console.log('위치 ID 조회 중:', address);
+      const response = await getLocationId(address);
+
+      if (response && response.id) {
+        console.log('위치 ID 조회 성공:', response.id);
+        setLocationId(response.id);
+
+        // 위치 정보를 전역 상태로 저장 (localStorage)
+        localStorage.setItem('currentLocationId', response.id.toString());
+
+        // 추가 위치 정보가 있으면 저장
+        if (response.latitude && response.longitude) {
+          setMapCenter({ lat: response.latitude, lng: response.longitude });
+        }
+
+        return response.id;
+      } else {
+        console.warn('위치 ID 조회 실패, 기본값 사용');
+        setLocationId(null);
+        localStorage.removeItem('currentLocationId');
+        return null;
+      }
+    } catch (error) {
+      console.error('위치 ID 조회 오류:', error);
+      setLocationId(null);
+      localStorage.removeItem('currentLocationId');
+      return null;
+    }
+  };
 
   // 현재 위치 가져오기
   const getCurrentLocation = async () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async position => {
-          // 현재 위치로 지도 중심 설정
-          const { latitude, longitude } = position.coords;
-          setMapCenter({
-            lat: latitude,
-            lng: longitude,
-          });
+    try {
+      const currentLocation = await locationService.getCurrentLocation();
 
-          // 현재 위치 정보 가져오기
-          const currentLocation = await locationService.getCurrentLocation();
+      if (currentLocation) {
+        const formattedAddress = currentLocation.formatted_address;
+        setLocation(formattedAddress);
 
-          if (currentLocation) {
-            setLocation(currentLocation.formatted_address);
+        // 위치 변경 시 해당 위치의 LocationId 조회
+        await fetchLocationId(formattedAddress);
 
-            // 위치 정보로 ID 조회
-            const locationIdInfo = await locationService.getLocationIdByAddress(
-              currentLocation.formatted_address,
-            );
+        const lat = parseFloat(currentLocation.latitude);
+        const lng = parseFloat(currentLocation.longitude);
 
-            if (locationIdInfo) {
-              setLocationId(locationIdInfo.id);
-            }
-
-            // 지도 데이터 다시 로드
-            await loadMapData();
-          }
-        },
-        error => {
-          console.error('위치 정보를 가져오는데 실패했습니다:', error);
-          // 기본 위치 사용
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-      );
+        if (!isNaN(lat) && !isNaN(lng)) {
+          setMapCenter({ lat, lng });
+        }
+      } else {
+        // 현재 위치를 가져올 수 없는 경우 기본 위치 사용
+        console.warn('현재 위치 정보를 가져올 수 없어 기본 위치를 사용합니다.');
+        setLocation(DEFAULT_LOCATION);
+        await fetchLocationId(DEFAULT_LOCATION);
+      }
+    } catch (error) {
+      console.error('위치 정보 조회 오류:', error);
+      setLocation(DEFAULT_LOCATION);
+      await fetchLocationId(DEFAULT_LOCATION);
     }
   };
 
@@ -322,70 +344,76 @@ const HomePage: React.FC = () => {
     setMapCenter({ lat, lng });
   };
 
-  // 선택한 위치로 이동
+  // 위치 선택 핸들러
   const handleSelectLocation = async (
     selectedLocation: string,
     latitude?: string,
     longitude?: string,
   ) => {
-    setLocation(selectedLocation);
+    try {
+      setLocation(selectedLocation);
+      setIsLocationModalOpen(false);
 
-    // 주소로 위치 ID 조회
-    const locationIdInfo = await locationService.getLocationIdByAddress(selectedLocation);
-    if (locationIdInfo) {
-      setLocationId(locationIdInfo.id);
+      // 위치 정보 업데이트
+      if (latitude && longitude) {
+        const lat = parseFloat(latitude);
+        const lng = parseFloat(longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          setMapCenter({ lat, lng });
+        }
 
-      // 위치 정보를 LocationInfo 형태로 생성하여 최근 위치에 추가
-      const locationInfo: LocationInfo = {
-        formatted_address: locationIdInfo.formatted_address,
-        display_name: locationIdInfo.dong,
-        latitude: latitude || DEFAULT_COORDINATES.lat.toString(),
-        longitude: longitude || DEFAULT_COORDINATES.lng.toString(),
-      };
-
-      // 최근 위치에 추가
-      locationService.addRecentLocation(locationInfo);
-    } else {
-      console.warn('위치 ID를 찾을 수 없습니다.');
-      setLocationId(null);
-    }
-
-    // 위도/경도가 제공된 경우 해당 좌표로 이동
-    if (latitude && longitude) {
-      const lat = parseFloat(latitude);
-      const lng = parseFloat(longitude);
-
-      if (!isNaN(lat) && !isNaN(lng)) {
-        setMapCenter({ lat, lng });
+        // 위치 정보 저장
+        locationService.setCurrentLocation({
+          formatted_address: selectedLocation,
+          display_name: selectedLocation.split(' ').pop() || '',
+          latitude,
+          longitude,
+        });
       }
+
+      // 위치 변경 시 LocationId 조회
+      await fetchLocationId(selectedLocation);
+
+      // 지도 데이터 다시 로드
+      await loadMapData();
+    } catch (error) {
+      console.error('위치 선택 처리 오류:', error);
+      setError('위치 정보를 처리하는 중 오류가 발생했습니다');
     }
-
-    // 지도 데이터 새로 로드
-    await loadMapData();
-
-    // 위치 모달 닫기
-    setIsLocationModalOpen(false);
   };
 
-  // 현재 위치로 이동
+  // 현재 위치 버튼 클릭 핸들러
   const handleCurrentLocationClick = () => {
     getCurrentLocation();
   };
 
   // 마커 클릭 핸들러 - 보관소 상세 페이지로 이동
-  const handleMarkerClick = (placeId: string) => {
-    navigate(`/storage/${placeId}`);
+  const handleMarkerClick = (markerId: string) => {
+    navigate(`/storage/${markerId}`);
   };
 
-  // 보관소 등록 핸들러
+  // 보관소 등록 버튼 클릭 핸들러
   const handleRegisterClick = () => {
-    handleRegisterStorage(navigate, setShowKeeperModal);
+    // 로그인 체크
+    if (!isLoggedIn()) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    // 보관인 여부 확인
+    if (isKeeper()) {
+      console.log('보관인으로 로그인되어 있어 바로 보관소 등록 step1 페이지로 이동합니다.');
+      navigate(ROUTES.STORAGE_REGISTER, { replace: true });
+    } else {
+      console.log('의뢰인으로 로그인되어 있어 보관인 등록 모달을 표시합니다.');
+      setShowKeeperModal(true);
+    }
   };
 
   // 보관인 등록 확인 핸들러
   const handleKeeperConfirm = () => {
+    navigate('/keeper-registration', { replace: true });
     setShowKeeperModal(false);
-    navigate('/keeper/registration');
   };
 
   // 게시판 이동 핸들러
@@ -398,65 +426,77 @@ const HomePage: React.FC = () => {
     navigate(`/storage/${id}`);
   };
 
-  // 오류 발생 시 재시도 버튼
+  // 재시도 핸들러
   const handleRetry = () => {
     setLoading(true);
     setError(null);
-    loadMapData();
+    getCurrentLocation();
   };
+
+  useEffect(() => {
+    const fetchMarkers = async () => {
+      try {
+        const response = await getLocationPosts('1'); // string으로 변경
+        if (response.success) {
+          const postsData = response.data.posts;
+          const formattedMarkers: Marker[] = postsData.map((post: LocationPost) => ({
+            id: post.post_id.toString(),
+            name: post.post_title || '보관소',
+            latitude: post.latitude,
+            longitude: post.longitude,
+            address: post.post_address,
+          }));
+          setMarkers(formattedMarkers);
+        }
+      } catch (error) {
+        console.error('마커 데이터 가져오기 실패:', error);
+      }
+    };
+
+    fetchMarkers();
+  }, []);
 
   if (loading) {
     return (
       <Container>
-        <HeaderWrapper>
-          <Header title="마타조" />
-        </HeaderWrapper>
-        <LoadingIndicator>로딩 중...</LoadingIndicator>
-        <BottomNavigation activeTab="홈" />
+        <LoadingIndicator>위치 정보를 불러오는 중...</LoadingIndicator>
       </Container>
     );
   }
 
+  // 에러 발생 시
   if (error) {
     return (
       <Container>
-        <HeaderWrapper>
-          <Header title="마타조" />
-        </HeaderWrapper>
         <ErrorMessage>
-          <h3>오류가 발생했습니다</h3>
+          <h3>오류 발생</h3>
           <p>{error}</p>
-          <button onClick={handleRetry}>다시 시도</button>
+          <button onClick={handleRetry}>재시도</button>
         </ErrorMessage>
-        <BottomNavigation activeTab="홈" />
       </Container>
     );
   }
 
   return (
     <Container>
-      {/* 맵 컨테이너 */}
+      <HeaderWrapper>
+        <Header title="메인" showBackButton={false} />
+      </HeaderWrapper>
+
       <MapWrapper>
         <KakaoMap
           center={mapCenter}
           level={mapLevel}
           storageMarkers={markers}
           onMarkerClick={handleMarkerClick}
-          draggable={true}
-          zoomable={true}
           onCenterChanged={handleCenterChanged}
           isLocationModalOpen={isLocationModalOpen}
           showCurrentLocation={true}
           onCurrentLocationClick={handleCurrentLocationClick}
+          locationInfoId={locationId?.toString()}
         />
       </MapWrapper>
 
-      {/* 헤더 */}
-      <HeaderWrapper>
-        <Header title="마타조" />
-      </HeaderWrapper>
-
-      {/* 바텀시트 */}
       <MapBottomSheet
         location={location}
         onRegisterStorage={handleRegisterClick}
@@ -465,24 +505,22 @@ const HomePage: React.FC = () => {
         discountItems={discountItems}
         recentItems={recentItems}
         onEditLocation={() => setIsLocationModalOpen(true)}
+        storageMarkers={markers}
       />
 
-      {/* 지역 검색 모달 */}
+      <BottomNavigation activeTab="home" />
+
       <LocationSearchModal
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
         onSelectLocation={handleSelectLocation}
       />
 
-      {/* 보관인 등록 모달 */}
       <KeeperRegistrationModal
         isOpen={showKeeperModal}
         onClose={() => setShowKeeperModal(false)}
         onConfirm={handleKeeperConfirm}
       />
-
-      {/* 하단 네비게이션 */}
-      <BottomNavigation activeTab="홈" />
     </Container>
   );
 };
