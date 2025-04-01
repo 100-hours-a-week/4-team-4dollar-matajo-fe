@@ -240,7 +240,11 @@ export const getStorageList = async (
 export const getStorageDetail = async (id: string) => {
   try {
     const endpoint = API_PATHS.POSTS.DETAIL.replace(':postId', id);
-    return await client.get(endpoint);
+    return await client.get(endpoint, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
   } catch (error) {
     console.error('보관소 상세 정보 조회 오류:', error);
     throw error;
@@ -294,14 +298,9 @@ export const getLocalDeals = async (locationInfoId: number) => {
 
 export const toggleStorageVisibility = async (postId: string) => {
   try {
-    const response = await axios.patch(
+    const response = await client.patch(
       `${API_PATHS.POSTS.TOGGLE_VISIBILITY.replace(':postId', postId)}`,
       {},
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      },
     );
     return response;
   } catch (error) {
@@ -311,13 +310,12 @@ export const toggleStorageVisibility = async (postId: string) => {
 
 export const updateStorage = async (postId: string, formData: FormData) => {
   try {
-    const response = await axios.patch(
+    const response = await client.patch(
       `${API_PATHS.POSTS.UPDATE.replace(':postId', postId)}`,
       formData,
       {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       },
     );

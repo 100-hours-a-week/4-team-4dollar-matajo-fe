@@ -8,6 +8,7 @@ import StorageFilterModal, {
 } from '../../components/feature/storage/StorageFilterModal';
 import { getStorageList, StorageItem as StorageItemType } from '../../services/api/modules/place';
 import client from '../../services/api/client';
+import { API_PATHS } from '../../constants/api';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -243,41 +244,196 @@ const StorageList: React.FC = () => {
   const [storageItems, setStorageItems] = useState<StorageItem[]>([]);
   const [allStorageItems, setAllStorageItems] = useState<StorageItem[]>([]);
   const gridRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [hasBackendFilteringSupport] = useState<boolean>(false);
 
-  // API 호출 함수
+  // 무한 스크롤을 위한 상태 추가
+  const [offset, setOffset] = useState(0);
+  const [limit] = useState(10);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+
+  // API 호출 함수 수정 - 오프셋 적용
   const fetchStorageList = async (reset: boolean = true) => {
+    // 중복 호출 방지
+    if ((reset && loading) || (!reset && isLoadingMore)) {
+      console.log('이미 로딩 중입니다. API 호출 생략');
+      return;
+    }
+
     try {
-      setLoading(true);
+      if (reset) {
+        setLoading(true);
+        // 리셋인 경우 전체 데이터 로드 여부도 초기화
+        setAllDataLoaded(false);
+      } else {
+        setIsLoadingMore(true);
+      }
       setError(null);
 
-      const response = await client.get('/api/posts', {
+      // 리셋인 경우 offset은 0, 아니면 현재 offset 사용
+      const currentOffset = reset ? 0 : offset;
+
+      console.log(
+        `API 호출: GET ${API_PATHS.POSTS.LIST} (offset: ${currentOffset}, limit: ${limit})`,
+      );
+
+      const response = await client.get(API_PATHS.POSTS.LIST, {
         params: {
-          offset: 0,
-          limit: 10,
+          offset: currentOffset,
+          limit: limit,
         },
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
+      // 전체 응답 로깅 (디버깅용)
+      console.log('전체 API 응답 구조:', {
+        success: response.data.success,
+        message: response.data.message,
+        dataType: typeof response.data.data,
+        isArray: Array.isArray(response.data.data),
+        dataLength: response.data.data ? response.data.data.length : 0,
+      });
+
       if (response.data.success) {
         const items = response.data.data;
+        console.log(`API 응답 성공: ${items.length}개 항목 수신`);
+
         if (reset) {
+          // 초기화 로드인 경우 기존 데이터 전체 교체
           setAllStorageItems(items);
           setStorageItems(items);
+          setOffset(items.length); // 다음 오프셋 설정
         } else {
-          setAllStorageItems(prev => [...prev, ...items]);
-          setStorageItems(prev => [...prev, ...items]);
+          // 추가 로드인 경우 기존 데이터에 새 데이터 추가
+          setAllStorageItems(prev => {
+            // 중복된 아이템을 방지하기 위해 새 배열 생성
+            const existingIds = new Set(prev.map((item: StorageItem) => item.post_id));
+            const newItems = items.filter((item: StorageItem) => !existingIds.has(item.post_id));
+            console.log(`중복 제거 후 추가될 항목: ${newItems.length}개`);
+            const updatedItems = [...prev, ...newItems];
+            console.log(`현재까지 총 항목 수: ${updatedItems.length}개`);
+            return updatedItems;
+          });
+
+          setStorageItems(prev => {
+            const existingIds = new Set(prev.map((item: StorageItem) => item.post_id));
+            const newItems = items.filter((item: StorageItem) => !existingIds.has(item.post_id));
+            return [...prev, ...newItems];
+          });
+
+          setOffset(currentOffset + items.length); // 다음 오프셋 업데이트
         }
+
+        // API가 빈 배열을 반환하는 경우에만 모든 데이터가 로드된 것으로 간주
+        if (items.length === 0) {
+          console.log('모든 데이터 로드 완료 (빈 배열 수신)');
+          setAllDataLoaded(true);
+        } else if (items.length < limit) {
+          console.log(`부분 데이터 수신 (${items.length}/${limit}) - 마지막 페이지로 추정`);
+          setAllDataLoaded(true);
+        } else {
+          setAllDataLoaded(false);
+        }
+      } else {
+        console.error('API 응답 실패:', response.data.message);
+        setError(`데이터를 불러오는 데 실패했습니다: ${response.data.message}`);
       }
     } catch (err) {
       console.error('보관소 목록 로드 오류:', err);
       setError('데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
-      setLoading(false);
+      if (reset) {
+        setLoading(false);
+      } else {
+        setIsLoadingMore(false);
+      }
     }
   };
+
+  // 추가 데이터 로드 함수
+  const loadMoreData = useCallback(() => {
+    if (loading || isLoadingMore || allDataLoaded) {
+      console.log('데이터 로드 중단 - 로딩 중이거나 모든 데이터 로드됨');
+      return; // 이미 로딩 중이거나 모든 데이터를 로드했으면 중단
+    }
+
+    console.log('추가 데이터 로드 시작, offset:', offset);
+    fetchStorageList(false);
+  }, [loading, isLoadingMore, allDataLoaded, offset]);
+
+  // 관찰자 설정 (Intersection Observer API 사용)
+  useEffect(() => {
+    // 이전 관찰자 제거
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    const options = {
+      root: null, // viewport를 root로 사용
+      rootMargin: '200px', // 하단에서 200px 전에 트리거
+      threshold: 0.1, // 요소의 10%가 보이면 트리거
+    };
+
+    // 디바운스를 위한 타이머
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    observerRef.current = new IntersectionObserver(entries => {
+      const [entry] = entries;
+      if (entry.isIntersecting) {
+        // 디바운스 처리 - 이전 타이머가 있으면 취소
+        if (debounceTimer) clearTimeout(debounceTimer);
+
+        // 500ms 후에 실행하여 빠른 스크롤에서 중복 요청 방지
+        debounceTimer = setTimeout(() => {
+          console.log('인터섹션 관찰자: 로드 트리거 엘리먼트 감지됨');
+          loadMoreData();
+        }, 500);
+      }
+    }, options);
+
+    if (loadMoreTriggerRef.current) {
+      console.log('인터섹션 관찰자: 트리거 엘리먼트 관찰 시작');
+      observerRef.current.observe(loadMoreTriggerRef.current);
+    } else {
+      console.warn('인터섹션 관찰자: 트리거 엘리먼트를 찾을 수 없음');
+    }
+
+    return () => {
+      if (observerRef.current) {
+        console.log('인터섹션 관찰자: 정리됨');
+        observerRef.current.disconnect();
+      }
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    };
+  }, [loadMoreData]);
+
+  // 스크롤 이벤트 핸들러 (대체 수단으로 사용)
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      if (!containerRef.current || loading || isLoadingMore || allDataLoaded) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+
+      // 스크롤이 하단에 도달했는지 확인 (90% 지점)
+      if (scrollTop + clientHeight >= scrollHeight * 0.9) {
+        console.log('스크롤 이벤트: 하단 90% 도달, 추가 데이터 로드 시작');
+        loadMoreData();
+      }
+    },
+    [loading, isLoadingMore, allDataLoaded, loadMoreData],
+  );
+
+  // 초기 데이터 로드 - 첫 마운트시에만 실행되도록 빈 의존성 배열 사용
+  useEffect(() => {
+    console.log('StorageList 컴포넌트 마운트 - 초기 데이터 로드');
+    fetchStorageList(true);
+  }, []);
 
   // 필터링 함수
   const filterItemsLocally = (items: StorageItem[], filters: FilterOptions) => {
@@ -341,24 +497,43 @@ const StorageList: React.FC = () => {
     );
   };
 
-  // 초기 데이터 로드
-  useEffect(() => {
-    fetchStorageList();
-  }, []);
-
   // 필터 적용 핸들러
   const handleApplyFilter = (options: FilterOptions) => {
-    console.log('Applied filters:', options); // 디버깅용
+    console.log('필터 적용:', options);
     setAppliedFilters(options);
     setIsFilterModalOpen(false);
 
-    const filteredItems = filterItemsLocally(allStorageItems, options);
-    console.log('Filtered items:', filteredItems); // 디버깅용
-    setStorageItems(filteredItems);
+    // 백엔드 필터링 지원이 있는 경우 여기서 API 호출
+    if (hasBackendFilteringSupport) {
+      // 필터 적용 시 상태 리셋 및 새로운 API 호출
+      setOffset(0);
+      setAllDataLoaded(false);
+      // 백엔드 필터링 로직 구현 필요
+      // 현재는 로컬 필터링 사용
+    } else {
+      // 로딩 상태로 변경
+      setLoading(true);
+
+      // 로컬 필터링 적용
+      const filteredItems = filterItemsLocally(allStorageItems, options);
+      console.log(`필터링 결과: ${filteredItems.length}개 항목`);
+      setStorageItems(filteredItems);
+
+      // 필터링 결과가 없으면 모든 데이터가 로드된 것으로 간주
+      if (filteredItems.length === 0) {
+        setAllDataLoaded(true);
+      } else {
+        setAllDataLoaded(false);
+      }
+
+      // 로딩 완료
+      setLoading(false);
+    }
 
     // 필터가 적용되면 '전체' 필터를 제외하고 선택된 필터 카테고리들을 표시
     const activeCategories = [];
-    if (options.storageLocation) activeCategories.push('보관위치');
+    if (options.storageLocation && options.storageLocation.length > 0)
+      activeCategories.push('보관위치');
     if (options.storageTypes.length > 0) activeCategories.push('보관방식');
     if (options.itemTypes.length > 0) activeCategories.push('물건유형');
     if (options.durationOptions.length > 0) activeCategories.push('보관기간');
@@ -367,13 +542,11 @@ const StorageList: React.FC = () => {
     setActiveFilterCategories(activeCategories.length > 0 ? activeCategories : ['전체']);
   };
 
-  // 상세 페이지로 이동
-  const handleItemClick = (id: number) => {
-    navigate(`/storage/${id}`);
-  };
-
   // 필터 초기화 함수
   const resetFilters = () => {
+    console.log('필터 초기화');
+
+    // 필터 옵션 초기화
     setAppliedFilters({
       storageLocation: [],
       itemTypes: [],
@@ -382,8 +555,21 @@ const StorageList: React.FC = () => {
       isValuableSelected: false,
     });
 
+    // 필터 카테고리 초기화
     setActiveFilterCategories(['전체']);
+
+    // 로딩 상태로 변경
+    setLoading(true);
+
+    // 현재 저장된 allStorageItems을 표시
     setStorageItems(allStorageItems);
+
+    // 필터 초기화 시 새로운 데이터 불러오기 설정
+    setOffset(0);
+    setAllDataLoaded(false);
+
+    // 로딩 완료
+    setLoading(false);
   };
 
   // 필터 변경 핸들러
@@ -391,6 +577,7 @@ const StorageList: React.FC = () => {
     if (filter === '전체') {
       resetFilters();
       if (hasBackendFilteringSupport) {
+        // 백엔드 필터링 지원이 있는 경우 새로 불러오기
         fetchStorageList(true);
       }
     } else {
@@ -404,12 +591,18 @@ const StorageList: React.FC = () => {
     setIsFilterModalOpen(false);
   };
 
+  // 상세 페이지로 이동
+  const handleItemClick = (id: number) => {
+    console.log(`보관소 상세 페이지로 이동: ${id}`);
+    navigate(`/storage/${id}`);
+  };
+
   // 가격 포맷 함수
   const formatPrice = (price: number) => {
     return `${price.toLocaleString()}원`;
   };
 
-  // 아이템 렌더링 수정
+  // 아이템 렌더링 함수
   const renderStorageItem = (item: StorageItem) => (
     <StorageItem key={item.post_id} onClick={() => handleItemClick(item.post_id)}>
       <StorageImageContainer>
@@ -425,8 +618,15 @@ const StorageList: React.FC = () => {
     </StorageItem>
   );
 
+  // 데이터 더 로드 버튼 핸들러 - 모든 데이터 로드 상태를 무시하고 강제로 다음 데이터 요청
+  const handleForceLoadMore = () => {
+    setAllDataLoaded(false); // 모든 데이터 로드 상태 초기화
+    console.log('강제 데이터 로드, 현재 offset:', offset);
+    fetchStorageList(false);
+  };
+
   return (
-    <Container>
+    <Container ref={containerRef} onScroll={handleScroll}>
       {/* 페이지 헤더 */}
       <Header title="보관소 리스트" />
 
@@ -476,9 +676,47 @@ const StorageList: React.FC = () => {
         ) : (
           storageItems.map(renderStorageItem)
         )}
-        {loading && storageItems.length > 0 && (
+
+        {/* 무한 스크롤을 위한 감지 엘리먼트 */}
+        <div
+          ref={loadMoreTriggerRef}
+          style={{ gridColumn: '1 / span 2', height: '20px', width: '100%' }}
+        />
+
+        {isLoadingMore && (
           <div style={{ gridColumn: '1 / span 2', textAlign: 'center', padding: '20px 0' }}>
             더 불러오는 중...
+          </div>
+        )}
+
+        {allDataLoaded && storageItems.length > 0 && (
+          <div
+            style={{
+              gridColumn: '1 / span 2',
+              textAlign: 'center',
+              padding: '10px 0',
+              color: '#999',
+            }}
+          >
+            모든 보관소를 불러왔습니다.
+            <div style={{ marginTop: '10px' }}>
+              <button
+                onClick={handleForceLoadMore}
+                style={{
+                  padding: '5px 10px',
+                  background: '#5E5CFD',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                }}
+              >
+                추가 데이터 강제 로드
+              </button>
+            </div>
+            <div style={{ fontSize: '10px', marginTop: '5px', color: '#666' }}>
+              현재 불러온 보관소: {storageItems.length}개 / 오프셋: {offset}
+            </div>
           </div>
         )}
       </ItemGridContainer>

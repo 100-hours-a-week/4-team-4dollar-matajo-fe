@@ -263,7 +263,7 @@
     {
       "purpose": "보관소 상세조회",
       "requestMethod": "GET",
-      "url": "/api/posts/{post_id}",
+      "url": "api/posts/{post_id}",
       "body": null,
       "description": "특정 보관소의 상세 정보 조회",
       "requiredHeaders": {

@@ -29,15 +29,17 @@ export const ROUTES = {
   // 보관인 등록
   KEEPER_REGISTRATION: 'keeper-registration',
 
-  // 기타
-  EDIT_STORAGE: 'editstorage',
-
   // 404 페이지
   NOT_FOUND: '*',
 
   STORAGE_REGISTER: '/storage/register',
   STORAGE_REGISTER_DETAILS: '/storage/register/details',
   STORAGE_REGISTER_IMAGES: '/storage/register/images',
+
+  // 보관소 수정
+  STORAGE_EDIT: '/storage/:id/edit',
+  STORAGE_EDIT_DETAILS: '/storage/:id/edit/details',
+  STORAGE_EDIT_IMAGES: '/storage/:id/edit/images',
 } as const;
 
 export default ROUTES;

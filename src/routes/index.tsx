@@ -1,37 +1,31 @@
 // routes/index.tsx
-import { RouteObject, Navigate } from 'react-router-dom';
+import { RouteObject } from 'react-router-dom';
 import { UserRole } from '../contexts/auth';
 
 // 페이지 컴포넌트 가져오기
+import MainRedirect from '../pages/Home/MainRedirect';
+import LoginPage from '../pages/Login';
 import HomePage from '../pages/Home';
-import LoginPage from '../pages/Login/index';
-import MyPage from '../pages/MyPage';
 import StorageList from '../pages/StorageList/StorageList';
 import StorageDetail from '../pages/MyPage/subpages/StorageDetail';
-import KeeperRegistration from '../pages/MyPage/subpages/KeeperRegistration';
 import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
-import EditStorage from '../pages/EditStorage/EditStorage';
-import NotFoundPage from '../pages/NotFound';
-import KakaoCallback from '../pages/Login/KakaoCallback';
-import MainRedirect from '../pages/Home/MainRedirect';
-import MyPlace from '../pages/MyPage/subpages/MyPlacePage';
+import KeeperRegistration from '../pages/MyPage/subpages/KeeperRegistration';
+import MyPage from '../pages/MyPage';
 import MyTrade from '../pages/MyPage/subpages/MyTradePage';
-
-// 레이아웃 컴포넌트
-import MainLayout from '../components/layout/MainLayout';
-
-// 라우트 가드 컴포넌트
-import PrivateRoute from './PrivateRoute';
-import PublicRoute from './PublicRoute';
-
-// 라우트 정의
-import { ROUTES } from '../constants/routes';
-
-// 새로운 import 추가
+import MyPlace from '../pages/MyPage/subpages/MyPlacePage';
 import StorageRegistrationBasic from '../pages/Registration/StorageRegistrationBasic';
 import StorageRegistrationDetails from '../pages/Registration/StorageRegistrationDetails';
 import StorageRegistrationImages from '../pages/Registration/StorageRegistrationImages';
+import EditStorageBasic from '../pages/EditStorage/EditStorageBasic';
+import EditStorageDetails from '../pages/EditStorage/EditStorageDetails';
+import EditStorageImages from '../pages/EditStorage/EditStorageImages';
+import KakaoCallback from '../pages/Login/KakaoCallback';
+import NotFoundPage from '../pages/NotFound';
+import { ROUTES } from '../constants/routes';
+import PrivateRoute from './PrivateRoute';
+import PublicRoute from './PublicRoute';
+import MainLayout from '../components/layout/MainLayout';
 
 const routes: RouteObject[] = [
   // 메인 리다이렉트 라우트 (초기 진입점)
@@ -124,7 +118,9 @@ const routes: RouteObject[] = [
         path: 'register/images',
         element: <StorageRegistrationImages />,
       },
-      { path: ROUTES.EDIT_STORAGE, element: <EditStorage /> },
+      { path: ':id/edit', element: <EditStorageBasic /> },
+      { path: ':id/edit/details', element: <EditStorageDetails /> },
+      { path: ':id/edit/images', element: <EditStorageImages /> },
       { path: ROUTES.MYPLACE, element: <MyPlace /> },
     ],
   },

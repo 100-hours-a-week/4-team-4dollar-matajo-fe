@@ -92,70 +92,78 @@ export interface StorageRegistrationResponse {
   message?: string;
 }
 
+// 보관소 수정 요청 인터페이스
+export interface StorageUpdateRequest {
+  post_title: string;
+  post_content: string;
+  post_address_data: DaumAddressData;
+  prefer_price: number;
+  post_tags: string[];
+}
+
+// 보관소 수정 응답 인터페이스
+export interface StorageUpdateResponse {
+  success: boolean;
+  message: string;
+  data: {
+    post_id: number;
+  };
+}
+
 /**
  * 보관소 정보와 이미지를 서버에 등록하는 함수
  */
 export const registerStorage = async (
-  data: any,
+  postData: StorageRegistrationRequest,
   mainImage: File,
   detailImages: File[],
 ): Promise<StorageRegistrationResponse> => {
   try {
-    // FormData 생성
     const formData = new FormData();
-
-    // postData를 snake_case로 변환하여 추가
-    const postData = {
-      post_title: data.postTitle,
-      post_content: data.postContent,
-      post_address_data: data.postAddressData, // 이미 snake_case 형식임
-      prefer_price: Number(data.preferPrice),
-      post_tags: data.postTags,
-    };
-    const postDataStr = JSON.stringify(postData);
-    // postData를 JSON 문자열로 변환하여 추가
-    formData.append('postData', new Blob([postDataStr], { type: 'application/json' }));
-
-    // 이미지 파일 추가
+    const postDataBlob = new Blob([JSON.stringify(postData)], { type: 'application/json' });
+    formData.append('postData', postDataBlob);
     formData.append('mainImage', mainImage);
 
-    // 상세 이미지들 추가
-    detailImages.forEach(file => {
-      formData.append('detailImages', file);
+    // 상세 이미지가 있는 경우에만 추가
+    if (detailImages && detailImages.length > 0) {
+      detailImages.forEach(file => {
+        formData.append('detailImages', file);
+      });
+    } else {
+      // 상세 이미지가 없는 경우 빈 배열 전송
+      formData.append('detailImages', new Blob([], { type: 'application/json' }));
+    }
+
+    console.log('=== FormData 내용 ===');
+    console.log('postData:', postData);
+    console.log('mainImage:', mainImage.name, 'size:', mainImage.size);
+    console.log(
+      'detailImages:',
+      detailImages.map(img => ({ name: img.name, size: img.size })),
+    );
+
+    formData.forEach((value, key) => {
+      console.log(`${key}:`, value instanceof File ? `${value.name} (${value.size} bytes)` : value);
     });
 
-    // API 호출
-    const response = await client.post('/api/posts', formData, {
+    const response = await client.post<StorageRegistrationResponse>('/api/posts', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
       },
     });
 
-    return {
-      id: response.data.data?.post_id || '0',
-      success: true,
-      message: response.data.message || 'write_post_success',
-    };
+    console.log('서버 응답:', response.data);
+    return response.data;
   } catch (error) {
     console.error('보관소 등록 API 오류:', error);
-
-    if (axios.isAxiosError(error) && error.response) {
-      console.error('서버 응답 에러:', error.response.data);
-      console.error('에러 상태 코드:', error.response.status);
-      console.error('에러 헤더:', error.response.headers);
-
-      return {
-        id: '',
-        success: false,
-        message: error.response.data.message || '보관소 등록에 실패했습니다.',
-      };
+    if (axios.isAxiosError(error)) {
+      console.error('서버 응답 에러:', error.response?.data);
+      console.error('에러 상태 코드:', error.response?.status);
+      console.error('에러 헤더:', error.response?.headers);
+      throw new Error(error.response?.data?.message || '보관소 등록에 실패했습니다.');
     }
-
-    return {
-      id: '',
-      success: false,
-      message: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
-    };
+    throw error;
   }
 };
 
@@ -185,78 +193,58 @@ export const base64ToFile = (
 };
 
 /**
- * 보관소 수정 요청을 위한 함수
- *
- * @param id 수정할 보관소 ID
- * @param postData 보관소 기본 정보
- * @param mainImage 대표 이미지 파일
- * @param detailImages 상세 이미지 파일 배열
- * @returns 수정 결과와 ID
+ * 보관소 정보와 이미지를 서버에 수정하는 함수
  */
 export const updateStorage = async (
-  id: string,
-  postData: StorageRegistrationRequest,
+  postId: string,
+  postData: StorageUpdateRequest,
   mainImage: File,
   detailImages: File[],
-): Promise<StorageRegistrationResponse> => {
+): Promise<StorageUpdateResponse> => {
   try {
     const formData = new FormData();
 
-    // postData 객체에 id 추가 및 스네이크 케이스로 변환
-    const updatedPostData = {
-      ...postData,
-      id: id,
-    };
+    // postData를 snake_case로 변환하고 JSON 문자열로 변환하여 Blob으로 전송
+    const transformedPostData = transformKeysToSnake(postData);
+    const postDataBlob = new Blob([JSON.stringify(transformedPostData)], {
+      type: 'application/json',
+    });
+    formData.append('postData', postDataBlob);
 
-    const snakeCaseData = transformKeysToSnake(updatedPostData);
-    console.log('전송할 postData(스네이크 케이스):', snakeCaseData);
-
-    // 데이터 추가 - Blob 객체로 변환하여 추가
-    const postDataStr = JSON.stringify(snakeCaseData);
-    formData.append('postData', new Blob([postDataStr], { type: 'application/json' }));
-
-    // 이미지 파일 추가
+    // 메인 이미지 추가
     formData.append('mainImage', mainImage);
 
-    detailImages.forEach(file => {
-      formData.append('detailImages', file);
-    });
+    // 상세 이미지가 있는 경우에만 추가
+    if (detailImages && detailImages.length > 0) {
+      detailImages.forEach((file, index) => {
+        formData.append(`detailImages`, file);
+      });
+    }
 
-    console.log('보관소 수정 데이터:', {
-      postData: snakeCaseData,
-      mainImage: mainImage.name,
-      detailImages: detailImages.map(f => f.name),
-    });
+    // FormData 내용 로깅
+    console.log('=== FormData 내용 ===');
+    console.log('postData:', transformedPostData);
+    console.log('mainImage:', mainImage.name, 'size:', mainImage.size);
+    console.log(
+      'detailImages:',
+      detailImages.map(img => ({ name: img.name, size: img.size })),
+    );
 
-    // API 호출
-    const response = await client.put(`${API_PATHS.POSTS.UPDATE}/${id}`, formData, {
+    const response = await client.patch<StorageUpdateResponse>(`/api/posts/${postId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
     });
 
-    return {
-      id: response.data.data?.post_id || id,
-      success: true,
-      message: '보관소가 성공적으로 수정되었습니다.',
-    };
+    return response.data;
   } catch (error) {
-    console.error('보관소 수정 실패:', error);
-
-    if (axios.isAxiosError(error) && error.response) {
-      return {
-        id: '',
-        success: false,
-        message: error.response.data.message || '보관소 수정에 실패했습니다.',
-      };
+    console.error('보관소 수정 API 오류:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('서버 응답 에러:', error.response?.data);
+      console.error('에러 상태 코드:', error.response?.status);
+      throw new Error(error.response?.data?.message || '보관소 수정에 실패했습니다.');
     }
-
-    return {
-      id: '',
-      success: false,
-      message: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
-    };
+    throw error;
   }
 };
 

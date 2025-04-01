@@ -175,6 +175,7 @@ interface Step1FormData {
   postContent: string;
   postAddressData?: DaumAddressData; // DaumAddressData 타입 추가
   preferPrice: string;
+  postTags: string[];
 }
 
 const Registration2: React.FC = () => {
@@ -327,23 +328,17 @@ const Registration2: React.FC = () => {
       isValuableSelected,
     });
 
-    // 이전 단계 데이터와 현재 단계 데이터 병합
-    const step2Data = {
+    // 이전 단계의 데이터를 유지하면서 현재 단계의 데이터를 추가
+    const combinedData = {
+      ...prevFormData,
       storageLocation,
       selectedItemTypes,
       selectedStorageTypes,
       selectedDurationOptions,
       isValuableSelected,
-      postTags: tagStrings, // 문자열 태그 배열로 저장
+      postTags: tagStrings,
     };
 
-    // 모든 단계 데이터 통합 및 카멜케이스 유지
-    const combinedData = {
-      ...prevFormData,
-      ...step2Data,
-    };
-
-    // 다음 단계로 이동
     console.log('다음 단계로 이동, 통합 데이터:', combinedData);
     console.log('태그 문자열 배열:', tagStrings);
     navigate('/storage/register/images', { state: combinedData });
