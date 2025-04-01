@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header, { HeaderDropdownOption } from '../../../components/layout/Header';
@@ -122,10 +122,11 @@ const TagsContainer = styled.div`
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 400;
   word-wrap: break-word;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 `;
 
 const PriceContainer = styled.div`
+  padding: 8px 0;
   display: flex;
   align-items: baseline;
 `;
@@ -151,11 +152,9 @@ const UnitText = styled.span`
 
 const ChatButton = styled.div`
   width: 94px;
-  height: 35px;
+  height: 24px;
   padding: 8px 0;
-  position: absolute;
-  right: 25px;
-  top: 80px;
+  position: relative;
   background: ${THEME.primaryTransparent};
   border-radius: 10px;
   display: flex;
@@ -166,10 +165,10 @@ const ChatButton = styled.div`
 
 const ChatButtonText = styled.div`
   color: white;
-  font-size: 16px;
+  font-size: 14px;
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 700;
-  line-height: 18.84px;
+  line-height: 14px;
   letter-spacing: 0.32px;
   word-wrap: break-word;
 `;
@@ -244,7 +243,7 @@ const KeeperSection = styled.div`
 `;
 
 const KeeperCard = styled.div`
-  width: 100%;
+  width: 90%;
   height: 50px;
   border-radius: 10px;
   border: 1px #cfcffe solid;
@@ -280,8 +279,8 @@ const KeeperName = styled.div`
 `;
 
 const KeeperImageContainer = styled.div`
-  width: 36.72px;
-  height: 34.56px;
+  width: 36px;
+  height: 36px;
   position: absolute;
   left: 15px;
   background: white;
@@ -295,7 +294,7 @@ const KeeperImageContainer = styled.div`
 const KeeperImage = styled.img`
   width: 28px;
   height: 29px;
-  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+  // box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
 `;
 
 const ImageIndicator = styled.div`
@@ -476,6 +475,31 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
   const [isAuthor, setIsAuthor] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
 
+  // 주소 검색 기능 추가
+  const searchAddressToCoordinate = useCallback(
+    async (address: string): Promise<{ lat: number; lng: number } | null> => {
+      return new Promise(resolve => {
+        if (!address) {
+          resolve(null);
+          return;
+        }
+
+        const geocoder = new window.kakao.maps.services.Geocoder();
+
+        geocoder.addressSearch(address, (result: any, status: any) => {
+          if (status === 'OK' && result.length > 0) {
+            const { x, y } = result[0];
+            resolve({ lat: parseFloat(y), lng: parseFloat(x) });
+          } else {
+            console.error('주소 검색 실패:', address);
+            resolve(null);
+          }
+        });
+      });
+    },
+    [],
+  );
+
   // API에서 보관소 상세 정보 로드
   useEffect(() => {
     const fetchStorageDetail = async () => {
@@ -498,6 +522,23 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
           if (response.data.data.post_images && Array.isArray(response.data.data.post_images)) {
             transformedData.postImages = response.data.data.post_images;
+          }
+
+          // 주소를 좌표로 변환
+          if (response.data.data.post_address) {
+            const coordinates = await searchAddressToCoordinate(response.data.data.post_address);
+            if (coordinates) {
+              transformedData.latitude = coordinates.lat;
+              transformedData.longitude = coordinates.lng;
+              console.log('주소를 좌표로 변환 성공:', coordinates);
+            } else {
+              console.warn('주소를 좌표로 변환 실패:', response.data.data.post_address);
+              setToastMessage('장소 위치를 검색할 수 없습니다.');
+              setShowToast(true);
+              setTimeout(() => {
+                setShowToast(false);
+              }, 3000);
+            }
           }
 
           setStorageDetail(transformedData);
@@ -535,7 +576,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     };
 
     fetchStorageDetail();
-  }, [id]);
+  }, [id, searchAddressToCoordinate]);
 
   // 토스트 메시지 표시 함수
   const showToastMessage = (message: string) => {
@@ -941,20 +982,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
         onBack={handleBack}
         dropdownOptions={headerDropdownOptions}
       />
-
-      {/* 디버깅을 위한 임시 표시 */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          background: 'white',
-          padding: '5px',
-          zIndex: 9999,
-        }}
-      >
-        isAuthor: {isAuthor.toString()}
-      </div>
 
       <Container ref={containerRef}>
         {/* 게시글 삭제 모달 */}

@@ -724,7 +724,7 @@ const MyPage: React.FC = () => {
               '(주)마타조 | 대표이사: 정유진',
               '사업자등록번호: 604-11-41401',
               '이메일: matajoktb@gmail.com',
-              '© 2025 마타조(MATOAJO) Inc. All rights reserved.',
+              '© 2025 마타조(MATAJO) Inc. All rights reserved.',
             ].map((info, index) => (
               <BusinessInfo key={index}>{info}</BusinessInfo>
             ))}
