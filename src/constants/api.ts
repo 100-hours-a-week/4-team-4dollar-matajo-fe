@@ -64,6 +64,7 @@ export const API_PATHS = {
     BY_LOCATION: '/api/posts/location',
     MY_POSTS: '/api/posts/my-posts', // 내 보관소 조회용
     TOGGLE_VISIBILITY: '/api/posts/:postId/visibility', // 공개/비공개 전환
+    PROMOTION: '/api/posts/promotion', // 로컬 딜 조회
   },
   CHAT: {
     ROOMS: '/api/chats',

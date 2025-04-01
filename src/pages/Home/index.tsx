@@ -21,7 +21,7 @@ import { handleRegisterStorage, KeeperRegistrationModal } from './MapBottomSheet
 import { ROUTES } from '../../constants/routes';
 import { createTrade, CreateTradeRequest } from '../../services/api/modules/trades';
 import { LocalDeal } from '../../types/place.types';
-import axios from 'axios';
+import client from '../../services/api/client';
 import { API_PATHS } from '../../constants/api';
 
 // 컨테이너 컴포넌트
@@ -132,14 +132,8 @@ const HomePage: React.FC = () => {
   // 최근 거래내역 조회
   const fetchRecentTrades = async (locationInfoId: number) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
+      const response = await client.get(
         `${API_PATHS.TRADES.RECENT_BY_LOCATION}?locationInfoId=${locationInfoId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
       );
 
       if (response.data.success) {
@@ -149,7 +143,7 @@ const HomePage: React.FC = () => {
           price: trade.tradePrice,
           post_tags: [trade.category, `${trade.storagePeriod}일`],
           imageUrl: trade.mainImage,
-          location: location.split(' ')[1] || '여의도동',
+          location: location.split(' ')[1] || ' ',
         }));
         setRecentItems(trades);
       } else {
@@ -196,28 +190,12 @@ const HomePage: React.FC = () => {
           await fetchRecentTrades(locationId);
         } catch (err) {
           console.error('데이터 조회 오류:', err);
-          // 오류 시 기본 마커 제공
-          const defaultMarker = {
-            id: 'default-1',
-            name: '기본 보관소',
-            latitude: mapCenter.lat,
-            longitude: mapCenter.lng,
-            address: location,
-          };
-          setMarkers([defaultMarker]);
+          // 오류 시 빈 마커 배열 설정
+          setMarkers([]);
           setDiscountItems([]);
           setRecentItems([]);
         }
       } else {
-        // 위치 ID가 없으면 기본 마커 생성
-        const defaultMarker = {
-          id: 'default-1',
-          name: '기본 보관소',
-          latitude: mapCenter.lat,
-          longitude: mapCenter.lng,
-          address: location,
-        };
-        setMarkers([defaultMarker]);
         setDiscountItems([]);
         setRecentItems([]);
       }
