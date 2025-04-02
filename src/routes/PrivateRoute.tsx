@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { isAuthenticated, getUserRoleInToken } from '../utils/api/authUtils';
-import { UserRole } from '../contexts/auth';
+import { useAuth, UserRole } from '../contexts/auth';
+// useAuth, UserRole 가져옴
 
 interface PrivateRouteProps {
   requiredRole?: UserRole;
@@ -14,6 +15,8 @@ interface PrivateRouteProps {
  */
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
   const location = useLocation();
+  const { user, loading: userLoading } = useAuth(); // ✅ user & loading 상태 가져오기
+
   const [authState, setAuthState] = useState<{
     isChecking: boolean;
     isAllowed: boolean;
@@ -59,8 +62,8 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
     checkAuth();
   }, [requiredRole, location.pathname]);
 
-  // 로딩 상태
-  if (authState.isChecking) {
+  // ✅ 로딩 중에는 화면 렌더링하지 않음
+  if (authState.isChecking || userLoading) {
     return (
       <div className="flex justify-center items-center h-screen flex-col">
         <img src="/tajo-logo.png" alt="Logo" className="w-20 h-20 mb-5" />

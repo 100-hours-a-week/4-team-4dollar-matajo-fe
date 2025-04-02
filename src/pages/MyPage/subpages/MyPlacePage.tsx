@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/routes';
 import { getMyStorages } from '../../../services/api/modules/storage';
 import { getUserPlaces, PlaceItem } from '../../../services/api/modules/user';
+import { useAuth } from '../../../contexts/auth/index';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
 const THEME = {
@@ -145,6 +146,7 @@ const MyPlace: React.FC = () => {
   const [places, setPlaces] = useState<PlaceItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const { isKeeper } = useAuth();
 
   // 내 보관소 데이터 조회
   useEffect(() => {
@@ -187,7 +189,11 @@ const MyPlace: React.FC = () => {
         ) : error ? (
           <ErrorMessage>{error}</ErrorMessage>
         ) : places.length === 0 ? (
-          <NoDataMessage>등록된 보관소가 없습니다.</NoDataMessage>
+          isKeeper() ? (
+            <NoDataMessage>아직 등록된 보관소가 없습니다. 보관소를 등록해주세요.</NoDataMessage>
+          ) : (
+            <NoDataMessage>보관인 등록 후 보관소를 생성할 수 있습니다.</NoDataMessage>
+          )
         ) : (
           // 보관소 목록
           places.map(place => (
