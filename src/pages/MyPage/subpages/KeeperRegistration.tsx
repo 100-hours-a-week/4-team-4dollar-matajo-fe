@@ -369,7 +369,7 @@ const KeeperRegistration: React.FC = () => {
         // 보관소 등록 페이지로 이동
         setTimeout(() => {
           console.log('보관소 등록 페이지로 이동합니다.');
-          navigate('/storage/register');
+          navigate('/storages/register');
         }, 1000);
       } else {
         showToast(response.message || '보관인 등록에 실패했습니다.');

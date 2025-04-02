@@ -914,7 +914,7 @@ const EditStorageImages: React.FC = () => {
 
   const handleConfirmConfirm = () => {
     setIsConfirmModalOpen(false);
-    navigate(`/storage/${id}`);
+    navigate(`/storages/${id}`);
   };
 
   // 모달 내용 컴포넌트

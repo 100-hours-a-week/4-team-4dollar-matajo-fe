@@ -292,7 +292,7 @@ const Registration2: React.FC = () => {
   // 뒤로가기 핸들러
   const handleBack = () => {
     // 변경 사항은 로컬 스토리지에 자동 저장 상태이므로 바로 이전 페이지로 이동
-    navigate('/storage/register');
+    navigate('/storages/register');
   };
 
   // 폼 제출 핸들러
