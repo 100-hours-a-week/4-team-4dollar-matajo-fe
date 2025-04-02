@@ -369,8 +369,11 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
           params: { formattedAddress: location.formatted_address },
         });
 
+        console.log('위치 정보 API 응답:', response.data);
+
+        // API 응답 형식 확인
         if (
-          response.data?.status === 'success' &&
+          response.data?.success === true &&
           response.data.data &&
           response.data.data.length > 0
         ) {
@@ -379,7 +382,10 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
           location.longitude = locationData.longitude.toString();
           location.location_id = locationData.id;
         } else {
-          throw new Error('위치 정보를 찾을 수 없습니다.');
+          console.error('API 응답에 위치 데이터가 없습니다:', response.data);
+          setError('위치 정보를 찾을 수 없습니다.');
+          setLoading(false);
+          return;
         }
       }
 
