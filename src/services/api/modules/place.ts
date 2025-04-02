@@ -127,46 +127,15 @@ export const searchDong = async (keyword: string): Promise<string[]> => {
 };
 
 // 주소 기반 위치 ID 조회 함수
-export const getLocationId = async (
-  formattedAddress: string,
-): Promise<LocationIdResponse | null> => {
+export const getLocationInfo = async (formattedAddress: string) => {
   try {
-    // 캐시에 해당 주소 정보가 있으면 API 호출 없이 반환
-    if (locationIdCache[formattedAddress]) {
-      console.log('캐시된 위치 ID 사용:', formattedAddress);
-      return locationIdCache[formattedAddress];
-    }
-
-    // 좌표 형식인지 확인 (예: "33.4872054,126.5317774")
-    const isCoordinate = /^-?\d+\.\d+,-?\d+\.\d+$/.test(formattedAddress);
-
-    // API 호출
     const response = await client.get(API_PATHS.PLACE.LOCATIONS.INFO, {
-      params: isCoordinate ? { coordinates: formattedAddress } : { formattedAddress },
+      params: { formattedAddress },
     });
-
-    console.log('위치 ID API 응답:', response.data);
-
-    // API 응답 구조 확인
-    if (response.data?.success && response.data.data) {
-      const locationData = Array.isArray(response.data.data)
-        ? response.data.data[0]
-        : response.data.data;
-
-      if (locationData && locationData.id && locationData.latitude && locationData.longitude) {
-        // 응답 데이터 캐싱
-        locationIdCache[formattedAddress] = locationData;
-
-        console.log('위치 ID 조회 성공:', locationData);
-        return locationData;
-      }
-    }
-
-    console.warn('위치 ID 데이터가 없거나 유효하지 않습니다:', response.data);
-    return null;
+    return response.data;
   } catch (error) {
-    console.error('위치 ID 조회 오류:', error);
-    return null;
+    console.error('위치 정보 조회 오류:', error);
+    throw error;
   }
 };
 

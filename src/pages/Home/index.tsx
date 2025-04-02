@@ -12,7 +12,7 @@ import LocationService, {
   DEFAULT_COORDINATES,
   DEFAULT_LOCATION,
 } from '../../services/LocationService';
-import { getLocationId, getPostsByLocation, getLocalDeals } from '../../services/api/modules/place';
+import { getPostsByLocation, getLocalDeals } from '../../services/api/modules/place';
 import { getLocationPosts, LocationPost } from '../../services/api/modules/storage';
 import { Marker } from './MapBottomSheet';
 
@@ -118,7 +118,7 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<string>(DEFAULT_LOCATION);
-  const [locationId, setLocationId] = useState<number | null>(null);
+  const [locationId, setLocationId] = useState<number | undefined>(undefined);
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [discountItems, setDiscountItems] = useState<LocalDeal[]>([]);
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
@@ -246,43 +246,43 @@ const HomePage: React.FC = () => {
 
   // LocationId가 변경될 때마다 지도 데이터 다시 로드
   useEffect(() => {
-    if (locationId !== null) {
+    if (locationId !== undefined) {
       loadMapData();
     }
   }, [locationId]);
 
-  // 위치 정보 ID 조회 함수
+  // 위치 정보 ID 조회 함수 수정
   const fetchLocationId = async (address: string) => {
     try {
       if (!address) return;
 
       console.log('위치 ID 조회 중:', address);
-      const response = await getLocationId(address);
+      const response = await client.get(API_PATHS.PLACE.LOCATIONS.INFO, {
+        params: { formattedAddress: address },
+      });
 
-      if (response && response.id) {
-        console.log('위치 ID 조회 성공:', response.id);
-        setLocationId(response.id);
+      if (response.data?.success && response.data.data) {
+        const locationData = response.data.data[0];
+        console.log('위치 ID 조회 성공:', locationData.id);
+        setLocationId(locationData.id);
+        localStorage.setItem('currentLocationId', locationData.id.toString());
 
-        // 위치 정보를 전역 상태로 저장 (localStorage)
-        localStorage.setItem('currentLocationId', response.id.toString());
-
-        // 추가 위치 정보가 있으면 저장
-        if (response.latitude && response.longitude) {
-          setMapCenter({ lat: response.latitude, lng: response.longitude });
+        if (locationData.latitude && locationData.longitude) {
+          setMapCenter({ lat: locationData.latitude, lng: locationData.longitude });
         }
 
-        return response.id;
-      } else {
-        console.warn('위치 ID 조회 실패, 기본값 사용');
-        setLocationId(null);
-        localStorage.removeItem('currentLocationId');
-        return null;
+        return locationData.id;
       }
+
+      console.warn('위치 ID 조회 실패, 기본값 사용');
+      setLocationId(undefined);
+      localStorage.removeItem('currentLocationId');
+      return undefined;
     } catch (error) {
       console.error('위치 ID 조회 오류:', error);
-      setLocationId(null);
+      setLocationId(undefined);
       localStorage.removeItem('currentLocationId');
-      return null;
+      return undefined;
     }
   };
 
@@ -324,39 +324,31 @@ const HomePage: React.FC = () => {
 
   // 위치 선택 핸들러
   const handleSelectLocation = async (
-    selectedLocation: string,
+    address: string,
     latitude?: string,
     longitude?: string,
+    newLocationId?: number,
   ) => {
-    try {
-      setLocation(selectedLocation);
-      setIsLocationModalOpen(false);
+    // 위치 정보가 변경되었을 때만 API 호출
+    if (newLocationId && newLocationId !== locationId) {
+      setLocation(address);
+      setLocationId(newLocationId);
 
-      // 위치 정보 업데이트
-      if (latitude && longitude) {
-        const lat = parseFloat(latitude);
-        const lng = parseFloat(longitude);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          setMapCenter({ lat, lng });
+      // 병렬로 API 호출하여 시간 단축
+      try {
+        // 지도 중심 변경
+        if (latitude && longitude) {
+          setMapCenter({
+            lat: parseFloat(latitude),
+            lng: parseFloat(longitude),
+          });
         }
 
-        // 위치 정보 저장
-        locationService.setCurrentLocation({
-          formatted_address: selectedLocation,
-          display_name: selectedLocation.split(' ').pop() || '',
-          latitude,
-          longitude,
-        });
+        // 지도 데이터 로드 (이미 구현된 함수 활용)
+        await loadMapData();
+      } catch (error) {
+        console.error('데이터 로드 오류:', error);
       }
-
-      // 위치 변경 시 LocationId 조회
-      await fetchLocationId(selectedLocation);
-
-      // 지도 데이터 다시 로드
-      await loadMapData();
-    } catch (error) {
-      console.error('위치 선택 처리 오류:', error);
-      setError('위치 정보를 처리하는 중 오류가 발생했습니다');
     }
   };
 
@@ -484,6 +476,7 @@ const HomePage: React.FC = () => {
         recentItems={recentItems}
         onEditLocation={() => setIsLocationModalOpen(true)}
         storageMarkers={markers}
+        locationInfoId={locationId || undefined}
       />
 
       <BottomNavigation activeTab="home" />

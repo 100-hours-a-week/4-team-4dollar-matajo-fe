@@ -1,5 +1,6 @@
 // src/services/LocationService.ts
-import { getLocationId, LocationIdResponse } from './api/modules/place';
+import { LocationIdResponse } from './api/modules/place';
+import { getLocationInfo } from './api/modules/place';
 
 export interface LocationInfo {
   formatted_address: string;
@@ -115,16 +116,17 @@ class LocationService {
   // 주소로 위치 ID 조회 함수
   public async getLocationIdByAddress(address: string): Promise<LocationIdInfo | null> {
     try {
-      // place 모듈의 getLocationId 함수 호출
-      const response = await getLocationId(address);
+      // place 모듈의 getLocationInfo 함수 호출
+      const response = await getLocationInfo(address);
 
-      if (response) {
+      if (response?.success && response.data) {
+        const locationData = response.data[0];
         return {
-          id: response.id,
-          dong: response.dong,
-          formatted_address: response.formatted_address,
-          latitude: response.latitude,
-          longitude: response.longitude,
+          id: locationData.id,
+          dong: locationData.dong,
+          formatted_address: locationData.formatted_address,
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
         };
       }
 
