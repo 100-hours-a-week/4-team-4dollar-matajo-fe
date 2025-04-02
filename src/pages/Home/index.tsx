@@ -396,7 +396,7 @@ const HomePage: React.FC = () => {
 
   // 게시판 이동 핸들러
   const handleGoToBoard = () => {
-    navigate('/storage');
+    navigate('/storages');
   };
 
   // 특가 아이템 클릭 핸들러
