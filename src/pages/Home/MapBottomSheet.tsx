@@ -4,10 +4,10 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import Modal from '../../components/common/Modal';
-import { getLocationId } from '../../services/api/modules/place';
+// import { getLocationId } from '../../services/api/modules/place';
 import { LocationIdData, LocationIdResponse } from '../../services/api/modules/storage';
 import { LocalDeal } from '../../types/place.types';
-import { getRecentTrades, Trade } from '../../services/api/modules/trade';
+import { getRecentTrades, RecentTrade } from '../../services/api/modules/trades';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -365,6 +365,16 @@ export interface Marker {
   address: string;
 }
 
+// RecentItem 타입 추가
+interface RecentItem {
+  id: string;
+  name: string;
+  price: number;
+  post_tags: string[];
+  imageUrl?: string;
+  location: string;
+}
+
 interface MapBottomSheetProps {
   location?: string;
   defaultLocation?: string;
@@ -372,7 +382,7 @@ interface MapBottomSheetProps {
   onGoToBoard?: () => void;
   onDiscountItemClick?: (id: string) => void;
   discountItems?: LocalDeal[];
-  recentItems?: any[];
+  recentItems?: RecentItem[];
   onEditLocation?: () => void;
   storageMarkers?: Marker[];
   onMarkerClick?: (markerId: string) => void;
@@ -445,7 +455,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   onEditLocation,
   storageMarkers = [],
   onMarkerClick,
-  locationInfoId,
+  locationInfoId: propLocationInfoId,
 }) => {
   const navigate = useNavigate();
   const [showKeeperModal, setShowKeeperModal] = useState(false);
@@ -455,7 +465,10 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [recentTrades, setRecentTrades] = useState<Trade[]>([]);
+  const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
+  const [locationInfoId, setLocationInfoId] = useState<number | undefined>(
+    propLocationInfoId ?? undefined,
+  );
 
   const bottomSheetRef = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
@@ -540,12 +553,9 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
         const { latitude, longitude } = position.coords;
         setCurrentUserLocation({ latitude, longitude });
 
-        // 현재 위치의 locationInfoId 가져오기
-        const locationResponse = await getLocationId(`${latitude},${longitude}`);
-        if (Array.isArray(locationResponse) && locationResponse.length > 0) {
-          const locationData = locationResponse[0] as LocationIdData;
-          setCurrentLocation(locationData.address || defaultLocation || location);
-        }
+        // 현재 위치 정보 설정
+        setCurrentLocation('현재 위치');
+        setLocationInfoId(0); // 현재 위치의 경우 기본값 0 사용
       } catch (error) {
         console.error('현재 위치 가져오기 실패:', error);
         setCurrentLocation(defaultLocation || location);
@@ -554,6 +564,13 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
     getCurrentLocation();
   }, [defaultLocation, location]);
+
+  // prop으로 받은 locationInfoId가 변경될 때 상태 업데이트
+  useEffect(() => {
+    if (propLocationInfoId !== locationInfoId) {
+      setLocationInfoId(propLocationInfoId ?? undefined);
+    }
+  }, [propLocationInfoId]);
 
   // location prop이 변경될 때 currentLocation 업데이트
   useEffect(() => {
@@ -565,13 +582,22 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   // 최근 거래 내역 가져오기
   useEffect(() => {
     const fetchRecentTrades = async () => {
-      if (locationInfoId) {
-        try {
-          const response = await getRecentTrades(locationInfoId);
+      if (locationInfoId === undefined) {
+        console.log('locationInfoId가 없어서 거래 내역 조회를 건너뜁니다.');
+        return;
+      }
+
+      try {
+        const response = await getRecentTrades(locationInfoId);
+        if (response.success && Array.isArray(response.data)) {
           setRecentTrades(response.data);
-        } catch (error) {
-          console.error('최근 거래 내역 가져오기 실패:', error);
+        } else {
+          console.warn('거래 내역 응답 형식 오류:', response);
+          setRecentTrades([]);
         }
+      } catch (error) {
+        console.error('최근 거래 내역 가져오기 실패:', error);
+        setRecentTrades([]);
       }
     };
 
@@ -771,17 +797,19 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
                 <ItemCard key={index}>
                   <ItemImage
                     style={{
-                      backgroundImage: trade.mainImage ? `url(${trade.mainImage})` : 'none',
+                      backgroundImage: trade.main_image ? `url(${trade.main_image})` : 'none',
                     }}
                   />
                   <ItemInfo>
-                    <ItemName>{trade.productName}</ItemName>
+                    <ItemName>{trade.product_name}</ItemName>
                     <ItemPrice>
-                      <PriceText>{trade.tradePrice.toLocaleString()}원</PriceText>
+                      <PriceText>
+                        {trade.trade_price ? trade.trade_price.toLocaleString() : '-'}원
+                      </PriceText>
                       <PriceUnit> /일</PriceUnit>
                     </ItemPrice>
                     <ItemTags>
-                      {trade.category} | {trade.storagePeriod}일
+                      {trade.category} | {trade.storage_period}일
                     </ItemTags>
                   </ItemInfo>
                 </ItemCard>
