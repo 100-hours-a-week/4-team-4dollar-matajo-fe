@@ -272,7 +272,7 @@ const StorageList: React.FC = () => {
       }
       setError(null);
 
-      // 리셋인 경우 offset은 0, 아니면 현재 offset 사용
+      // 리셋인 경우 offset은 0, 아니면 현재 offset + limit 사용
       const currentOffset = reset ? 0 : offset;
 
       console.log(
@@ -303,20 +303,14 @@ const StorageList: React.FC = () => {
         console.log(`API 응답 성공: ${items.length}개 항목 수신`);
 
         if (reset) {
-          // 초기화 로드인 경우 기존 데이터 전체 교체
           setAllStorageItems(items);
           setStorageItems(items);
-          setOffset(items.length); // 다음 오프셋 설정
+          setOffset(limit); // 다음 오프셋을 limit으로 설정
         } else {
-          // 추가 로드인 경우 기존 데이터에 새 데이터 추가
           setAllStorageItems(prev => {
-            // 중복된 아이템을 방지하기 위해 새 배열 생성
             const existingIds = new Set(prev.map((item: StorageItem) => item.post_id));
             const newItems = items.filter((item: StorageItem) => !existingIds.has(item.post_id));
-            console.log(`중복 제거 후 추가될 항목: ${newItems.length}개`);
-            const updatedItems = [...prev, ...newItems];
-            console.log(`현재까지 총 항목 수: ${updatedItems.length}개`);
-            return updatedItems;
+            return [...prev, ...newItems];
           });
 
           setStorageItems(prev => {
@@ -325,7 +319,7 @@ const StorageList: React.FC = () => {
             return [...prev, ...newItems];
           });
 
-          setOffset(currentOffset + items.length); // 다음 오프셋 업데이트
+          setOffset(currentOffset + limit); // 다음 오프셋을 현재 오프셋 + limit으로 설정
         }
 
         // API가 빈 배열을 반환하는 경우에만 모든 데이터가 로드된 것으로 간주
@@ -618,13 +612,6 @@ const StorageList: React.FC = () => {
     </StorageItem>
   );
 
-  // 데이터 더 로드 버튼 핸들러 - 모든 데이터 로드 상태를 무시하고 강제로 다음 데이터 요청
-  const handleForceLoadMore = () => {
-    setAllDataLoaded(false); // 모든 데이터 로드 상태 초기화
-    console.log('강제 데이터 로드, 현재 offset:', offset);
-    fetchStorageList(false);
-  };
-
   return (
     <Container ref={containerRef} onScroll={handleScroll}>
       {/* 페이지 헤더 */}
@@ -699,23 +686,8 @@ const StorageList: React.FC = () => {
             }}
           >
             모든 보관소를 불러왔습니다.
-            <div style={{ marginTop: '10px' }}>
-              <button
-                onClick={handleForceLoadMore}
-                style={{
-                  padding: '5px 10px',
-                  background: '#5E5CFD',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                }}
-              >
-                추가 데이터 강제 로드
-              </button>
-            </div>
             <div style={{ fontSize: '10px', marginTop: '5px', color: '#666' }}>
-              현재 불러온 보관소: {storageItems.length}개 / 오프셋: {offset}
+              현재 불러온 보관소: {storageItems.length}개
             </div>
           </div>
         )}
