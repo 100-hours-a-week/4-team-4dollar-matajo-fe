@@ -310,6 +310,7 @@ interface CombinedFormData {
   postTitle: string;
   postContent: string;
   preferPrice: string;
+  postAddress: string;
   postAddressData?: DaumAddressData;
 
   // Registration2 데이터
@@ -319,12 +320,28 @@ interface CombinedFormData {
   selectedDurationOptions: string[];
   isValuableSelected: boolean;
   postTags: string[]; // 태그 문자열 배열로 변경
+
+  // 이미지 관련 데이터 (선택적)
+  mainImage?: string | null;
+  detailImages?: string[];
+  mainImageFile?: File | null;
+  detailImageFiles?: File[];
 }
 
 const Registration3: React.FC = () => {
   // 라우터 관련 훅
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 로그인 상태 체크
+  useEffect(() => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      console.log('로그인되지 않은 상태입니다. 로그인 페이지로 이동합니다.');
+      navigate(ROUTES.LOGIN);
+      return;
+    }
+  }, [navigate]);
 
   // 이전 단계에서 전달받은 데이터
   const [prevFormData, setPrevFormData] = useState<CombinedFormData | null>(null);
@@ -333,7 +350,7 @@ const Registration3: React.FC = () => {
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const detailImagesInputRef = useRef<HTMLInputElement>(null);
 
-  // 이미지 상태 관리
+  // 이미지 상태 관리 (메모리에서만 관리)
   const [mainImage, setMainImage] = useState<string | null>(null);
   const [detailImages, setDetailImages] = useState<string[]>([]);
 
@@ -360,8 +377,11 @@ const Registration3: React.FC = () => {
   // 이전 단계 데이터 로드
   useEffect(() => {
     if (location.state) {
-      setPrevFormData(location.state as CombinedFormData);
-      console.log('이전 단계 데이터 로드됨:', location.state);
+      const state = location.state as CombinedFormData;
+      // 이미지 관련 데이터 제외하고 저장
+      const { mainImage, detailImages, mainImageFile, detailImageFiles, ...rest } = state;
+      setPrevFormData(rest);
+      console.log('이전 단계 데이터 로드됨:', rest);
     }
   }, [location.state]);
 
@@ -537,18 +557,16 @@ const Registration3: React.FC = () => {
     if (mainImageInputRef.current) {
       mainImageInputRef.current.value = '';
     }
-    // useEffect에서 로컬 스토리지 저장 처리됨
   };
 
   // 서브 이미지 삭제 핸들러
   const handleDeleteDetailImage = (index: number) => {
-    setDetailImages(prev => prev.filter((_, i) => i !== index));
-    setDetailImageFiles(prev => prev.filter((_, i) => i !== index));
+    setDetailImages((prev: string[]) => prev.filter((_, i: number) => i !== index));
+    setDetailImageFiles((prev: File[]) => prev.filter((_, i: number) => i !== index));
 
     if (detailImagesInputRef.current) {
       detailImagesInputRef.current.value = '';
     }
-    // useEffect에서 로컬 스토리지 저장 처리됨
   };
 
   // 뒤로가기 핸들러
@@ -559,7 +577,6 @@ const Registration3: React.FC = () => {
   // 등록 확인 모달 열기
   const openConfirmModal = () => {
     console.log('모달 열기 시도');
-    // 약간의 지연을 두고 모달 열기 (UI 업데이트 보장)
     setTimeout(() => {
       setIsConfirmModalOpen(true);
       console.log('모달 상태 설정됨:', true);
@@ -582,49 +599,113 @@ const Registration3: React.FC = () => {
     try {
       setIsLoading(true);
       console.log('보관소 등록 시작...');
+      console.log('이전 단계 데이터:', prevFormData);
 
       // 이미지 파일 준비
       let mainImageFileObj: File;
       if (mainImageFile) {
         mainImageFileObj = mainImageFile;
+        console.log('메인 이미지 파일:', mainImageFileObj);
       } else if (mainImage) {
         mainImageFileObj = base64ToFile(mainImage, 'main-image.jpg');
+        console.log('메인 이미지 base64에서 파일로 변환:', mainImageFileObj);
       } else {
         throw new Error('대표 이미지가 없습니다.');
       }
 
       // 상세 이미지 파일 배열 준비
       const detailImageFilesArray: File[] = [];
-      if (detailImageFiles.length === detailImages.length) {
+      if (detailImageFiles.length > 0) {
         detailImageFilesArray.push(...detailImageFiles);
-      } else {
+        console.log('상세 이미지 파일 배열:', detailImageFilesArray);
+      } else if (detailImages.length > 0) {
         for (let i = 0; i < detailImages.length; i++) {
-          if (detailImageFiles[i]) {
-            detailImageFilesArray.push(detailImageFiles[i]);
-          } else {
-            detailImageFilesArray.push(base64ToFile(detailImages[i], `detail-image-${i}.jpg`));
-          }
+          detailImageFilesArray.push(base64ToFile(detailImages[i], `detail-image-${i}.jpg`));
         }
+        console.log('상세 이미지 base64에서 파일로 변환:', detailImageFilesArray);
       }
 
-      // API 요청 데이터 준비 (snake_case로 변환)
-      const requestData = {
-        postTitle: prevFormData.postTitle,
-        postContent: prevFormData.postContent,
-        preferPrice: Number(prevFormData.preferPrice),
-        postAddressData: prevFormData.postAddressData,
-        postTags: prevFormData.postTags,
-        storageLocation: prevFormData.storageLocation,
+      // 주소 데이터 준비
+      const addressData: DaumAddressData = {
+        address: prevFormData.postAddress || '',
+        address_english: '',
+        address_type: 'J',
+        apartment: 'N',
+        auto_jibun_address: prevFormData.postAddress || '',
+        auto_jibun_address_english: '',
+        auto_road_address: prevFormData.postAddress || '',
+        auto_road_address_english: '',
+        bcode: prevFormData.postAddressData?.bcode || '',
+        bname: prevFormData.postAddress?.split(' ').slice(-1)[0] || '',
+        bname1: prevFormData.postAddress?.split(' ')[1] || '',
+        bname1_english: '',
+        bname2: prevFormData.postAddress?.split(' ')[2] || '',
+        bname2_english: '',
+        bname_english: '',
+        building_code: prevFormData.postAddressData?.building_code || '',
+        building_name: prevFormData.postAddressData?.building_name || '',
+        hname: '',
+        jibun_address: prevFormData.postAddress || '',
+        jibun_address_english: '',
+        no_selected: 'N',
+        postcode: prevFormData.postAddressData?.zonecode || '',
+        postcode1: prevFormData.postAddressData?.zonecode?.slice(0, 3) || '',
+        postcode2: prevFormData.postAddressData?.zonecode?.slice(3) || '',
+        postcode_seq: '',
+        query: prevFormData.postAddress || '',
+        road_address: prevFormData.postAddress || '',
+        road_address_english: '',
+        roadname: prevFormData.postAddress?.split(' ').slice(-2).join(' ') || '',
+        roadname_code: prevFormData.postAddressData?.roadname_code || '',
+        roadname_english: '',
+        sido: prevFormData.postAddress?.split(' ')[0] || '',
+        sido_english: '',
+        sigungu: prevFormData.postAddress?.split(' ')[1] || '',
+        sigungu_code: prevFormData.postAddressData?.sigungu_code || '',
+        sigungu_english: '',
+        user_language_type: 'K',
+        user_selected_type: 'J',
+        zonecode: prevFormData.postAddressData?.zonecode || '',
       };
+
+      // API 요청 데이터 준비
+      const requestData: StorageRegistrationRequest = {
+        post_title: prevFormData.postTitle || '',
+        post_content: prevFormData.postContent || '',
+        prefer_price: Number(prevFormData.preferPrice) || 0,
+        post_address_data: addressData,
+        post_tags: prevFormData.postTags || [],
+      };
+
+      // API 요청 데이터 상세 로깅
+      console.log('API 요청 데이터 상세:', {
+        post_title: requestData.post_title,
+        post_content: requestData.post_content,
+        prefer_price: requestData.prefer_price,
+        post_address_data: requestData.post_address_data,
+        post_tags: requestData.post_tags,
+        mainImageFile: {
+          name: mainImageFileObj.name,
+          type: mainImageFileObj.type,
+          size: mainImageFileObj.size,
+        },
+        detailImageFiles: detailImageFilesArray.map(file => ({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        })),
+      });
 
       const response = await registerStorage(requestData, mainImageFileObj, detailImageFilesArray);
 
       if (response.success) {
         console.log('보관소 등록 성공:', response);
+        // 이미지 관련 데이터를 제외한 데이터만 로컬 스토리지에서 제거
         localStorage.removeItem('storage_register_basic');
         localStorage.removeItem('storage_register_details');
         localStorage.removeItem('storage_register_images');
         setPostId(response.id); // 성공 응답에서 post_id 저장
+
         openConfirmModal();
       } else {
         showToast(response?.message || '보관소 등록에 실패했습니다.');
@@ -641,10 +722,10 @@ const Registration3: React.FC = () => {
   const handleConfirmConfirm = () => {
     if (postId) {
       // post_id가 있으면 상세 페이지로 이동
-      navigate(`/storage/${postId}`);
+      navigate(`/storages/${postId}`);
     } else {
       // post_id가 없으면 기존처럼 내 보관소 페이지로 이동
-      navigate('/storage');
+      navigate('/storages');
     }
   };
 

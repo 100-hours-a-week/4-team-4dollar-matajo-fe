@@ -346,7 +346,7 @@ const Registration2: React.FC = () => {
     // 다음 단계로 이동
     console.log('다음 단계로 이동, 통합 데이터:', combinedData);
     console.log('태그 문자열 배열:', tagStrings);
-    navigate('/storage/register/images', { state: combinedData });
+    navigate('/storages/register/images', { state: combinedData });
   };
 
   return (
