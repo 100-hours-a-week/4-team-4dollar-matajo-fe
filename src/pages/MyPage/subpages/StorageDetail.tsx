@@ -12,6 +12,7 @@ import {
 } from '../../../services/api/modules/place';
 import { transformStorageDetail } from '../../../utils/dataTransformers';
 import ChatService from '../../../services/ChatService';
+import axios from 'axios';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -77,7 +78,7 @@ const ImageSlider = styled.div<{ currentIndex: number }>`
   transform: translateX(${props => -props.currentIndex * 100}%);
   transition: transform 0.3s ease-in-out;
   will-change: transform;
-  touch-action: pan-y;
+  touch-action: pan-y; /* Y축 스크롤만 허용, X축 스크롤은 방지 */
   cursor: grab;
 
   &:active {
@@ -434,7 +435,7 @@ interface StorageDetailData {
   postAddress: string;
   nickname: string;
   hiddenStatus: boolean;
-  userId: number; // 게시글 작성자 ID 추가
+  editable: boolean; // userId 대신 editable 필드로 변경
   latitude?: number;
   longitude?: number;
 }
@@ -543,26 +544,9 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
           setStorageDetail(transformedData);
 
-          // accessToken에서 userId 추출
-          const token = localStorage.getItem('accessToken');
-          if (token) {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(
-              atob(base64)
-                .split('')
-                .map(c => {
-                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                })
-                .join(''),
-            );
-            const payload = JSON.parse(jsonPayload);
-
-            // userId 비교
-            const isAuthorCheck = payload.userId === transformedData.userId;
-            setIsAuthor(isAuthorCheck);
-            setIsHidden(transformedData.hiddenStatus);
-          }
+          // editable 값으로 작성자 여부 판단
+          setIsAuthor(transformedData.editable);
+          setIsHidden(transformedData.hiddenStatus);
         } else {
           throw new Error('데이터를 불러오는 데 실패했습니다.');
         }
@@ -592,8 +576,8 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     if (!storageDetail) return;
 
     try {
-      // 작성자와 현재 사용자가 같은지 확인
-      if (storageDetail.userId === Number(localStorage.getItem('userId'))) {
+      // 작성자와 현재 사용자가 같은지 확인 (editable 값으로 판단)
+      if (storageDetail.editable) {
         showToastMessage('본인의 장소에는 채팅을 생성할 수 없습니다.');
         return;
       }
@@ -627,164 +611,182 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
   // 터치 이벤트 핸들러
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartX(e.touches[0].clientX);
-    setTouchEndX(e.touches[0].clientX); // 초기화
+    // 이미지 슬라이더 내부에서만 이벤트 실행
+    if (e.currentTarget.contains(e.target as Node)) {
+      setTouchStartX(e.touches[0].clientX);
+      setTouchEndX(e.touches[0].clientX); // 초기화
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEndX(e.touches[0].clientX);
+    // 이미지 슬라이더 내부에서만 이벤트 실행
+    if (e.currentTarget.contains(e.target as Node)) {
+      setTouchEndX(e.touches[0].clientX);
 
-    // 슬라이더가 있고 이미지가 2개 이상일 때만 실시간 드래그 효과 적용
-    if (sliderRef.current && (storageDetail?.postImages?.length ?? 0) > 1) {
-      const dragDistance = e.touches[0].clientX - touchStartX;
-      const slideWidth = sliderRef.current.offsetWidth;
-      const maxOffset = ((storageDetail?.postImages?.length ?? 1) - 1) * slideWidth;
+      // 슬라이더가 있고 이미지가 2개 이상일 때만 실시간 드래그 효과 적용
+      if (sliderRef.current && (storageDetail?.postImages?.length ?? 0) > 1) {
+        const dragDistance = e.touches[0].clientX - touchStartX;
+        const slideWidth = sliderRef.current.offsetWidth;
+        const maxOffset = ((storageDetail?.postImages?.length ?? 1) - 1) * slideWidth;
 
-      // 현재 위치에서의 드래그 오프셋 계산
-      let newOffset = currentImageIndex * slideWidth - dragDistance;
+        // 현재 위치에서의 드래그 오프셋 계산
+        let newOffset = currentImageIndex * slideWidth - dragDistance;
 
-      // 경계 처리 (맨 앞, 맨 뒤 이미지에서 고무줄 효과)
-      if (newOffset < 0) {
-        newOffset = newOffset / 3; // 저항 효과
-      } else if (newOffset > maxOffset) {
-        newOffset = maxOffset + (newOffset - maxOffset) / 3; // 저항 효과
+        // 경계 처리 (맨 앞, 맨 뒤 이미지에서 고무줄 효과)
+        if (newOffset < 0) {
+          newOffset = newOffset / 3; // 저항 효과
+        } else if (newOffset > maxOffset) {
+          newOffset = maxOffset + (newOffset - maxOffset) / 3; // 저항 효과
+        }
+
+        // translate3d를 사용하여 하드웨어 가속 적용
+        sliderRef.current.style.transform = `translate3d(${-newOffset}px, 0, 0)`;
+        sliderRef.current.style.transition = 'none';
       }
-
-      // translate3d를 사용하여 하드웨어 가속 적용
-      sliderRef.current.style.transform = `translate3d(${-newOffset}px, 0, 0)`;
-      sliderRef.current.style.transition = 'none';
     }
   };
 
-  const handleTouchEnd = () => {
-    // 최소 드래그 거리 (px)
-    const minSwipeDistance = 50;
-    const distance = touchStartX - touchEndX;
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // 이미지 슬라이더 내부에서만 이벤트 실행
+    if (e.currentTarget.contains(e.target as Node)) {
+      // 최소 드래그 거리 (px)
+      const minSwipeDistance = 50;
+      const distance = touchStartX - touchEndX;
 
-    if (Math.abs(distance) < minSwipeDistance) {
-      // 작은 드래그는 원위치로 복원
-      if (sliderRef.current) {
-        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
-        sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+      if (Math.abs(distance) < minSwipeDistance) {
+        // 작은 드래그는 원위치로 복원
+        if (sliderRef.current) {
+          sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+          sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+        }
+        return;
       }
-      return;
-    }
 
-    // 상태 업데이트 및 이미지 이동
-    if (distance > 0 && currentImageIndex < (storageDetail?.postImages?.length || 0) - 1) {
-      // 오른쪽에서 왼쪽으로 스와이프 (다음 이미지)
-      const newIndex = currentImageIndex + 1;
-      setCurrentImageIndex(newIndex);
+      // 상태 업데이트 및 이미지 이동
+      if (distance > 0 && currentImageIndex < (storageDetail?.postImages?.length || 0) - 1) {
+        // 오른쪽에서 왼쪽으로 스와이프 (다음 이미지)
+        const newIndex = currentImageIndex + 1;
+        setCurrentImageIndex(newIndex);
 
-      // 애니메이션 적용
-      if (sliderRef.current) {
-        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
-        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
-      }
-    } else if (distance < 0 && currentImageIndex > 0) {
-      // 왼쪽에서 오른쪽으로 스와이프 (이전 이미지)
-      const newIndex = currentImageIndex - 1;
-      setCurrentImageIndex(newIndex);
+        // 애니메이션 적용
+        if (sliderRef.current) {
+          sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+          sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+        }
+      } else if (distance < 0 && currentImageIndex > 0) {
+        // 왼쪽에서 오른쪽으로 스와이프 (이전 이미지)
+        const newIndex = currentImageIndex - 1;
+        setCurrentImageIndex(newIndex);
 
-      // 애니메이션 적용
-      if (sliderRef.current) {
-        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
-        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
-      }
-    } else {
-      // 첫 번째나 마지막 이미지에서 경계를 벗어나려는 시도는 원위치로
-      if (sliderRef.current) {
-        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
-        sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+        // 애니메이션 적용
+        if (sliderRef.current) {
+          sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+          sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+        }
+      } else {
+        // 첫 번째나 마지막 이미지에서 경계를 벗어나려는 시도는 원위치로
+        if (sliderRef.current) {
+          sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+          sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+        }
       }
     }
   };
 
   // 마우스 이벤트 핸들러 (데스크톱 지원)
   const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragStartX(e.clientX);
-    setTouchStartX(e.clientX);
-    setTouchEndX(e.clientX);
-
     // 이미지 드래그 중 텍스트 선택 방지
     e.preventDefault();
+
+    // 이미지 슬라이더 내부에서만 이벤트 실행
+    if (e.currentTarget.contains(e.target as Node)) {
+      setIsDragging(true);
+      setDragStartX(e.clientX);
+      setTouchStartX(e.clientX);
+      setTouchEndX(e.clientX);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
 
-    setTouchEndX(e.clientX);
+    // 이미지 슬라이더 내부에서만 이벤트 실행
+    if (e.currentTarget.contains(e.target as Node)) {
+      setTouchEndX(e.clientX);
 
-    // 슬라이더가 있고 이미지가 2개 이상일 때만 실시간 드래그 효과 적용
-    if (sliderRef.current && (storageDetail?.postImages?.length ?? 0) > 1) {
-      const dragDistance = e.clientX - dragStartX;
-      const slideWidth = sliderRef.current.offsetWidth;
-      const maxOffset = ((storageDetail?.postImages?.length ?? 1) - 1) * slideWidth;
+      // 슬라이더가 있고 이미지가 2개 이상일 때만 실시간 드래그 효과 적용
+      if (sliderRef.current && (storageDetail?.postImages?.length ?? 0) > 1) {
+        const dragDistance = e.clientX - dragStartX;
+        const slideWidth = sliderRef.current.offsetWidth;
+        const maxOffset = ((storageDetail?.postImages?.length ?? 1) - 1) * slideWidth;
 
-      // 현재 위치에서의 드래그 오프셋 계산
-      let newOffset = currentImageIndex * slideWidth - dragDistance;
+        // 현재 위치에서의 드래그 오프셋 계산
+        let newOffset = currentImageIndex * slideWidth - dragDistance;
 
-      // 경계 처리 (맨 앞, 맨 뒤 이미지에서 고무줄 효과)
-      if (newOffset < 0) {
-        newOffset = newOffset / 3;
-      } else if (newOffset > maxOffset) {
-        newOffset = maxOffset + (newOffset - maxOffset) / 3;
+        // 경계 처리 (맨 앞, 맨 뒤 이미지에서 고무줄 효과)
+        if (newOffset < 0) {
+          newOffset = newOffset / 3;
+        } else if (newOffset > maxOffset) {
+          newOffset = maxOffset + (newOffset - maxOffset) / 3;
+        }
+
+        // translate3d를 사용하여 하드웨어 가속 적용
+        sliderRef.current.style.transform = `translate3d(${-newOffset}px, 0, 0)`;
+        sliderRef.current.style.transition = 'none';
       }
-
-      // translate3d를 사용하여 하드웨어 가속 적용
-      sliderRef.current.style.transform = `translate3d(${-newOffset}px, 0, 0)`;
-      sliderRef.current.style.transition = 'none';
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
     if (!isDragging) return;
 
-    // 최소 드래그 거리 (px)
-    const minSwipeDistance = 50;
-    const distance = touchStartX - touchEndX;
+    // 이미지 슬라이더 내부에서만 이벤트 실행
+    if (e.currentTarget.contains(e.target as Node)) {
+      // 최소 드래그 거리 (px)
+      const minSwipeDistance = 50;
+      const distance = touchStartX - touchEndX;
 
-    if (Math.abs(distance) < minSwipeDistance) {
-      // 작은 드래그는 원위치로 복원
-      if (sliderRef.current) {
-        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
-        sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+      if (Math.abs(distance) < minSwipeDistance) {
+        // 작은 드래그는 원위치로 복원
+        if (sliderRef.current) {
+          sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+          sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+        }
+        setIsDragging(false);
+        return;
       }
+
+      // 상태 업데이트 및 이미지 이동
+      if (distance > 0 && currentImageIndex < (storageDetail?.postImages?.length || 0) - 1) {
+        // 오른쪽에서 왼쪽으로 드래그 (다음 이미지)
+        const newIndex = currentImageIndex + 1;
+        setCurrentImageIndex(newIndex);
+
+        // 애니메이션 적용
+        if (sliderRef.current) {
+          sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+          sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+        }
+      } else if (distance < 0 && currentImageIndex > 0) {
+        // 왼쪽에서 오른쪽으로 드래그 (이전 이미지)
+        const newIndex = currentImageIndex - 1;
+        setCurrentImageIndex(newIndex);
+
+        // 애니메이션 적용
+        if (sliderRef.current) {
+          sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+          sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
+        }
+      } else {
+        // 첫 번째나 마지막 이미지에서 경계를 벗어나려는 시도는 원위치로
+        if (sliderRef.current) {
+          sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
+          sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
+        }
+      }
+
       setIsDragging(false);
-      return;
     }
-
-    // 상태 업데이트 및 이미지 이동
-    if (distance > 0 && currentImageIndex < (storageDetail?.postImages?.length || 0) - 1) {
-      // 오른쪽에서 왼쪽으로 드래그 (다음 이미지)
-      const newIndex = currentImageIndex + 1;
-      setCurrentImageIndex(newIndex);
-
-      // 애니메이션 적용
-      if (sliderRef.current) {
-        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
-        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
-      }
-    } else if (distance < 0 && currentImageIndex > 0) {
-      // 왼쪽에서 오른쪽으로 드래그 (이전 이미지)
-      const newIndex = currentImageIndex - 1;
-      setCurrentImageIndex(newIndex);
-
-      // 애니메이션 적용
-      if (sliderRef.current) {
-        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
-        sliderRef.current.style.transform = `translate3d(${-newIndex * 100}%, 0, 0)`;
-      }
-    } else {
-      // 첫 번째나 마지막 이미지에서 경계를 벗어나려는 시도는 원위치로
-      if (sliderRef.current) {
-        sliderRef.current.style.transition = 'transform 0.3s ease-in-out';
-        sliderRef.current.style.transform = `translate3d(${-currentImageIndex * 100}%, 0, 0)`;
-      }
-    }
-
-    setIsDragging(false);
   };
 
   // 이미지 제어 함수
@@ -827,6 +829,126 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     }
   };
 
+  // 모달 상태 관리
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false);
+
+  // 게시글 삭제 모달 열기
+  const openDeleteModal = () => {
+    setIsDeleteModalOpen(true);
+  };
+
+  // 게시글 삭제 확인 처리
+  const handleDeleteConfirm = async () => {
+    try {
+      if (!id) return;
+
+      // 모달 닫기
+      setIsDeleteModalOpen(false);
+
+      // 로딩 표시
+      setIsLoading(true);
+
+      // API 호출로 보관소 삭제
+      const response = await deleteStorage(id);
+
+      console.log('보관소 삭제 완료:', response);
+
+      // 성공 시 보관소 목록으로 이동
+      navigate('/storages');
+    } catch (err) {
+      console.error('보관소 삭제 실패:', err);
+      setError('보관소 삭제에 실패했습니다. 다시 시도해주세요.');
+      setIsLoading(false);
+    }
+  };
+
+  // 게시글 삭제 취소 처리
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false);
+    console.log('게시글 삭제 취소');
+  };
+
+  // 공개/비공개 전환 모달 열기
+  const openVisibilityModal = () => {
+    setIsVisibilityModalOpen(true);
+  };
+
+  // 뒤로가기 처리 함수
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      // 보관소 목록으로 이동 (기본값)
+      navigate('/storages');
+    }
+  };
+
+  // 모달 내용 컴포넌트 - 게시글 삭제
+  const deleteStorageContent = (
+    <>
+      <HighlightText>게시글 삭제</HighlightText>
+      <GrayText>하시겠습니까?</GrayText>
+    </>
+  );
+
+  // 모달 내용 컴포넌트 - 공개/비공개 전환
+  const visibilityContent = (
+    <>
+      <HighlightText>게시글을 {isHidden ? '공개' : '비공개'}</HighlightText>
+      <GrayText>하시겠습니까?</GrayText>
+    </>
+  );
+
+  // 공개/비공개 전환 핸들러
+  const handleToggleVisibility = async () => {
+    setIsVisibilityModalOpen(false);
+
+    try {
+      if (!id) return;
+
+      // 로딩 상태 활성화
+      setIsLoading(true);
+
+      const response = await toggleStorageVisibility(id);
+
+      // 로딩 상태 비활성화
+      setIsLoading(false);
+
+      // 응답 구조 검증
+      if (response && response.data && response.data.success) {
+        setIsHidden(!isHidden);
+        showToastMessage(isHidden ? '보관소가 공개되었습니다.' : '보관소가 비공개되었습니다.');
+      } else {
+        console.warn('공개/비공개 전환 성공 응답 구조 확인:', response?.data);
+        showToastMessage('공개/비공개 전환에 실패했습니다.');
+      }
+    } catch (error) {
+      // 로딩 상태 비활성화
+      setIsLoading(false);
+
+      console.error('공개/비공개 전환 실패:', error);
+
+      // 구체적인 에러 메시지 표시
+      let errorMessage = '공개/비공개 전환에 실패했습니다. 다시 시도해주세요.';
+
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('서버 응답 에러:', error.response.data);
+        console.error('에러 상태 코드:', error.response.status);
+
+        if (error.response.status === 401) {
+          errorMessage = '로그인이 필요합니다.';
+        } else if (error.response.status === 403) {
+          errorMessage = '권한이 없습니다.';
+        } else if (error.response.status === 500) {
+          errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+        }
+      }
+
+      showToastMessage(errorMessage);
+    }
+  };
+
   // 헤더 드롭다운 옵션 정의 수정
   const headerDropdownOptions: HeaderDropdownOption[] = isAuthor
     ? [
@@ -849,7 +971,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
               />
             </svg>
           ),
-          onClick: () => navigate(`/edit-storage/${id}`),
+          onClick: () => navigate(`/storages/${id}/edit`),
         },
         {
           id: 'visibility',
@@ -870,7 +992,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
               />
             </svg>
           ),
-          onClick: () => handleToggleVisibility(),
+          onClick: () => openVisibilityModal(),
         },
         {
           id: 'delete',
@@ -897,81 +1019,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
       ]
     : [];
 
-  // 모달 상태 관리
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  // 게시글 삭제 모달 열기
-  const openDeleteModal = () => {
-    setIsDeleteModalOpen(true);
-  };
-
-  // 게시글 삭제 확인 처리
-  const handleDeleteConfirm = async () => {
-    try {
-      if (!id) return;
-
-      // 모달 닫기
-      setIsDeleteModalOpen(false);
-
-      // 로딩 표시
-      setIsLoading(true);
-
-      // API 호출로 보관소 삭제
-      const response = await deleteStorage(id);
-
-      console.log('보관소 삭제 완료:', response);
-
-      // 성공 시 보관소 목록으로 이동
-      navigate('/storage');
-    } catch (err) {
-      console.error('보관소 삭제 실패:', err);
-      setError('보관소 삭제에 실패했습니다. 다시 시도해주세요.');
-      setIsLoading(false);
-    }
-  };
-
-  // 게시글 삭제 취소 처리
-  const handleDeleteCancel = () => {
-    setIsDeleteModalOpen(false);
-    console.log('게시글 삭제 취소');
-  };
-
-  // 뒤로가기 처리 함수
-  const handleBack = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      // 보관소 목록으로 이동 (기본값)
-      navigate('/storage');
-    }
-  };
-
-  // 모달 내용 컴포넌트 - 게시글 삭제
-  const deleteStorageContent = (
-    <>
-      <HighlightText>게시글 삭제</HighlightText>
-      <GrayText>하시겠습니까?</GrayText>
-    </>
-  );
-
-  // 공개/비공개 전환 핸들러
-  const handleToggleVisibility = async () => {
-    try {
-      if (!id) return;
-
-      const response = await toggleStorageVisibility(id);
-      if (response.data.success) {
-        setIsHidden(!isHidden);
-        showToastMessage(isHidden ? '보관소가 공개되었습니다.' : '보관소가 비공개되었습니다.');
-      } else {
-        showToastMessage('공개/비공개 전환에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('공개/비공개 전환 실패:', error);
-      showToastMessage('공개/비공개 전환에 실패했습니다.');
-    }
-  };
-
   return (
     <>
       {/* 상단 헤더 */}
@@ -993,6 +1040,17 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
           confirmText="삭제"
           onCancel={handleDeleteCancel}
           onConfirm={handleDeleteConfirm}
+        />
+
+        {/* 공개/비공개 전환 모달 */}
+        <Modal
+          isOpen={isVisibilityModalOpen}
+          onClose={() => setIsVisibilityModalOpen(false)}
+          content={visibilityContent}
+          cancelText="취소"
+          confirmText="확인"
+          onCancel={() => setIsVisibilityModalOpen(false)}
+          onConfirm={handleToggleVisibility}
         />
 
         {isLoading ? (

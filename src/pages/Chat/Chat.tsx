@@ -69,9 +69,18 @@ const DateText = styled.span`
 // 메시지 그룹 (버블 + 시간)
 const MessageGroup = styled.div`
   display: flex;
-  flex-direction: column;
-  max-width: 70%;
+  flex-direction: row;
+  max-width: 75%;
   margin-bottom: 15px;
+  position: relative;
+`;
+const TimeReadGroup = styled.div`
+  bottom: 0;
+  min-width: 43px;
+  padding-right: 3px;
+  padding-left: 3px;
+  display: flex;
+  flex-direction: column;
   position: relative;
 `;
 
@@ -84,7 +93,7 @@ const SentMessageGroup = styled(MessageGroup)`
 // 받은 메시지 그룹
 const ReceivedMessageGroup = styled(MessageGroup)`
   align-self: flex-start;
-  align-items: flex-start;
+  align-items: flex-end;
 `;
 
 // 메시지 버블 컨테이너 - 기본
@@ -732,9 +741,9 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       setMessages(updatedMessages);
       setSavedMessages(updatedMessages);
 
-      // localStorage에 저장
+      /* // localStorage에 저장
       localStorage.setItem(`chat_messages_${roomId}`, JSON.stringify(updatedMessages));
-      console.log('보낸 메시지를 로컬 스토리지에 저장');
+      console.log('보낸 메시지를 로컬 스토리지에 저장'); */
 
       // 입력창 초기화
       setInputMessage('');
@@ -989,13 +998,13 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     }
   }, [messages, currentUserId, roomId]);
 
-  // savedMessages가 변경될 때마다 localStorage에 저장
+  /* // savedMessages가 변경될 때마다 localStorage에 저장
   useEffect(() => {
     if (roomId && savedMessages.length > 0) {
       localStorage.setItem(`chat_messages_${roomId}`, JSON.stringify(savedMessages));
       console.log('메시지를 로컬 스토리지에 저장:', savedMessages.length);
     }
-  }, [savedMessages, roomId]);
+  }, [savedMessages, roomId]); */
 
   return (
     <Container>
@@ -1041,12 +1050,14 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           if (message.message_type === MessageType.SYSTEM) {
             return (
               <SentMessageGroup key={message.message_id || index}>
+                <TimeReadGroup>
+                  {message.created_at && (
+                    <MessageTime>{formatMessageTime(message.created_at)}</MessageTime>
+                  )}
+                </TimeReadGroup>
                 <SystemMessageBubble>
                   <MessageContent>{message.content}</MessageContent>
                 </SystemMessageBubble>
-                {message.created_at && (
-                  <MessageTime>{formatMessageTime(message.created_at)}</MessageTime>
-                )}
               </SentMessageGroup>
             );
           }
@@ -1054,6 +1065,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           if (isSentByCurrentUser(message)) {
             return (
               <SentMessageGroup key={message.message_id || index}>
+                <TimeReadGroup>
+                  {message.created_at && (
+                    <MessageTime>{formatMessageTime(message.created_at)}</MessageTime>
+                  )}
+                  {message.read_status && <ReadStatus>읽음</ReadStatus>}
+                </TimeReadGroup>
                 <SentMessageBubble>
                   {message.message_type === MessageType.IMAGE ? (
                     <ImageMessage
@@ -1064,10 +1081,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
                     <MessageContent>{message.content}</MessageContent>
                   )}
                 </SentMessageBubble>
-                {message.created_at && (
-                  <MessageTime>{formatMessageTime(message.created_at)}</MessageTime>
-                )}
-                {message.read_status && <ReadStatus>읽음</ReadStatus>}
               </SentMessageGroup>
             );
           }
@@ -1087,9 +1100,11 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
                   <MessageContent>{message.content}</MessageContent>
                 )}
               </ReceivedMessageBubble>
-              {message.created_at && (
-                <MessageTime>{formatMessageTime(message.created_at)}</MessageTime>
-              )}
+              <TimeReadGroup>
+                {message.created_at && (
+                  <MessageTime>{formatMessageTime(message.created_at)}</MessageTime>
+                )}
+              </TimeReadGroup>
             </ReceivedMessageGroup>
           );
         })}
