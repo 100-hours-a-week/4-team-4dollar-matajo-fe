@@ -86,7 +86,7 @@ export const API_PATHS = {
     STORAGE: '/api/posts/my-posts',
   },
   TRADES: {
-    MY_TRADES: '/api/trades/my-trade',
+    MY_TRADES: '/api/trades/my-trades',
     RECENT_BY_LOCATION: '/api/trades',
   },
 };
