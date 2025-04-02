@@ -571,7 +571,7 @@ const Registration3: React.FC = () => {
 
   // 뒤로가기 핸들러
   const handleBack = () => {
-    navigate(`/storage/register/details`);
+    navigate(`/storages/register/details`);
   };
 
   // 등록 확인 모달 열기
