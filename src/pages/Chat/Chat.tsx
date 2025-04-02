@@ -391,7 +391,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   const [messages, setMessages] = useState<ChatMessageResponseDto[]>(() => {
     if (!roomId) return [];
 
-    // localStorage에서 저장된 메시지 로드
+    /* // localStorage에서 저장된 메시지 로드
     const savedMessagesJson = localStorage.getItem(`chat_messages_${roomId}`);
     if (savedMessagesJson) {
       try {
@@ -399,7 +399,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       } catch (e) {
         console.error('저장된 메시지 파싱 실패:', e);
       }
-    }
+    } */
     return [];
   });
 
@@ -434,7 +434,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   const [savedMessages, setSavedMessages] = useState<ChatMessageResponseDto[]>(() => {
     if (!roomId) return [];
 
-    // localStorage에서 저장된 메시지 로드
+    /* // localStorage에서 저장된 메시지 로드
     const savedMessagesJson = localStorage.getItem(`chat_messages_${roomId}`);
     if (savedMessagesJson) {
       try {
@@ -442,7 +442,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       } catch (e) {
         console.error('저장된 메시지 파싱 실패:', e);
       }
-    }
+    } */
     return [];
   });
 
@@ -622,7 +622,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     try {
       console.log('이전 메시지 로드 시작...');
 
-      // 로컬 스토리지에서 메시지 로드
+      /* // 로컬 스토리지에서 메시지 로드
       let localMessages: ChatMessageResponseDto[] = [];
       const savedMessagesJson = localStorage.getItem(`chat_messages_${roomId}`);
       if (savedMessagesJson) {
@@ -632,13 +632,13 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         } catch (e) {
           console.error('저장된 메시지 파싱 실패:', e);
         }
-      }
+      } */
 
       // 서버에서 메시지 로드
       const serverMessages = await chatService.loadMessages(roomId);
       console.log('서버에서 받은 메시지:', serverMessages.length);
 
-      // 모든 메시지 병합
+      /* // 모든 메시지 병합
       const allMessages = [...localMessages, ...serverMessages];
 
       // 중복 제거 및 정렬
@@ -654,7 +654,11 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
       // localStorage에 저장
       localStorage.setItem(`chat_messages_${roomId}`, JSON.stringify(uniqueMessages));
-      console.log('메시지 상태 업데이트 완료');
+      console.log('메시지 상태 업데이트 완료'); */
+
+      // 서버 메시지만 사용
+      setMessages(serverMessages);
+      setSavedMessages(serverMessages);
     } catch (error) {
       console.error('이전 메시지 로드 실패:', error);
       setError('메시지를 불러오는데 실패했습니다. 새로고침 후 다시 시도해주세요.');
@@ -679,20 +683,20 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     }
   };
 
-  // 채팅 스크롤을 항상 아래로 유지
+  // 채팅 스크롤 관리
   useEffect(() => {
-    if (chatContainerRef.current) {
-      const container = chatContainerRef.current;
-      const shouldScroll =
-        container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-
-      if (shouldScroll) {
+    const scrollToBottom = () => {
+      if (chatContainerRef.current) {
+        const container = chatContainerRef.current;
         container.scrollTo({
           top: container.scrollHeight,
-          behavior: 'smooth',
+          behavior: 'auto',
         });
       }
-    }
+    };
+
+    // 메시지가 변경될 때마다 스크롤
+    scrollToBottom();
   }, [messages]);
 
   // 메시지 전송 핸들러
@@ -723,27 +727,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
       // WebSocket을 통해 메시지 전송
       await chatService.sendTextMessage(roomId, currentUserId, trimmedMessage);
-
-      // 메시지 상태 업데이트
-      const newMessage: ChatMessageResponseDto = {
-        message_id: Date.now(), // 임시 ID
-        room_id: roomId,
-        sender_id: currentUserId,
-        content: trimmedMessage,
-        message_type: MessageType.TEXT,
-        read_status: false,
-        created_at: new Date().toISOString(),
-        sender_nickname: '나', // 임시 닉네임
-      };
-
-      // 새 메시지 추가
-      const updatedMessages = [...messages, newMessage];
-      setMessages(updatedMessages);
-      setSavedMessages(updatedMessages);
-
-      /* // localStorage에 저장
-      localStorage.setItem(`chat_messages_${roomId}`, JSON.stringify(updatedMessages));
-      console.log('보낸 메시지를 로컬 스토리지에 저장'); */
 
       // 입력창 초기화
       setInputMessage('');
@@ -883,7 +866,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         ),
     );
 
-    filteredMessages.forEach(message => {
+    // 메시지를 시간순으로 정렬 (오래된 메시지가 위로 가도록)
+    const sortedMessages = [...filteredMessages].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+
+    sortedMessages.forEach(message => {
       if (!message.created_at) return;
 
       const messageDate = formatDateHeader(message.created_at);
