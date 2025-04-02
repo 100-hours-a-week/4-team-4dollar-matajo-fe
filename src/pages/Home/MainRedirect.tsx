@@ -55,7 +55,7 @@ const MainRedirect: React.FC = () => {
     );
   }
 
-  // 현재 경로가 /mypage/mytrade 또는 /storage/mytrade인 경우 리다이렉트하지 않음
+  // 현재 경로가 /mypage/mytrade 또는 /storages/mytrade인 경우 리다이렉트하지 않음
   if (
     location.pathname === `/${ROUTES.MYPAGE}/${ROUTES.MYTRADE}` ||
     location.pathname === `/${ROUTES.MYTRADE}`

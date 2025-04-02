@@ -11,7 +11,9 @@ import StorageDetail from '../pages/MyPage/subpages/StorageDetail';
 import KeeperRegistration from '../pages/MyPage/subpages/KeeperRegistration';
 import ChatroomList from '../pages/Chat/ChatroomList';
 import Chat from '../pages/Chat/Chat';
-import EditStorage from '../pages/EditStorage/EditStorage';
+import EditStorageBasic from '../pages/EditStorage/EditStorageBasic';
+import EditStorageDetails from '../pages/EditStorage/EditStorageDetails';
+import EditStorageImages from '../pages/EditStorage/EditStorageImages';
 import NotFoundPage from '../pages/NotFound';
 import KakaoCallback from '../pages/Login/KakaoCallback';
 import MainRedirect from '../pages/Home/MainRedirect';
@@ -109,7 +111,7 @@ const routes: RouteObject[] = [
 
   // 보관소 등록 라우트 (보관인 전용)
   {
-    path: '/storage',
+    path: '/storages',
     element: <PrivateRoute requiredRole={UserRole.Keeper} />,
     children: [
       {
@@ -124,7 +126,9 @@ const routes: RouteObject[] = [
         path: 'register/images',
         element: <StorageRegistrationImages />,
       },
-      { path: ROUTES.EDIT_STORAGE, element: <EditStorage /> },
+      { path: ':id/edit', element: <EditStorageBasic /> },
+      { path: ':id/edit/details', element: <EditStorageDetails /> },
+      { path: ':id/edit/images', element: <EditStorageImages /> },
       { path: ROUTES.MYPLACE, element: <MyPlace /> },
     ],
   },
