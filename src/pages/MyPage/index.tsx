@@ -13,6 +13,9 @@ import { isAuthenticated, isKeeper } from '../../utils/api/authUtils';
 import { checkKeeperRole } from '../../services/api/modules/keeper';
 import axios from '../../services/api/client';
 import { ROUTES } from '../../constants/routes';
+import { updateNickname } from '../../services/api/modules/user';
+import client from '../../services/api/client';
+//닉네임 변경
 // next/image와 react-icons/cg 대신 기본 이미지 태그 사용
 // import Image from 'next/image';
 // import { CgProfile } from 'react-icons/cg';
@@ -172,7 +175,8 @@ const ProfileDivider = styled(ProfileElement).attrs({ left: '90px', top: '52px' 
 
 const BadgeContainer = styled(ProfileElement).attrs<{ offset?: number }>(props => ({
   left: props.offset ? `${props.offset}px` : '90px',
-  top: '60px',
+  position: 'absolute',
+  top: '66px',
 }))<{ offset?: number }>`
   width: 32px;
   height: 17px;
@@ -272,6 +276,7 @@ const MyPage: React.FC = () => {
       console.log('디코딩된 토큰 정보:', decoded); // 디버깅용 로그
 
       if (decoded) {
+        const userId = decoded.userId;
         // 토큰 내의 다양한 가능한 필드명 확인
         const nickname = decoded.nickname || decoded.sub || decoded.name || '타조 91088';
         const isUserKeeper = decoded.role === 'KEEPER' || decoded.role === 'BOTH';
@@ -279,20 +284,35 @@ const MyPage: React.FC = () => {
         const profileImg = decoded.profileImage || decoded.avatar || '/tajo-logo.png';
 
         return {
+          userId,
           isKeeper: isUserKeeper,
           userName: nickname,
           profileImage: profileImg,
         };
       }
     }
+
     return {
       isKeeper: isKeeper(),
       userName: '타조 91088',
       profileImage: '/tajo-logo.png', // 기본 이미지를 타조 로고로 변경
+      userId: null,
     };
   };
 
-  const [userState, setUserState] = useState(initialUserState());
+  // 사용자 정보 상태 초기화 (토큰 기반으로 닉네임, 보관인 여부, 프로필 이미지 불러옴)
+  const [userState, setUserState] = useState<{
+    isKeeper: boolean;
+    userName: string;
+    profileImage: string;
+    userId?: number | string;
+  }>(() => initialUserState());
+
+  // 닉네임 편집 모드 여부 (true면 input 필드 노출)
+  const [isEditing, setIsEditing] = useState(false);
+
+  // 닉네임 입력 상태 (초기값은 토큰에서 가져온 닉네임)
+  const [nickname, setNickname] = useState(userState.userName);
 
   // 모달 상태 관리
   const [isKeeperModalOpen, setIsKeeperModalOpen] = useState(false);
@@ -320,7 +340,7 @@ const MyPage: React.FC = () => {
   };
 
   // useEffect를 사용하여 페이지 로드 시 보관인 역할 확인
-  useEffect(() => {
+  /*   useEffect(() => {
     // 로그인 상태인 경우에만 추가적인 API 확인
     if (isAuthenticated()) {
       const checkUserInfo = async () => {
@@ -386,7 +406,7 @@ const MyPage: React.FC = () => {
         window.removeEventListener('USER_ROLE_CHANGED', handleRoleChange);
       };
     }
-  }, []);
+  }, []); */
 
   // 내 거래내역 보기 이동 핸들러
   const moveToMyTradePage = () => {
@@ -553,6 +573,39 @@ const MyPage: React.FC = () => {
     setIsLogoutModalOpen(false);
   };
 
+  // 🔥 이 위치에 추가
+  const handleSubmit = async () => {
+    if (nickname.trim().length === 0 || nickname.length > 10) {
+      alert('닉네임은 1~10자여야 합니다.');
+      return;
+    }
+
+    const userId = userState.userId?.toString();
+    if (!userId) {
+      alert('유저 정보를 불러올 수 없습니다.');
+      return;
+    }
+
+    try {
+      const success = await client.patch(`/api/users/nickname?userId=${userId}`, {
+        nickname,
+      });
+      if (success) {
+        setUserState(prev => ({
+          ...prev,
+          userName: nickname,
+        }));
+        setIsEditing(false);
+        showToast('닉네임이 변경되었습니다.');
+      } else {
+        alert('닉네임 변경에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('닉네임 변경 중 오류:', err);
+      alert('오류가 발생했습니다.');
+    }
+  };
+
   // 모달 내용 렌더링 함수 통합
   const renderModalContent = () => {
     if (isKeeperModalOpen) {
@@ -662,8 +715,77 @@ const MyPage: React.FC = () => {
               }}
             />
           </ProfileImageContainer>
-          <UserName>{userState.userName}</UserName>
-          <ProfileDivider />
+          {isEditing ? (
+            <div
+              style={{
+                marginLeft: '90px',
+                marginTop: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              {/* 닉네임 입력 필드 + 아이콘 */}
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <input
+                  autoFocus
+                  value={nickname}
+                  onChange={e => setNickname(e.target.value)}
+                  maxLength={10}
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    padding: '4px 4px',
+                    borderRadius: '6px',
+                    border: '1px solid #ccc',
+                    outline: 'none',
+                  }}
+                />
+                <div style={{ display: 'flex', marginLeft: 3 }}>
+                  <img
+                    src="/check-icon.svg"
+                    alt="확인"
+                    onClick={handleSubmit}
+                    style={{ width: 15, height: 15, cursor: 'pointer' }}
+                  />
+                  <img
+                    src="/close-icon.svg"
+                    alt="취소"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setNickname(userState.userName);
+                    }}
+                    style={{ width: 15, height: 15, marginLeft: 6, cursor: 'pointer' }}
+                  />
+                </div>
+              </div>
+
+              {/* 헬퍼 텍스트 */}
+              <div style={{ fontSize: '8px', color: 'red', marginTop: '4px' }}>
+                헬퍼텍스트 영역입니다.
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                marginLeft: '90px',
+                marginTop: '30px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, fontSize: '15px', color: '#000' }}>
+                  {userState.userName}
+                </span>
+                <img
+                  src="/edit-icon.svg"
+                  alt="edit"
+                  style={{ width: 16, height: 16, marginLeft: 8, cursor: 'pointer' }}
+                  onClick={() => setIsEditing(true)}
+                />
+              </div>
+            </div>
+          )}
 
           <BadgeContainer>
             <BadgeText>의뢰인</BadgeText>
