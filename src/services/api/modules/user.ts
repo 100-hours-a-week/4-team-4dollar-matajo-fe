@@ -148,3 +148,23 @@ export const getUserPlaces = async (): Promise<PlaceItem[]> => {
 
   return Promise.resolve(mockData);
 };
+
+/**
+ * 닉네임을 변경하는 함수
+ * @param nickname 새로운 닉네임
+ * @returns 성공 시 true 반환
+ */
+
+export const updateNickname = async (nickname: string, userId: string): Promise<boolean> => {
+  try {
+    const response: AxiosResponse<ApiResponse<null>> = await client.patch('/api/users/nickname', {
+      nickname,
+      userId,
+    });
+
+    return response.data.success;
+  } catch (error) {
+    console.error('닉네임 변경 실패:', error);
+    throw error;
+  }
+};
