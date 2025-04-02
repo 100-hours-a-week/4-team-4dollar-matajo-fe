@@ -359,7 +359,7 @@ const HomePage: React.FC = () => {
 
   // 마커 클릭 핸들러 - 보관소 상세 페이지로 이동
   const handleMarkerClick = (markerId: string) => {
-    navigate(`/storage/${markerId}`);
+    navigate(`/storages/${markerId}`);
   };
 
   // 보관소 등록 버튼 클릭 핸들러
@@ -393,7 +393,7 @@ const HomePage: React.FC = () => {
 
   // 특가 아이템 클릭 핸들러
   const handleDiscountItemClick = (id: string) => {
-    navigate(`/storage/${id}`);
+    navigate(`/storages/${id}`);
   };
 
   // 재시도 핸들러

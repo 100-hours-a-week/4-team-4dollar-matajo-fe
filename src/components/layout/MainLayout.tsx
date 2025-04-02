@@ -33,7 +33,7 @@ const MainContent = styled.main`
 // 네비게이션 메뉴 매핑 - routes/index.tsx와 일치하도록 수정
 const tabPathMap = {
   홈: '/main', // '/'에서 '/main'으로 수정
-  보관소: '/storage',
+  보관소: '/storages',
   채팅: '/chat/list',
   마이페이지: '/mypage',
 };
@@ -42,8 +42,8 @@ const tabPathMap = {
 const pathTitleMap: { [key: string]: string } = {
   '/': '홈',
   '/main': '홈',
-  '/storage': '보관소',
-  '/storagede': '보관소 상세',
+  '/storages': '보관소',
+  '/storages/:id': '보관소 상세',
   '/chat/list': '채팅',
   '/chat': '채팅',
   '/mypage': '마이페이지',
@@ -51,21 +51,21 @@ const pathTitleMap: { [key: string]: string } = {
   '/myplace': '내 공간',
   '/mytrade': '거래내역',
   '/mypage/mytrade': '거래내역',
-  '/storage/mytrade': '거래내역',
-  '/storage/register': '회원가입 (1/3)',
-  '/storage/register/details': '회원가입 (2/3)',
-  '/storage/register/images': '회원가입 (3/3)',
+  '/storages/mytrade': '거래내역',
+  '/storages/register': '회원가입 (1/3)',
+  '/storages/register/details': '회원가입 (2/3)',
+  '/storages/register/images': '회원가입 (3/3)',
   '/editstorage': '보관소 등록',
 };
 
 // 네비게이션이 표시되지 않는 경로 목록
 const noNavPaths = [
   '/login',
-  '/storage/register',
-  '/storage/register/details',
-  '/storage/register/images',
+  '/storages/register',
+  '/storages/register/details',
+  '/storages/register/images',
   '/chat/', // 채팅 상세 페이지에서 네비바 숨기기 (앞부분만 매칭)
-  '/storage/mytrade', // 거래내역 페이지에서 네비바 숨기기
+  '/storages/mytrade', // 거래내역 페이지에서 네비바 숨기기
 ];
 
 const MainLayout: React.FC = () => {
@@ -82,8 +82,8 @@ const MainLayout: React.FC = () => {
     // 경로의 첫 번째 부분을 추출 (예: '/chat/123' -> '/chat')
     const basePath = '/' + path.split('/')[1];
 
-    // 상세 페이지 경로 처리 (storage/:id 와 같은 패턴)
-    const isDetailPath = path.includes('/storage/');
+    // 상세 페이지 경로 처리 (storages/:id 와 같은 패턴)
+    const isDetailPath = path.includes('/storages/');
 
     // 현재 경로에 해당하는 타이틀 설정
     let title = pathTitleMap[path] || pathTitleMap[basePath];
@@ -106,7 +106,7 @@ const MainLayout: React.FC = () => {
     // 현재 경로에 해당하는 활성 탭 설정
     if (path === '/' || path === '/main') {
       setActiveTab('홈');
-    } else if (path.startsWith('/storage') && !path.startsWith('/storage/mytrade')) {
+    } else if (path.startsWith('/storages') && !path.startsWith('/storages/mytrade')) {
       setActiveTab('보관소');
     } else if (path.startsWith('/chat')) {
       setActiveTab('채팅');
@@ -114,7 +114,7 @@ const MainLayout: React.FC = () => {
       path.startsWith('/mypage') ||
       path.startsWith('/myplace') ||
       path.startsWith('/mytrade') ||
-      path.startsWith('/storage/mytrade')
+      path.startsWith('/storages/mytrade')
     ) {
       setActiveTab('마이페이지');
     }
@@ -138,7 +138,7 @@ const MainLayout: React.FC = () => {
         showBackButton={location.pathname !== '/' && location.pathname !== '/main'}
         onBack={handleBack}
         showOptionButton={
-          location.pathname.startsWith('/storage/') || location.pathname === '/mytrade'
+          location.pathname.startsWith('/storages/') || location.pathname === '/mytrade'
         }
         dropdownOptions={[
           {

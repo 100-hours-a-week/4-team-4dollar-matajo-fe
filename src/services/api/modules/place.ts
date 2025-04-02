@@ -181,7 +181,7 @@ export const getStorageList = async (
         neighborhood,
       },
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`, // JWT 토큰 추가
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`, // JWT 토큰 추가
       },
     });
 
@@ -270,7 +270,7 @@ export const toggleStorageVisibility = async (postId: string) => {
       {},
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       },
     );
@@ -288,7 +288,7 @@ export const updateStorage = async (postId: string, formData: FormData) => {
       {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       },
     );

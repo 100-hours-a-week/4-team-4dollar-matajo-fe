@@ -443,7 +443,7 @@ const MyPage: React.FC = () => {
       // 로컬 상태에서 먼저 체크
       if (userState.isKeeper) {
         console.log('보관인 역할 확인됨, 내 보관소 페이지로 이동합니다.');
-        navigate('/storage/myplace');
+        navigate('/storages/myplace');
         return;
       }
 
@@ -460,7 +460,7 @@ const MyPage: React.FC = () => {
           isKeeper: true,
         }));
 
-        navigate('/storage/myplace');
+        navigate('/storages/myplace');
         return;
       }
 
@@ -473,7 +473,7 @@ const MyPage: React.FC = () => {
 
       // 오류 발생 시 로컬 상태 확인
       if (userState.isKeeper) {
-        navigate('/storage/myplace');
+        navigate('/storages/myplace');
         return;
       }
 

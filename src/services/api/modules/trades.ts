@@ -83,7 +83,7 @@ export const createTrade = async (data: CreateTradeRequest): Promise<CreateTrade
  */
 export const getMyTrades = async (): Promise<TradeItem[]> => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (!token) {
       throw new Error('인증 토큰이 없습니다.');
     }
@@ -105,7 +105,7 @@ export const getMyTrades = async (): Promise<TradeItem[]> => {
     console.error('거래 내역 조회 실패:', error);
     if (error.response?.status === 401) {
       // 토큰이 만료되었거나 유효하지 않은 경우
-      localStorage.removeItem('token');
+      localStorage.removeItem('accessToken');
       throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
     }
     throw error;

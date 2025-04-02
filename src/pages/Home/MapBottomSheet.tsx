@@ -437,7 +437,7 @@ export const handleRegisterStorage = (
 
   if (isKeeper()) {
     // 보관인인 경우 보관소 등록 페이지로 이동
-    navigate('/storage/register');
+    navigate('/storages/register');
   } else {
     // 일반 사용자인 경우 보관인 등록 모달 표시
     setShowKeeperModal(true);
@@ -616,7 +616,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   // 보관인 등록 확인 핸들러
   const handleKeeperConfirm = () => {
     setShowKeeperModal(false);
-    navigate('/storage');
+    navigate('/storages');
   };
 
   // 게시판 이동 핸들러
@@ -624,13 +624,13 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     if (onGoToBoard) {
       onGoToBoard();
     } else {
-      navigate('/storage');
+      navigate('/storages');
     }
   };
 
   // 아이템 상세 페이지로 이동
   const handleItemClick = (id: string): void => {
-    navigate(`/storage/${id}`);
+    navigate(`/storages/${id}`);
   };
 
   // 지역 특가 아이템 클릭 핸들러
@@ -638,7 +638,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     if (onDiscountItemClick) {
       onDiscountItemClick(id.toString());
     } else {
-      navigate(`/storage/${id}`);
+      navigate(`/storages/${id}`);
     }
   };
 
