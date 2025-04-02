@@ -513,17 +513,21 @@ class ChatService {
       });
 
       if (response.data.success && response.data.data) {
-        // 백엔드 응답을 프론트엔드 형식으로 변환
-        return response.data.data.map(room => ({
-          chatRoomId: room.chat_room_id,
-          keeperStatus: room.keeper_status,
-          userNickname: room.user_nickname,
-          postMainImage: room.post_main_image,
-          postAddress: room.post_address,
-          lastMessage: room.last_message,
-          lastMessageTime: room.last_message_time,
-          unreadCount: room.unread_count,
-        }));
+        // 백엔드 응답을 프론트엔드 형식으로 변환하고 last_message_time 기준으로 최신순 정렬
+        return response.data.data
+          .map(room => ({
+            chatRoomId: room.chat_room_id,
+            keeperStatus: room.keeper_status,
+            userNickname: room.user_nickname,
+            postMainImage: room.post_main_image,
+            postAddress: room.post_address,
+            lastMessage: room.last_message,
+            lastMessageTime: room.last_message_time,
+            unreadCount: room.unread_count,
+          }))
+          .sort(
+            (a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime(),
+          );
       }
       return [];
     } catch (error) {
