@@ -1,45 +1,161 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { getMyTrades, TradeItem as TradeItemType } from '../../../services/api/modules/trades';
-import { TradeItem } from '../../../components/common/TradeItem';
+import { getMyTrades } from '../../../services/api/modules/trades';
+import { TradeItem } from '../../../services/api/modules/trades';
 import { ROUTES } from '../../../constants/routes';
 
-const Content = styled.div`
-  padding: 20px;
-  background-color: #f5f5f5;
-  min-height: calc(100vh - 60px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+const Container = styled.div`
+  width: 100%;
+  max-width: 375px;
+  height: 100vh;
+  position: relative;
+  background: white;
+  overflow-x: hidden;
+  padding-top: 22px;
+  margin: 0 auto;
 `;
 
-const NoDataMessage = styled.div`
-  text-align: center;
-  padding: 40px 20px;
-  color: #616161;
-  font-size: 16px;
-  font-family: 'Noto Sans KR';
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-`;
-
-const NoDataIcon = styled.div`
-  width: 48px;
-  height: 48px;
+const StatusBar = styled.div`
+  width: 375px;
+  height: 25px;
+  left: 0px;
+  top: 0px;
+  position: absolute;
   background: #f5f5f5;
-  border-radius: 50%;
+`;
+
+const Header = styled.div`
+  width: 373px;
+  height: 47px;
+  left: 0px;
+  top: 22px;
+  position: absolute;
+  background: #f5f5ff;
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
+  padding: 0 12px;
+`;
+
+const BackButton = styled.div`
+  left: 12px;
+  top: 33px;
+  position: absolute;
+  cursor: pointer;
+`;
+
+const Title = styled.span`
+  color: #464646;
+  font-size: 15px;
+  font-family: Noto Sans KR;
+  font-weight: 700;
+  letter-spacing: 0.02px;
+  margin-left: 40px;
+`;
+
+const TradeCard = styled.div`
+  width: 293px;
+  height: 95px;
+  background: rgba(217, 217, 217, 0);
+  border-radius: 10px;
+  border: 1px #e0e0e0 solid;
+  padding: 16px;
+  margin-bottom: 20px;
+  position: relative;
+  margin-left: auto;
+  margin-right: auto;
+`;
+
+const TradeTitle = styled.span`
+  color: #616161;
+  font-size: 18px;
+  font-family: Noto Sans KR;
+  font-weight: 700;
+  letter-spacing: 0.02px;
+  display: inline-block;
+`;
+
+const TradeStatus = styled.span`
+  color: rgba(56.26, 53.49, 252.61, 0.8);
+  font-size: 13px;
+  font-family: Noto Sans KR;
+  font-weight: 700;
+  letter-spacing: 0.01px;
+  display: block;
+  margin-bottom: 4px;
+`;
+
+const TradeId = styled.span`
+  color: #c0bdbd;
+  font-size: 10px;
+  font-family: Noto Sans KR;
+  font-weight: 700;
+  letter-spacing: 0.01px;
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: middle;
+`;
+
+const TradeInfo = styled.span`
+  color: #c0bdbd;
+  font-size: 12px;
+  font-family: Noto Sans KR;
+  font-weight: 500;
+  letter-spacing: 0.01px;
+  display: block;
+  margin-top: 4px;
+`;
+
+const TradeAmount = styled.span`
+  color: #292929;
+  font-size: 15px;
+  font-family: Noto Sans KR;
+  font-weight: 500;
+  letter-spacing: 0.02px;
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+`;
+
+const Divider = styled.div`
+  width: 294px;
+  height: 1px;
+  background: #dcdcdc;
+  margin: 16px auto;
+`;
+
+const BottomNav = styled.div`
+  width: 375px;
+  height: 76px;
+  padding: 16px;
+  background: #f5f5ff;
+  border-top: 1px #f5f5ff solid;
+  position: fixed;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+`;
+
+const NavItem = styled.div`
+  width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+`;
+
+const NavText = styled.span<{ active?: boolean }>`
+  color: ${props => (props.active ? '#3835FD' : '#61646B')};
+  font-size: 12px;
+  font-family: Noto Sans KR;
+  font-weight: 350;
+  line-height: 16px;
+  letter-spacing: 0.6px;
 `;
 
 const MyTrade: React.FC = () => {
   const navigate = useNavigate();
-  const [trades, setTrades] = useState<TradeItemType[]>([]);
+  const [trades, setTrades] = useState<TradeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,71 +189,47 @@ const MyTrade: React.FC = () => {
 
   if (loading) {
     return (
-      <Content>
+      <Container>
         <div>로딩 중...</div>
-      </Content>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <Content>
+      <Container>
         <div>{error}</div>
-      </Content>
-    );
-  }
-
-  if (trades.length === 0) {
-    return (
-      <Content>
-        <NoDataMessage>
-          <NoDataIcon>
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z"
-                stroke="#616161"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M8 12H16"
-                stroke="#616161"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M8 16H12"
-                stroke="#616161"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </NoDataIcon>
-          아직 거래 내역이 없습니다
-        </NoDataMessage>
-      </Content>
+      </Container>
     );
   }
 
   return (
-    <Content>
-      {trades.map(trade => (
-        <TradeItem
-          key={trade.trade_id}
-          trade={trade}
-          onClick={() => handleTradeItemClick(trade.trade_id)}
-        />
-      ))}
-    </Content>
+    <Container>
+      <div style={{ marginBottom: '20px' }}>
+        {trades.map(trade => (
+          <TradeCard key={trade.trade_id} onClick={() => handleTradeItemClick(trade.trade_id)}>
+            <div>
+              <TradeStatus>{trade.keeper_status ? '맡아줬어요' : '보관했어요'}</TradeStatus>
+              <div>
+                <TradeTitle>{trade.product_name}</TradeTitle>
+                <TradeId>타조 {trade.trade_id}</TradeId>
+              </div>
+            </div>
+            <TradeInfo>
+              {trade.post_address} | {trade.start_date}~
+              {
+                new Date(
+                  new Date(trade.start_date).getTime() + trade.storage_period * 24 * 60 * 60 * 1000,
+                )
+                  .toISOString()
+                  .split('T')[0]
+              }
+            </TradeInfo>
+            <TradeAmount>총 {trade.trade_price.toLocaleString()}원</TradeAmount>
+          </TradeCard>
+        ))}
+      </div>
+    </Container>
   );
 };
 
