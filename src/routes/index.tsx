@@ -80,8 +80,11 @@ const routes: RouteObject[] = [
             path: ROUTES.MYPAGE,
             element: <MyPage />,
             children: [
-              { path: ROUTES.MYTRADE, element: <MyTrade /> },
-              { path: ROUTES.MYTRADE_DETAIL, element: <MyTrade /> },
+              // ✅ MainLayout 안쪽에 따로 추가
+              { path: '', element: <></> }, // 기본 마이페이지 내용
+              { path: 'mytrade', element: <MyTrade /> }, // → /mypage/mytrade
+              { path: 'mytrade/:id', element: <MyTrade /> }, // → /mypage/mytrade/:id
+              { path: 'keeper-registration', element: <KeeperRegistration /> }, // → /mypage/keeper-registration
             ],
           },
         ],
