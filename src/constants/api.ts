@@ -83,11 +83,10 @@ export const API_PATHS = {
     UPDATE: '/api/keeper/profile',
   },
   MYPAGE: {
-    TRADE: '/api/trades/my-trades',
     STORAGE: '/api/posts/my-posts',
   },
   TRADES: {
-    MY_TRADES: '/api/trades/my-trades',
+    MY_TRADES: '/api/trades/my-trade',
     RECENT_BY_LOCATION: '/api/trades',
   },
 };
