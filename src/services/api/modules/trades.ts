@@ -21,6 +21,42 @@ export interface CreateTradeResponse {
   };
 }
 
+// 거래 아이템 인터페이스
+export interface TradeItem {
+  trade_id: number;
+  keeper_status: boolean;
+  product_name: string;
+  user_id: number;
+  post_address: string;
+  trade_date: string;
+  start_date: string;
+  storage_period: number;
+  trade_price: number;
+}
+
+// 내 거래 내역 응답 인터페이스
+export interface MyTradesResponse {
+  success: boolean;
+  message: string;
+  data: TradeItem[];
+}
+
+// 최근 거래 내역 인터페이스
+export interface RecentTrade {
+  category: string;
+  main_image: string;
+  product_name: string;
+  storage_period: number;
+  trade_date: string;
+  trade_price: number;
+}
+
+export interface RecentTradesResponse {
+  success: boolean;
+  message: string;
+  data: RecentTrade[];
+}
+
 /**
  * 거래 정보 생성 API
  * @param data 거래 생성 요청 데이터
@@ -40,27 +76,6 @@ export const createTrade = async (data: CreateTradeRequest): Promise<CreateTrade
     };
   }
 };
-
-/**
- * 내 거래 내역 조회 API 인터페이스
- */
-export interface TradeItem {
-  trade_id: number;
-  keeper_status: boolean;
-  product_name: string;
-  user_id: number;
-  post_address: string;
-  trade_date: string;
-  start_date: string;
-  storage_period: number;
-  trade_price: number;
-}
-
-export interface MyTradesResponse {
-  success: boolean;
-  message: string;
-  data: TradeItem[];
-}
 
 /**
  * 내 거래 내역 조회 API
@@ -93,6 +108,25 @@ export const getMyTrades = async (): Promise<TradeItem[]> => {
       localStorage.removeItem('token');
       throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
     }
+    throw error;
+  }
+};
+
+/**
+ * 최근 거래 내역 조회 API
+ * @param locationInfoId 위치 정보 ID
+ * @returns 최근 거래 내역 목록
+ */
+export const getRecentTrades = async (locationInfoId: number): Promise<RecentTradesResponse> => {
+  try {
+    console.log('getRecentTrades 호출 - locationInfoId:', locationInfoId);
+    const response = await client.get(API_PATHS.TRADES.RECENT_BY_LOCATION, {
+      params: { locationInfoId },
+    });
+    console.log('API 응답 데이터:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('최근 거래 내역 조회 실패:', error);
     throw error;
   }
 };
