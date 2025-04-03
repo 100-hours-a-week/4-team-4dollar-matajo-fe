@@ -13,7 +13,7 @@ const MapContainer = styled.div`
 
 // 새로고침 버튼 스타일
 const RefreshButton = styled.button`
-  position: absolute;
+  position: fixed;
   top: 70px;
   right: 10px;
   width: 40px;
@@ -26,7 +26,7 @@ const RefreshButton = styled.button`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10;
+  z-index: 100;
 
   &:hover {
     background-color: #f5f5f5;
@@ -524,9 +524,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   }, [isLocationModalOpen, kakaoMap, draggable, zoomable]);
 
   return (
-    <MapContainer ref={mapRef}>
-      {isLoading && <LoadingIndicator>데이터를 불러오는 중...</LoadingIndicator>}
-
+    <>
       {!detailMode && showCurrentLocation && (
         <RefreshButton onClick={moveToUserLocation} title="현재 위치로 이동">
           <svg
@@ -543,7 +541,10 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           </svg>
         </RefreshButton>
       )}
-    </MapContainer>
+      <MapContainer ref={mapRef}>
+        {isLoading && <LoadingIndicator>데이터를 불러오는 중...</LoadingIndicator>}
+      </MapContainer>
+    </>
   );
 };
 

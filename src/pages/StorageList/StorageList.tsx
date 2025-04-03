@@ -118,17 +118,6 @@ const ItemGridContainer = styled.div`
   gap: 15px;
 `;
 
-// 스크롤바 스타일링
-const ScrollIndicator = styled.div`
-  position: absolute;
-  right: 0;
-  top: 215px;
-  width: 7px;
-  height: 81.52px;
-  background: #d9d9d9;
-  border-radius: 3.5px;
-`;
-
 // 보관소 아이템 카드
 const StorageItem = styled.div`
   display: flex;
@@ -254,7 +243,7 @@ const StorageList: React.FC = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const lastRequestTimeRef = useRef<number>(0);
-  const REQUEST_INTERVAL = 1000; // 1초 간격으로 요청 제한
+  const REQUEST_INTERVAL = 500; // 1초 간격으로 요청 제한
 
   // API 호출 함수 - offset 기반 페이지네이션 사용
   const fetchStorageList = async (reset: boolean = true) => {
@@ -564,9 +553,6 @@ const StorageList: React.FC = () => {
           </FilterTag>
         ))}
       </FilterContainer>
-
-      {/* 스크롤 표시기 */}
-      <ScrollIndicator />
 
       {/* 아이템 그리드 */}
       <ItemGridContainer ref={gridRef}>
