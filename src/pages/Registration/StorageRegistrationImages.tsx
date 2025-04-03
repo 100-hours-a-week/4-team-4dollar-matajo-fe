@@ -12,7 +12,13 @@ import {
 } from '../../services/api/modules/storage';
 import { DaumAddressData } from '../../services/KakaoMapService';
 import { ROUTES } from '../../constants/routes';
-import { uploadImage, uploadMultipleImages } from '../../services/api/modules/image';
+import {
+  uploadImage,
+  uploadMultipleImages,
+  getPresignedUrl,
+  uploadImageWithPresignedUrl,
+  moveImages,
+} from '../../services/api/modules/image';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -329,6 +335,16 @@ interface CombinedFormData {
   detailImageFiles?: File[];
 }
 
+interface ImageData {
+  image_url: string;
+  temp_key: string;
+}
+
+interface StorageData {
+  mainImage: ImageData | null;
+  detailImages: ImageData[];
+}
+
 const Registration3: React.FC = () => {
   // 라우터 관련 훅
   const navigate = useNavigate();
@@ -375,6 +391,10 @@ const Registration3: React.FC = () => {
   // post_id를 저장할 state 추가
   const [postId, setPostId] = useState<string | null>(null);
 
+  // 이미지 데이터 상태 관리
+  const [mainImageData, setMainImageData] = useState<ImageData | null>(null);
+  const [detailImageData, setDetailImageData] = useState<ImageData[]>([]);
+
   // 이전 단계 데이터 로드
   useEffect(() => {
     if (location.state) {
@@ -391,52 +411,33 @@ const Registration3: React.FC = () => {
     const savedData = localStorage.getItem('storage_register_images');
     if (savedData) {
       try {
-        const parsedData = JSON.parse(savedData);
-        if (parsedData.mainImage) setMainImage(parsedData.mainImage);
-        if (parsedData.detailImages) setDetailImages(parsedData.detailImages);
+        const parsedData: StorageData = JSON.parse(savedData);
+        if (parsedData.mainImage) setMainImageData(parsedData.mainImage);
+        if (parsedData.detailImages) setDetailImageData(parsedData.detailImages);
       } catch (error) {
         console.error('Error parsing saved data:', error);
       }
     }
-
-    // 초기 렌더링 완료 표시
     setIsInitialRender(false);
   }, []);
 
   // 이미지 상태 변경 시 로컬 스토리지에 자동 저장
   useEffect(() => {
-    // 초기 렌더링 시에는 저장하지 않음
     if (isInitialRender) return;
 
-    saveToLocalStorage();
-  }, [mainImage, detailImages]);
-
-  const saveToLocalStorage = () => {
-    const dataToSave = {
-      mainImage,
-      detailImages,
+    const dataToSave: StorageData = {
+      mainImage: mainImageData,
+      detailImages: detailImageData,
     };
 
     try {
-      const json = JSON.stringify(dataToSave);
-
-      // 바이트 기준으로 정확하게 계산
-      const sizeInBytes = new Blob([json]).size;
-      const MAX_LOCALSTORAGE_SIZE = 5 * 1024 * 1024; // 5MB
-
-      if (sizeInBytes > MAX_LOCALSTORAGE_SIZE) {
-        showToast('이미지 데이터가 너무 커서 저장할 수 없습니다. 일부 이미지를 삭제해주세요.');
-        return;
-      }
-
-      localStorage.setItem('storage_register_images', json);
+      localStorage.setItem('storage_register_images', JSON.stringify(dataToSave));
     } catch (error) {
       console.error('로컬 스토리지 저장 오류:', error);
       showToast('저장 중 문제가 발생했습니다.');
     }
-  };
+  }, [mainImageData, detailImageData]);
 
-  // 토스트 메시지 표시 함수
   const showToast = (message: string) => {
     setToastMessage(message);
     setToastVisible(true);
@@ -472,89 +473,77 @@ const Registration3: React.FC = () => {
     return total;
   };
 
-  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 새로 올리는 대표이미지를 포함한 총 용량 계산
-    const currentSize = getTotalUploadedSize(); // 현재까지 올린 모든 파일 크기
-    const newTotalSize = currentSize + file.size; // 여기서 새 파일을 더함
+    try {
+      // presigned URL 요청
+      const presignedUrlResponse = await getPresignedUrl(file.name, file.type, 'post');
 
-    // 1) 새 총 용량이 5MB 초과인지 확인
-    if (newTotalSize > MAX_TOTAL_SIZE) {
-      showToast('이미지 총 용량이 5MB를 초과했습니다.');
-      e.target.value = '';
-      return;
+      // S3에 이미지 업로드
+      await uploadImageWithPresignedUrl(presignedUrlResponse.data.presigned_url, file);
+
+      // 이미지 데이터 저장
+      setMainImageData({
+        image_url: presignedUrlResponse.data.image_url,
+        temp_key: presignedUrlResponse.data.temp_key,
+      });
+
+      // 미리보기용 이미지 URL 설정
+      setMainImage(presignedUrlResponse.data.image_url);
+      setMainImageFile(file);
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      showToast('이미지 업로드에 실패했습니다.');
     }
-
-    // 2) 한 장당 제한(있다면)도 확인해도 됨
-    if (file.size > MAX_SINGLE_FILE_SIZE) {
-      showToast('대표 이미지는 1MB 이하만 업로드 가능합니다.');
-      e.target.value = '';
-      return;
-    }
-
-    // 3) 문제가 없으면 정상 업로드
-    setMainImageFile(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setMainImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
   };
 
-  const handleDetailImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDetailImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    // 1) 현재까지 올린 이미지(대표 + 서브)의 용량
-    const currentSize = getTotalUploadedSize();
-
-    // 2) 최대 4장까지 가능이라 가정
-    const remainingSlots = 4 - detailImages.length;
+    // 최대 4장까지 가능
+    const remainingSlots = 4 - detailImageData.length;
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
-    // 업로드할 새 파일들 크기 합
-    const incomingSize = filesToProcess.reduce((acc, file) => acc + file.size, 0);
-    // 3) 새 총 용량
-    const newTotalSize = currentSize + incomingSize;
+    try {
+      const newImageData: ImageData[] = [];
+      const newImages: string[] = [];
+      const newFiles: File[] = [];
 
-    if (newTotalSize > MAX_TOTAL_SIZE) {
-      showToast('이미지 총 용량이 5MB를 초과했습니다.');
-      e.target.value = '';
-      return;
-    }
+      for (const file of filesToProcess) {
+        // presigned URL 요청
+        const presignedUrlResponse = await getPresignedUrl(file.name, file.type, 'post');
 
-    // --- 문제 없다면 업로드 처리 ---
-    const newFileList = [...detailImageFiles];
-    const newImages = [...detailImages];
-    let processedCount = 0;
+        // S3에 이미지 업로드
+        await uploadImageWithPresignedUrl(presignedUrlResponse.data.presigned_url, file);
 
-    filesToProcess.forEach(file => {
-      if (file.size > MAX_SINGLE_FILE_SIZE) {
-        showToast('이미지 중 1MB를 초과하는 파일이 있습니다.');
-        return;
+        // 이미지 데이터 저장
+        newImageData.push({
+          image_url: presignedUrlResponse.data.image_url,
+          temp_key: presignedUrlResponse.data.temp_key,
+        });
+
+        // 미리보기용 이미지 URL 설정
+        newImages.push(presignedUrlResponse.data.image_url);
+        newFiles.push(file);
       }
 
-      newFileList.push(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        newImages.push(reader.result as string);
-        processedCount++;
-        if (processedCount === filesToProcess.length) {
-          setDetailImageFiles(newFileList);
-          setDetailImages(newImages);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      setDetailImageData(prev => [...prev, ...newImageData]);
+      setDetailImages(prev => [...prev, ...newImages]);
+      setDetailImageFiles(prev => [...prev, ...newFiles]);
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      showToast('이미지 업로드에 실패했습니다.');
+    }
   };
 
   // 메인 이미지 삭제 핸들러
   const handleDeleteMainImage = () => {
     setMainImage(null);
     setMainImageFile(null);
+    setMainImageData(null);
     if (mainImageInputRef.current) {
       mainImageInputRef.current.value = '';
     }
@@ -562,8 +551,9 @@ const Registration3: React.FC = () => {
 
   // 서브 이미지 삭제 핸들러
   const handleDeleteDetailImage = (index: number) => {
-    setDetailImages((prev: string[]) => prev.filter((_, i: number) => i !== index));
-    setDetailImageFiles((prev: File[]) => prev.filter((_, i: number) => i !== index));
+    setDetailImages(prev => prev.filter((_, i) => i !== index));
+    setDetailImageFiles(prev => prev.filter((_, i) => i !== index));
+    setDetailImageData(prev => prev.filter((_, i) => i !== index));
 
     if (detailImagesInputRef.current) {
       detailImagesInputRef.current.value = '';
@@ -594,76 +584,19 @@ const Registration3: React.FC = () => {
     try {
       setIsLoading(true);
       console.log('=== 보관소 등록 시작 ===');
-      console.log('1. 이전 단계 데이터:', prevFormData);
 
-      // 이미지 파일 준비
-      let mainImageFileObj: File | null = null;
-      if (mainImageFile) {
-        mainImageFileObj = mainImageFile;
-        console.log('2. 메인 이미지 파일:', {
-          name: mainImageFileObj.name,
-          type: mainImageFileObj.type,
-          size: mainImageFileObj.size,
-        });
-      } else if (mainImage && !mainImage.startsWith('http')) {
-        mainImageFileObj = base64ToFile(mainImage, 'main-image.jpg');
-        console.log('2. base64에서 변환된 메인 이미지 파일:', {
-          name: mainImageFileObj.name,
-          type: mainImageFileObj.type,
-          size: mainImageFileObj.size,
-        });
-      }
+      // 이미지 이동 요청
+      const tempKeys = [
+        ...(mainImageData ? [mainImageData.temp_key] : []),
+        ...detailImageData.map(img => img.temp_key),
+      ];
 
-      // 상세 이미지 파일 배열 준비
-      const detailImageFilesArray: File[] = [];
-      if (detailImageFiles.length > 0) {
-        detailImageFilesArray.push(...detailImageFiles);
-        console.log(
-          '3. 상세 이미지 파일 배열:',
-          detailImageFilesArray.map(file => ({
-            name: file.name,
-            type: file.type,
-            size: file.size,
-          })),
-        );
-      } else if (detailImages.length > 0) {
-        for (let i = 0; i < detailImages.length; i++) {
-          if (!detailImages[i].startsWith('http')) {
-            detailImageFilesArray.push(base64ToFile(detailImages[i], `detail-image-${i}.jpg`));
-          }
-        }
-        console.log(
-          '3. base64에서 변환된 상세 이미지 파일 배열:',
-          detailImageFilesArray.map(file => ({
-            name: file.name,
-            type: file.type,
-            size: file.size,
-          })),
-        );
-      }
+      const mainFlags = [
+        ...(mainImageData ? [true] : []),
+        ...new Array(detailImageData.length).fill(false),
+      ];
 
-      // 이미지 업로드
-      let mainImageUrl = mainImage;
-      if (mainImageFileObj) {
-        console.log('4. 메인 이미지 업로드 시작...');
-        mainImageUrl = await uploadImage(mainImageFileObj, 'post', true);
-        console.log('4. 메인 이미지 업로드 완료:', mainImageUrl);
-      }
-
-      let detailImageUrls = detailImages;
-      if (detailImageFilesArray.length > 0) {
-        console.log('5. 상세 이미지 업로드 시작...');
-        const newDetailImageUrls = await uploadMultipleImages(
-          detailImageFilesArray,
-          'post',
-          new Array(detailImageFilesArray.length).fill(false),
-        );
-        detailImageUrls = [
-          ...detailImageUrls.filter(url => url.startsWith('http')),
-          ...newDetailImageUrls,
-        ];
-        console.log('5. 상세 이미지 업로드 완료:', detailImageUrls);
-      }
+      const moveResponse = await moveImages(tempKeys, 'post', mainFlags);
 
       // 주소 데이터 준비
       const addressData: DaumAddressData = {
@@ -715,8 +648,10 @@ const Registration3: React.FC = () => {
         prefer_price: Number(prevFormData.preferPrice) || 0,
         post_address_data: addressData,
         post_tags: prevFormData.postTags || [],
-        main_image: mainImageUrl || '',
-        detail_images: detailImageUrls,
+        main_image: moveResponse.data.moved_images[0]?.image_url || '',
+        detail_images: moveResponse.data.moved_images
+          .slice(1)
+          .map((img: { image_url: string }) => img.image_url),
       };
 
       console.log('6. 최종 요청 데이터:', requestData);
@@ -762,12 +697,8 @@ const Registration3: React.FC = () => {
         showToast(response?.message || '보관소 등록에 실패했습니다.');
       }
     } catch (error) {
-      console.error('=== 보관소 등록 오류 ===');
-      console.error('에러 객체:', error);
-      if (error instanceof Error) {
-        console.error('에러 메시지:', error.message);
-      }
-      showToast('보관소 등록 중 오류가 발생했습니다.');
+      console.error('보관소 등록 실패:', error);
+      showToast('보관소 등록에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }

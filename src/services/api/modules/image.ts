@@ -25,10 +25,10 @@ interface MoveImageResponse {
 }
 
 // presigned URL 요청
-const getPresignedUrl = async (
+export const getPresignedUrl = async (
   filename: string,
   mime_type: string,
-  category: string,
+  category: string = 'post',
 ): Promise<PresignedUrlResponse> => {
   try {
     console.log('=== presigned URL 요청 시작 ===');
@@ -85,7 +85,7 @@ const uploadImageToS3 = async (presigned_url: string, file: File): Promise<void>
 };
 
 // 이미지 이동
-const moveImages = async (
+export const moveImages = async (
   temp_keys: string[],
   category: string,
   main_flags: boolean[] = [],
@@ -197,6 +197,27 @@ export const uploadMultipleImages = async (
     if (error instanceof Error) {
       console.error('에러 메시지:', error.message);
     }
+    throw error;
+  }
+};
+
+// Presigned URL을 사용하여 이미지를 업로드하는 함수
+export const uploadImageWithPresignedUrl = async (
+  presignedUrl: string,
+  file: File,
+): Promise<string> => {
+  try {
+    await axios.put(presignedUrl, file, {
+      headers: {
+        'Content-Type': file.type,
+      },
+    });
+
+    // 업로드된 이미지의 URL을 반환 (presignedUrl에서 파일명 추출)
+    const fileName = presignedUrl.split('?')[0].split('/').pop();
+    return `${API_PATHS.IMAGE.PRESIGNED_URL}/${fileName}`;
+  } catch (error) {
+    console.error('이미지 업로드 실패:', error);
     throw error;
   }
 };
