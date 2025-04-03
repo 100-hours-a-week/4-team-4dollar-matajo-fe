@@ -304,6 +304,12 @@ const EditStorageBasic: React.FC = () => {
   // 이전 단계 데이터 관리
   const [prevFormData, setPrevFormData] = useState<FormData | null>(null);
 
+  // 백 버튼 모달 상태 추가
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+
+  // 초기 데이터 저장
+  const [initialData, setInitialData] = useState<FormData | null>(null);
+
   // 토스트 메시지 표시 함수
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -321,14 +327,16 @@ const EditStorageBasic: React.FC = () => {
         const response = await getStorageDetail(id);
         if (response.data.success) {
           const detail = response.data.data;
-          setFormData({
+          const newFormData = {
             postId: id,
             postAddress: detail.post_address || '',
             postTitle: detail.post_title || '',
             postContent: detail.post_content || '',
             preferPrice: detail.prefer_price?.toString() || '',
             postAddressData: detail.post_address_data,
-          });
+          };
+          setFormData(newFormData);
+          setInitialData(newFormData); // 초기 데이터 저장
         } else {
           showToast('보관소 정보를 가져오는데 실패했습니다.');
         }
@@ -461,12 +469,53 @@ const EditStorageBasic: React.FC = () => {
     return isValid;
   };
 
-  // 뒤로가기 핸들러
+  // 데이터 변경 여부 확인 함수 수정
+  const hasDataChanged = (): boolean => {
+    if (!initialData) {
+      // 초기 데이터가 없고 현재 데이터가 있는 경우
+      return Object.values(formData).some(value =>
+        typeof value === 'string' ? value.trim() !== '' : value !== null,
+      );
+    }
+
+    return (
+      formData.postAddress !== initialData.postAddress ||
+      formData.postTitle !== initialData.postTitle ||
+      formData.postContent !== initialData.postContent ||
+      formData.preferPrice !== initialData.preferPrice ||
+      JSON.stringify(formData.postAddressData) !== JSON.stringify(initialData.postAddressData)
+    );
+  };
+
+  // 뒤로가기 핸들러 수정
   const handleBack = () => {
+    console.log('hasDataChanged:', hasDataChanged());
+    if (hasDataChanged()) {
+      setIsExitModalOpen(true);
+    } else {
+      navigate(`/storages/${id}`);
+    }
+  };
+
+  // 나가기 확인 핸들러 수정
+  const handleExitConfirm = () => {
+    setIsExitModalOpen(false);
+
     // 로컬 스토리지 데이터 삭제
-    localStorage.removeItem('storage_edit_basic');
-    localStorage.removeItem('storage_edit_details');
-    localStorage.removeItem('storage_edit_images');
+    const keysToRemove = [
+      'storage_edit_basic',
+      'storage_edit_details',
+      'storage_edit_images',
+      'storage_register_basic',
+      'storage_register_details',
+      'storage_register_images',
+    ];
+
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      console.log('Removed key:', key);
+    });
+
     navigate(`/storages/${id}`);
   };
 
@@ -476,6 +525,10 @@ const EditStorageBasic: React.FC = () => {
       showToast('필수 입력 항목을 확인해주세요.');
       return;
     }
+
+    // 현재 데이터를 로컬 스토리지에 저장
+    localStorage.setItem('storage_edit_basic', JSON.stringify(formData));
+    console.log('Saved form data to storage_edit_basic:', formData);
 
     // 다음 단계로 이동하면서 현재 데이터 전달
     navigate(ROUTES.STORAGE_EDIT_DETAILS.replace(':id', id || ''), {
@@ -617,6 +670,30 @@ const EditStorageBasic: React.FC = () => {
 
   return (
     <>
+      {/* 모달 컴포넌트 추가 */}
+      <Modal
+        isOpen={isExitModalOpen}
+        onClose={() => setIsExitModalOpen(false)}
+        onConfirm={handleExitConfirm}
+        content={
+          <>
+            <div style={{ fontSize: '24px', textAlign: 'center', marginBottom: '10px' }}>😮</div>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ color: '#1e1e1e', fontSize: '18px', fontWeight: 700 }}>
+                페이지에서 나가시나요?
+              </span>
+              <br />
+              <br />
+              <span style={{ color: 'black', fontSize: '14px' }}>
+                수정된 내용은 저장되지 않습니다.
+              </span>
+            </div>
+          </>
+        }
+        confirmText="나가기"
+        cancelText="취소"
+      />
+
       {/* 상단 헤더 */}
       <Header title="보관소 수정" showBackButton={true} onBack={handleBack} />
 
