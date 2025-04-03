@@ -271,7 +271,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
             if (kakaoMap) {
               // 현재 위치로 이동하고 약간 위로 조정
               const currentLatLng = new window.kakao.maps.LatLng(
-                userLat + 0.01, // 약간 위로 조정
+                userLat, // 약간 위로 조정
                 userLng,
               );
               kakaoMap.setCenter(currentLatLng);

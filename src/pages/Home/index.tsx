@@ -491,39 +491,62 @@ const HomePage: React.FC = () => {
   const handleCurrentLocationClick = async () => {
     try {
       setLoading(true);
-      console.log('게시글 위치로 이동 요청');
+      console.log('현재 위치 기반 가까운 게시글 찾기 시작');
 
-      // 마커 데이터가 있는지 확인
-      if (markers && markers.length > 0) {
-        // 첫 번째 마커(혹은 랜덤 마커) 선택
-        const randomIndex = Math.floor(Math.random() * markers.length);
-        const targetMarker = markers[randomIndex];
+      // 1. 현재 위치 가져오기
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async position => {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+            console.log('현재 위치 좌표:', { lat: userLat, lng: userLng });
 
-        console.log('선택된 마커 위치로 이동:', targetMarker.address);
+            // 2. 마커 데이터가 있는지 확인
+            if (markers && markers.length > 0) {
+              // 3. 현재 위치에서 가장 가까운 마커 찾기
+              let closestMarker = markers[0];
 
-        // 선택된 마커의 좌표로 지도 중심 이동
-        setMapCenter({
-          lat: targetMarker.latitude - 0.002,
-          lng: targetMarker.longitude,
-        });
+              // 4. 가장 가까운 마커의 위치로 지도 중심 이동
+              setMapCenter({
+                lat: closestMarker.latitude - 0.002, // 약간 위로 조정
+                lng: closestMarker.longitude,
+              });
 
-        // 주소 정보 업데이트
-        // setLocation(targetMarker.address);
+              // 5. 위치 ID 업데이트
+              console.log('새 위치에 대한 ID 조회');
+              const locationId = await fetchLocationId(closestMarker.address);
+              console.log('위치 ID 조회 결과:', locationId);
+            } else {
+              // 마커가 없는 경우 현재 위치 사용
+              console.log('게시글 위치 정보가 없어 현재 위치만 사용');
+              const addr = await getCurrentLocation();
+              console.log('현재 위치 갱신 성공:', addr);
 
-        // 위치 ID 업데이트
-        console.log('새 위치에 대한 ID 조회');
-        const locationId = await fetchLocationId(targetMarker.address);
-        console.log('위치 ID 조회 결과:', locationId);
+              if (addr) {
+                console.log('새 위치에 대한 ID 조회');
+                const locationId = await fetchLocationId(addr);
+                console.log('위치 ID 조회 결과:', locationId);
+              }
+            }
+          },
+          error => {
+            console.error('현재 위치 가져오기 실패:', error);
+            alert('위치 정보를 가져올 수 없습니다. 위치 권한을 확인해주세요.');
+            // 위치 정보 획득 실패시 기존 로직 사용
+            getCurrentLocation().then(addr => fetchLocationId(addr));
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0,
+          },
+        );
       } else {
-        // 마커가 없는 경우 기존 현재 위치 기능 사용
-        console.log('게시글 위치 정보가 없어 현재 위치 사용');
+        // geolocation이 지원되지 않는 경우
+        console.warn('이 브라우저에서는 위치 정보를 지원하지 않습니다.');
         const addr = await getCurrentLocation();
-        console.log('현재 위치 갱신 성공:', addr);
-
         if (addr) {
-          console.log('새 위치에 대한 ID 조회');
-          const locationId = await fetchLocationId(addr);
-          console.log('위치 ID 조회 결과:', locationId);
+          await fetchLocationId(addr);
         }
       }
     } catch (error) {
