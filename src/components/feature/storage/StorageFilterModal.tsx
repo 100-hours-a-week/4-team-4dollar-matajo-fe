@@ -391,20 +391,18 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    d="M20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 18H4V6H20V18Z"
-                    fill={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
+                    d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z"
+                    stroke={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                   <path
-                    d="M7 12H9V16H7V12Z"
-                    fill={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
-                  />
-                  <path
-                    d="M11 8H13V16H11V8Z"
-                    fill={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
-                  />
-                  <path
-                    d="M15 10H17V16H15V10Z"
-                    fill={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
+                    d="M9 22V12H15V22"
+                    stroke={filters.storageLocation.includes('실내') ? '#8966EF' : '#868686'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                 </svg>
               </IconContainer>
@@ -425,16 +423,32 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z"
-                    fill={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
+                    d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z"
+                    stroke={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                   <path
-                    d="M12 6C8.69 6 6 8.69 6 12C6 15.31 8.69 18 12 18C15.31 18 18 15.31 18 12C18 8.69 15.31 6 12 6ZM12 16C9.79 16 8 14.21 8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16Z"
-                    fill={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
+                    d="M9 22V12H15V22"
+                    stroke={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                   <path
-                    d="M12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10Z"
-                    fill={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
+                    d="M3 9L12 2L21 9"
+                    stroke={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M3 9H21"
+                    stroke={filters.storageLocation.includes('실외') ? '#8966EF' : '#868686'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                 </svg>
               </IconContainer>

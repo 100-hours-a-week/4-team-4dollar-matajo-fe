@@ -822,11 +822,6 @@ const StorageRegistrationBasic: React.FC = () => {
                 name="postAddress"
                 value={formData.postAddress}
                 onChange={handleInputChange}
-                onFocus={e => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleAddressClick();
-                }}
                 onBlur={handleBlur}
                 placeholder="주소를 입력해주세요"
                 isError={!!errors.postAddress}
