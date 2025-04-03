@@ -243,7 +243,7 @@ const StorageList: React.FC = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const lastRequestTimeRef = useRef<number>(0);
-  const REQUEST_INTERVAL = 500; // 1초 간격으로 요청 제한
+  const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
 
   // API 호출 함수 - offset 기반 페이지네이션 사용
   const fetchStorageList = async (reset: boolean = true) => {

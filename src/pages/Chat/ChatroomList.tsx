@@ -109,6 +109,14 @@ const EmptyState = styled.div`
   justify-content: center;
   padding: 40px 20px;
   text-align: center;
+  height: 100%;
+`;
+
+const EmptyStateImage = styled.img`
+  width: 120px;
+  height: 120px;
+  opacity: 0.8;
+  margin-bottom: 20px;
 `;
 
 const EmptyStateText = styled.p`
@@ -459,26 +467,6 @@ const ChatroomList: React.FC = () => {
     }
   };
 
-  // 새 채팅방 생성 핸들러
-  const handleCreateNewChatRoom = async () => {
-    try {
-      // 실제 구현에서는 보관소 선택 모달을 띄우거나 postId를 입력받는 로직이 필요합니다.
-      // 지금은 테스트용으로 postId를 1로 고정합니다.
-      const postId = 1;
-      const response = await chatService.createChatRoom({
-        post_id: postId,
-      });
-
-      if (response.success && response.data) {
-        // 생성 후 채팅방으로 이동
-        navigate(`/chat/${response.data.id}`);
-      }
-    } catch (error) {
-      console.error('채팅방 생성 실패:', error);
-      setError('채팅방 생성에 실패했습니다. 다시 시도해주세요.');
-    }
-  };
-
   // 채팅방 나가기 모달 내용
   const leaveChatroomContent = (
     <>
@@ -524,21 +512,8 @@ const ChatroomList: React.FC = () => {
           </div>
         ) : chatrooms.length === 0 ? (
           <EmptyState>
-            <EmptyStateText>참여 중인 채팅방이 없습니다.</EmptyStateText>
-            <button
-              onClick={handleCreateNewChatRoom}
-              style={{
-                marginTop: '20px',
-                padding: '8px 15px',
-                backgroundColor: THEME.primary,
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-              }}
-            >
-              새 채팅방 만들기
-            </button>
+            <EmptyStateImage src="/tajo-logo.png" alt="타조 로고" />
+            <EmptyStateText>아직 채팅방이 없어요</EmptyStateText>
           </EmptyState>
         ) : (
           /* 채팅방 목록 */

@@ -11,7 +11,13 @@ import client from '../../services/api/client';
 import type { AxiosError } from 'axios';
 import axios from 'axios';
 import { updateStorage } from '../../services/api/modules/storage';
-import { uploadImage, uploadMultipleImages } from '../../services/api/modules/image';
+import {
+  uploadImage,
+  uploadMultipleImages,
+  getPresignedUrl,
+  uploadImageWithPresignedUrl,
+  moveImages,
+} from '../../services/api/modules/image';
 import { base64ToFile } from '../../services/api/modules/storage';
 
 // 테마 컬러 상수 정의
@@ -351,6 +357,17 @@ interface FormData {
   postTags: string[];
 }
 
+// 이미지 데이터 타입 정의 추가
+interface ImageData {
+  image_url: string;
+  temp_key: string;
+}
+
+interface StorageData {
+  mainImage: ImageData | null;
+  detailImages: ImageData[];
+}
+
 const EditStorageImages: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -381,70 +398,44 @@ const EditStorageImages: React.FC = () => {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  // 이미지 데이터 상태 관리 추가
+  const [mainImageData, setMainImageData] = useState<ImageData | null>(null);
+  const [detailImageData, setDetailImageData] = useState<ImageData[]>([]);
+
+  // 첫 렌더링 체크 (useEffect 첫 실행시 저장 방지)
+  const [isInitialRender, setIsInitialRender] = useState(true);
+
   // 로컬 스토리지에서 데이터 불러오기
   useEffect(() => {
-    // 이미지 데이터 불러오기
-    const savedImageData = localStorage.getItem('storage_edit_images');
-    if (savedImageData) {
+    const savedData = localStorage.getItem('storage_edit_images');
+    if (savedData) {
       try {
-        const parsedImageData = JSON.parse(savedImageData);
-        if (parsedImageData.mainImage) setMainImage(parsedImageData.mainImage);
-        if (parsedImageData.detailImages) setDetailImages(parsedImageData.detailImages);
-      } catch (error) {
-        console.error('Error parsing saved image data:', error);
-      }
-    }
-
-    // 기본 데이터 불러오기
-    const savedBasicData = localStorage.getItem('storage_edit_basic');
-    const savedDetailsData = localStorage.getItem('storage_edit_details');
-
-    if (savedBasicData || savedDetailsData) {
-      try {
-        const basicData = savedBasicData ? JSON.parse(savedBasicData) : {};
-        const detailsData = savedDetailsData ? JSON.parse(savedDetailsData) : {};
-
-        // 이전 단계 데이터 설정
-        setPrevFormData({
-          ...basicData,
-          ...detailsData,
-        });
-
-        console.log('로컬 스토리지에서 데이터 로드됨:', {
-          basicData,
-          detailsData,
-        });
+        const parsedData: StorageData = JSON.parse(savedData);
+        if (parsedData.mainImage) setMainImageData(parsedData.mainImage);
+        if (parsedData.detailImages) setDetailImageData(parsedData.detailImages);
       } catch (error) {
         console.error('Error parsing saved data:', error);
       }
     }
+    setIsInitialRender(false);
   }, []);
 
-  // 상태 변경시 로컬 스토리지에 저장
+  // 이미지 상태 변경 시 로컬 스토리지에 자동 저장
   useEffect(() => {
-    // 이미지 데이터 저장
-    localStorage.setItem(
-      'storage_edit_images',
-      JSON.stringify({
-        mainImage,
-        detailImages,
-      }),
-    );
+    if (isInitialRender) return;
 
-    // 이전 단계 데이터가 있으면 함께 저장
-    if (prevFormData) {
-      // storage_edit_details에 이미지 데이터를 포함하여 저장
-      const detailsData = JSON.parse(localStorage.getItem('storage_edit_details') || '{}');
-      const updatedDetailsData = {
-        ...detailsData,
-        mainImage,
-        detailImages,
-      };
-      localStorage.setItem('storage_edit_details', JSON.stringify(updatedDetailsData));
+    const dataToSave: StorageData = {
+      mainImage: mainImageData,
+      detailImages: detailImageData,
+    };
 
-      console.log('이미지 데이터와 함께 details 데이터 업데이트:', updatedDetailsData);
+    try {
+      localStorage.setItem('storage_edit_images', JSON.stringify(dataToSave));
+    } catch (error) {
+      console.error('로컬 스토리지 저장 오류:', error);
+      showToast('저장 중 문제가 발생했습니다.');
     }
-  }, [mainImage, detailImages, prevFormData]);
+  }, [mainImageData, detailImageData]);
 
   // 이전 단계 데이터 로드
   useEffect(() => {
@@ -526,43 +517,93 @@ const EditStorageImages: React.FC = () => {
     setTimeout(() => setToastVisible(false), 3000);
   };
 
-  // 메인 이미지 업로드 핸들러
-  const handleMainImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 메인 이미지 업로드 핸들러 수정
+  const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    try {
+      // presigned URL 요청
+      const presignedUrlResponse = await getPresignedUrl(file.name, file.type, 'post');
+
+      // S3에 이미지 업로드
+      await uploadImageWithPresignedUrl(presignedUrlResponse.data.presigned_url, file);
+
+      // 이미지 데이터 저장
+      setMainImageData({
+        image_url: presignedUrlResponse.data.image_url,
+        temp_key: presignedUrlResponse.data.temp_key,
+      });
+
+      // 미리보기용 이미지 URL 설정
+      setMainImage(presignedUrlResponse.data.image_url);
       setMainImageFile(file);
-      setMainImage(URL.createObjectURL(file));
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      showToast('이미지 업로드에 실패했습니다.');
     }
   };
 
-  // 상세 이미지 업로드 핸들러
-  const handleDetailImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 상세 이미지 업로드 핸들러 수정
+  const handleDetailImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files && files.length > 0) {
-      // 현재 이미지 개수 + 새로 추가할 이미지 개수가 4개를 초과하는지 체크
-      if (detailImages.length + files.length > 4) {
-        showToast('상세 이미지는 최대 4개까지 업로드할 수 있습니다.');
-        return;
+    if (!files) return;
+
+    // 최대 4장까지 가능
+    const remainingSlots = 4 - detailImageData.length;
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+    try {
+      const newImageData: ImageData[] = [];
+      const newImages: string[] = [];
+      const newFiles: File[] = [];
+
+      for (const file of filesToProcess) {
+        // presigned URL 요청
+        const presignedUrlResponse = await getPresignedUrl(file.name, file.type, 'post');
+
+        // S3에 이미지 업로드
+        await uploadImageWithPresignedUrl(presignedUrlResponse.data.presigned_url, file);
+
+        // 이미지 데이터 저장
+        newImageData.push({
+          image_url: presignedUrlResponse.data.image_url,
+          temp_key: presignedUrlResponse.data.temp_key,
+        });
+
+        // 미리보기용 이미지 URL 설정
+        newImages.push(presignedUrlResponse.data.image_url);
+        newFiles.push(file);
       }
-      const newFiles = Array.from(files);
-      setDetailImageFiles(newFiles);
-      const newDetails = newFiles.map(file => URL.createObjectURL(file));
-      setDetailImages(newDetails);
+
+      setDetailImageData(prev => [...prev, ...newImageData]);
+      setDetailImages(prev => [...prev, ...newImages]);
+      setDetailImageFiles(prev => [...prev, ...newFiles]);
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      showToast('이미지 업로드에 실패했습니다.');
     }
   };
 
-  // 메인 이미지 삭제 핸들러
+  // 메인 이미지 삭제 핸들러 수정
   const handleMainImageDelete = () => {
     setMainImage(null);
     setMainImageFile(null);
+    setMainImageData(null);
+    if (mainImageInputRef.current) {
+      mainImageInputRef.current.value = '';
+    }
   };
 
-  // 상세 이미지 삭제 핸들러
+  // 상세 이미지 삭제 핸들러 수정
   const handleDetailImageDelete = (index: number) => {
-    const newDetails = detailImages.filter((_, i) => i !== index);
-    setDetailImages(newDetails);
-    const newFiles = detailImageFiles.filter((_, i) => i !== index);
-    setDetailImageFiles(newFiles);
+    setDetailImages(prev => prev.filter((_, i) => i !== index));
+    setDetailImageFiles(prev => prev.filter((_, i) => i !== index));
+    setDetailImageData(prev => prev.filter((_, i) => i !== index));
+
+    if (detailImagesInputRef.current) {
+      detailImagesInputRef.current.value = '';
+    }
   };
 
   // 뒤로가기 핸들러
@@ -570,7 +611,7 @@ const EditStorageImages: React.FC = () => {
     navigate(ROUTES.STORAGE_EDIT_DETAILS.replace(':id', id || ''));
   };
 
-  // 완료 핸들러
+  // 완료 핸들러 수정
   const handleComplete = async () => {
     if (!prevFormData) {
       showToast('이전 단계 데이터가 없습니다. 다시 시도해주세요.');
@@ -579,51 +620,20 @@ const EditStorageImages: React.FC = () => {
 
     try {
       setIsLoading(true);
-      console.log('보관소 수정 시작...');
-      console.log('이전 단계 데이터:', prevFormData);
+      console.log('=== 보관소 수정 시작 ===');
 
-      // 이미지 파일 준비
-      let mainImageFileObj: File | null = null;
-      if (mainImageFile) {
-        mainImageFileObj = mainImageFile;
-        console.log('메인 이미지 파일:', mainImageFileObj);
-      } else if (mainImage && !mainImage.startsWith('http')) {
-        mainImageFileObj = base64ToFile(mainImage, 'main-image.jpg');
-        console.log('메인 이미지 base64에서 파일로 변환:', mainImageFileObj);
-      }
+      // 이미지 이동 요청
+      const tempKeys = [
+        ...(mainImageData ? [mainImageData.temp_key] : []),
+        ...detailImageData.map(img => img.temp_key),
+      ];
 
-      // 상세 이미지 파일 배열 준비
-      const detailImageFilesArray: File[] = [];
-      if (detailImageFiles.length > 0) {
-        detailImageFilesArray.push(...detailImageFiles);
-        console.log('상세 이미지 파일 배열:', detailImageFilesArray);
-      } else if (detailImages.length > 0) {
-        for (let i = 0; i < detailImages.length; i++) {
-          if (!detailImages[i].startsWith('http')) {
-            detailImageFilesArray.push(base64ToFile(detailImages[i], `detail-image-${i}.jpg`));
-          }
-        }
-        console.log('상세 이미지 base64에서 파일로 변환:', detailImageFilesArray);
-      }
+      const mainFlags = [
+        ...(mainImageData ? [true] : []),
+        ...new Array(detailImageData.length).fill(false),
+      ];
 
-      // 이미지 업로드
-      let mainImageUrl = mainImage;
-      if (mainImageFileObj) {
-        mainImageUrl = await uploadImage(mainImageFileObj, 'post', true);
-      }
-
-      let detailImageUrls = detailImages;
-      if (detailImageFilesArray.length > 0) {
-        const newDetailImageUrls = await uploadMultipleImages(
-          detailImageFilesArray,
-          'post',
-          new Array(detailImageFilesArray.length).fill(false),
-        );
-        detailImageUrls = [
-          ...detailImageUrls.filter(url => url.startsWith('http')),
-          ...newDetailImageUrls,
-        ];
-      }
+      const moveResponse = await moveImages(tempKeys, 'post', mainFlags);
 
       // 주소 데이터 준비
       const addressData: DaumAddressData = {
@@ -675,14 +685,56 @@ const EditStorageImages: React.FC = () => {
         prefer_price: Number(prevFormData.preferPrice) || 0,
         post_address_data: addressData,
         post_tags: prevFormData.postTags || [],
-        main_image: mainImageUrl,
-        detail_images: detailImageUrls,
+        main_image: moveResponse.data.moved_images[0]?.image_url || '',
+        detail_images: moveResponse.data.moved_images
+          .slice(1)
+          .map((img: { image_url: string }) => img.image_url),
       };
 
-      // ... rest of the code ...
+      console.log('6. 최종 요청 데이터:', requestData);
+
+      // 요청 데이터 유효성 검사
+      if (!requestData.post_title) {
+        showToast('제목을 입력해주세요.');
+        return;
+      }
+      if (!requestData.post_content) {
+        showToast('내용을 입력해주세요.');
+        return;
+      }
+      if (!requestData.prefer_price || requestData.prefer_price <= 0) {
+        showToast('유효한 가격을 입력해주세요.');
+        return;
+      }
+      if (!requestData.post_address_data.address) {
+        showToast('주소를 입력해주세요.');
+        return;
+      }
+      if (!requestData.main_image) {
+        showToast('대표 이미지를 업로드해주세요.');
+        return;
+      }
+      if (requestData.post_tags.length === 0) {
+        showToast('태그를 하나 이상 선택해주세요.');
+        return;
+      }
+
+      const response = await updateStorage(id!, requestData, 'post', true);
+
+      if (response.success) {
+        console.log('보관소 수정 성공:', response);
+        // 이미지 관련 데이터를 제외한 데이터만 로컬 스토리지에서 제거
+        localStorage.removeItem('storage_edit_basic');
+        localStorage.removeItem('storage_edit_details');
+        localStorage.removeItem('storage_edit_images');
+
+        openConfirmModal();
+      } else {
+        showToast(response?.message || '보관소 수정에 실패했습니다.');
+      }
     } catch (error) {
-      console.error('보관소 수정 오류:', error);
-      showToast('보관소 수정 중 오류가 발생했습니다.');
+      console.error('보관소 수정 실패:', error);
+      showToast('보관소 수정에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -759,7 +811,7 @@ const EditStorageImages: React.FC = () => {
             <input
               type="file"
               ref={mainImageInputRef}
-              onChange={handleMainImageUpload}
+              onChange={handleMainImageChange}
               accept="image/*"
               style={{ display: 'none' }}
             />
@@ -813,7 +865,7 @@ const EditStorageImages: React.FC = () => {
             <input
               type="file"
               ref={detailImagesInputRef}
-              onChange={handleDetailImageUpload}
+              onChange={handleDetailImagesChange}
               accept="image/*"
               multiple
               style={{ display: 'none' }}
