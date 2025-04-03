@@ -12,6 +12,7 @@ import {
 } from '../../services/api/modules/storage';
 import { DaumAddressData } from '../../services/KakaoMapService';
 import { ROUTES } from '../../constants/routes';
+import { uploadImage, uploadMultipleImages } from '../../services/api/modules/image';
 
 const RegistrationContainer = styled.div`
   width: 100%;
@@ -583,14 +584,8 @@ const Registration3: React.FC = () => {
     }, 300);
   };
 
-  // 폼 제출 핸들러
-  const handleSubmit = async () => {
-    // 필수 입력값 검증
-    if (!mainImage) {
-      showToast('대표 이미지를 업로드해주세요.');
-      return;
-    }
-
+  // 완료 핸들러
+  const handleComplete = async () => {
     if (!prevFormData) {
       showToast('이전 단계 데이터가 없습니다. 다시 시도해주세요.');
       return;
@@ -598,31 +593,76 @@ const Registration3: React.FC = () => {
 
     try {
       setIsLoading(true);
-      console.log('보관소 등록 시작...');
-      console.log('이전 단계 데이터:', prevFormData);
+      console.log('=== 보관소 등록 시작 ===');
+      console.log('1. 이전 단계 데이터:', prevFormData);
 
       // 이미지 파일 준비
-      let mainImageFileObj: File;
+      let mainImageFileObj: File | null = null;
       if (mainImageFile) {
         mainImageFileObj = mainImageFile;
-        console.log('메인 이미지 파일:', mainImageFileObj);
-      } else if (mainImage) {
+        console.log('2. 메인 이미지 파일:', {
+          name: mainImageFileObj.name,
+          type: mainImageFileObj.type,
+          size: mainImageFileObj.size,
+        });
+      } else if (mainImage && !mainImage.startsWith('http')) {
         mainImageFileObj = base64ToFile(mainImage, 'main-image.jpg');
-        console.log('메인 이미지 base64에서 파일로 변환:', mainImageFileObj);
-      } else {
-        throw new Error('대표 이미지가 없습니다.');
+        console.log('2. base64에서 변환된 메인 이미지 파일:', {
+          name: mainImageFileObj.name,
+          type: mainImageFileObj.type,
+          size: mainImageFileObj.size,
+        });
       }
 
       // 상세 이미지 파일 배열 준비
       const detailImageFilesArray: File[] = [];
       if (detailImageFiles.length > 0) {
         detailImageFilesArray.push(...detailImageFiles);
-        console.log('상세 이미지 파일 배열:', detailImageFilesArray);
+        console.log(
+          '3. 상세 이미지 파일 배열:',
+          detailImageFilesArray.map(file => ({
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          })),
+        );
       } else if (detailImages.length > 0) {
         for (let i = 0; i < detailImages.length; i++) {
-          detailImageFilesArray.push(base64ToFile(detailImages[i], `detail-image-${i}.jpg`));
+          if (!detailImages[i].startsWith('http')) {
+            detailImageFilesArray.push(base64ToFile(detailImages[i], `detail-image-${i}.jpg`));
+          }
         }
-        console.log('상세 이미지 base64에서 파일로 변환:', detailImageFilesArray);
+        console.log(
+          '3. base64에서 변환된 상세 이미지 파일 배열:',
+          detailImageFilesArray.map(file => ({
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          })),
+        );
+      }
+
+      // 이미지 업로드
+      let mainImageUrl = mainImage;
+      if (mainImageFileObj) {
+        console.log('4. 메인 이미지 업로드 시작...');
+        mainImageUrl = await uploadImage(mainImageFileObj, 'post', true);
+        console.log('4. 메인 이미지 업로드 완료:', mainImageUrl);
+      }
+
+      let detailImageUrls = detailImages;
+      if (detailImageFilesArray.length > 0) {
+        console.log('5. 상세 이미지 업로드 시작...');
+        const newDetailImageUrls = await uploadMultipleImages(
+          detailImageFilesArray,
+          'post',
+          new Array(detailImageFilesArray.length).fill(false),
+        );
+        detailImageUrls = [
+          ...detailImageUrls.filter(url => url.startsWith('http')),
+          ...newDetailImageUrls,
+        ];
+        console.log('5. 상세 이미지 업로드 완료:', detailImageUrls);
       }
 
       // 주소 데이터 준비
@@ -669,34 +709,45 @@ const Registration3: React.FC = () => {
       };
 
       // API 요청 데이터 준비
-      const requestData: StorageRegistrationRequest = {
+      const requestData = {
         post_title: prevFormData.postTitle || '',
         post_content: prevFormData.postContent || '',
         prefer_price: Number(prevFormData.preferPrice) || 0,
         post_address_data: addressData,
         post_tags: prevFormData.postTags || [],
+        main_image: mainImageUrl || '',
+        detail_images: detailImageUrls,
       };
 
-      // API 요청 데이터 상세 로깅
-      console.log('API 요청 데이터 상세:', {
-        post_title: requestData.post_title,
-        post_content: requestData.post_content,
-        prefer_price: requestData.prefer_price,
-        post_address_data: requestData.post_address_data,
-        post_tags: requestData.post_tags,
-        mainImageFile: {
-          name: mainImageFileObj.name,
-          type: mainImageFileObj.type,
-          size: mainImageFileObj.size,
-        },
-        detailImageFiles: detailImageFilesArray.map(file => ({
-          name: file.name,
-          type: file.type,
-          size: file.size,
-        })),
-      });
+      console.log('6. 최종 요청 데이터:', requestData);
 
-      const response = await registerStorage(requestData, mainImageFileObj, detailImageFilesArray);
+      // 요청 데이터 유효성 검사
+      if (!requestData.post_title) {
+        showToast('제목을 입력해주세요.');
+        return;
+      }
+      if (!requestData.post_content) {
+        showToast('내용을 입력해주세요.');
+        return;
+      }
+      if (!requestData.prefer_price || requestData.prefer_price <= 0) {
+        showToast('유효한 가격을 입력해주세요.');
+        return;
+      }
+      if (!requestData.post_address_data.address) {
+        showToast('주소를 입력해주세요.');
+        return;
+      }
+      if (!requestData.main_image) {
+        showToast('대표 이미지를 업로드해주세요.');
+        return;
+      }
+      if (requestData.post_tags.length === 0) {
+        showToast('태그를 하나 이상 선택해주세요.');
+        return;
+      }
+
+      const response = await registerStorage(requestData);
 
       if (response.success) {
         console.log('보관소 등록 성공:', response);
@@ -711,7 +762,11 @@ const Registration3: React.FC = () => {
         showToast(response?.message || '보관소 등록에 실패했습니다.');
       }
     } catch (error) {
-      console.error('보관소 등록 오류:', error);
+      console.error('=== 보관소 등록 오류 ===');
+      console.error('에러 객체:', error);
+      if (error instanceof Error) {
+        console.error('에러 메시지:', error.message);
+      }
       showToast('보관소 등록 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
@@ -873,7 +928,7 @@ const Registration3: React.FC = () => {
           </FormContainer>
 
           {/* 완료 버튼 */}
-          <CompleteButton onClick={handleSubmit}>완료</CompleteButton>
+          <CompleteButton onClick={handleComplete}>완료</CompleteButton>
         </Container>
       </RegistrationContainer>
 

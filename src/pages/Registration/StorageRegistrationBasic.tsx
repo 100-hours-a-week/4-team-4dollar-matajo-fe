@@ -745,7 +745,7 @@ const StorageRegistrationBasic: React.FC = () => {
     navigate('/');
   };
 
-  // 폼 제출 핸들러 수정
+  // 폼 제출 핸들러
   const handleSubmit = async () => {
     // 유효성 검사
     if (!validateForm()) {
@@ -754,11 +754,15 @@ const StorageRegistrationBasic: React.FC = () => {
     }
 
     try {
+      console.log('=== 보관소 등록 시작 ===');
+      console.log('1. 폼 데이터:', formData);
+
       // Daum 주소 데이터가 없는 경우 API 호출하여 가져오기
       if (!formData.postAddressData) {
         setIsLoading(true);
-        console.log('주소 데이터 변환 시도...');
+        console.log('2. 주소 데이터 변환 시도...');
         const addressData = await autoConvertAddress(formData.postAddress);
+        console.log('3. 변환된 주소 데이터:', addressData);
 
         // 주소 데이터 업데이트
         const updatedFormData = {
@@ -769,16 +773,23 @@ const StorageRegistrationBasic: React.FC = () => {
         // 상태 및 로컬 스토리지 업데이트
         setFormData(updatedFormData);
         localStorage.setItem('storage_register_basic', JSON.stringify(updatedFormData));
+        console.log('4. 업데이트된 폼 데이터:', updatedFormData);
 
         // 다음 단계로 이동
+        console.log('5. 다음 단계로 이동:', ROUTES.STORAGE_REGISTER_DETAILS);
         navigate(ROUTES.STORAGE_REGISTER_DETAILS, { state: updatedFormData });
       } else {
         // 이미 주소 데이터가 있으면 바로 다음 단계로 이동
-        console.log('다음 단계로 이동', formData);
+        console.log('2. 주소 데이터가 이미 존재함');
+        console.log('3. 다음 단계로 이동:', ROUTES.STORAGE_REGISTER_DETAILS);
         navigate(ROUTES.STORAGE_REGISTER_DETAILS, { state: formData });
       }
     } catch (error) {
-      console.error('주소 데이터 처리 또는 이동 중 오류:', error);
+      console.error('=== 보관소 등록 오류 ===');
+      console.error('에러 객체:', error);
+      if (error instanceof Error) {
+        console.error('에러 메시지:', error.message);
+      }
       showToast('오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);

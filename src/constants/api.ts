@@ -89,6 +89,10 @@ export const API_PATHS = {
     MY_TRADES: '/api/trades/my-trades',
     RECENT_BY_LOCATION: '/api/trades',
   },
+  IMAGE: {
+    PRESIGNED_URL: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/temp-upload',
+    MOVE_IMAGE: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/move-image',
+  },
 };
 
 // 기본 내보내기

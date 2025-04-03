@@ -8,6 +8,7 @@ import { API_BACKEND_URL, API_PATHS } from '../../constants/api';
 import axios from 'axios';
 import moment from 'moment-timezone';
 import client from '../../services/api/client';
+import { uploadImage } from '../../services/api/modules/image';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -850,8 +851,8 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       setError(null);
       setIsUploading(true);
 
-      // 이미지 업로드 API 호출
-      const imageUrl = await chatService.uploadImage(file);
+      // 이미지 업로드
+      const imageUrl = await uploadImage(file, 'chat');
 
       // 이미지 메시지 전송
       await chatService.sendImageMessage(roomId, currentUserId, imageUrl);
