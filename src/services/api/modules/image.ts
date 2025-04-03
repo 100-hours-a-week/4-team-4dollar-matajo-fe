@@ -24,6 +24,8 @@ interface MoveImageResponse {
   };
 }
 
+const plainAxios = axios.create();
+
 // presigned URL 요청
 export const getPresignedUrl = async (
   filename: string,
@@ -38,7 +40,7 @@ export const getPresignedUrl = async (
       category,
     });
 
-    const response = await axios.post(API_PATHS.IMAGE.PRESIGNED_URL, {
+    const response = await plainAxios.post(API_PATHS.IMAGE.PRESIGNED_URL, {
       mime_type,
       filename,
       category,
@@ -94,7 +96,7 @@ export const moveImages = async (
     console.log('=== 이미지 이동 시작 ===');
     console.log('1. 이동할 이미지 temp_keys:', temp_keys);
 
-    const response = await axios.post(API_PATHS.IMAGE.MOVE_IMAGE, {
+    const response = await plainAxios.post(API_PATHS.IMAGE.MOVE_IMAGE, {
       temp_keys,
       category,
       main_flags,

@@ -308,6 +308,9 @@ const MyPage: React.FC = () => {
     userId?: number | string;
   }>(() => initialUserState());
 
+  // 헬퍼 텍스트
+  const [helperText, setHelperText] = useState('');
+
   // 닉네임 편집 모드 여부 (true면 input 필드 노출)
   const [isEditing, setIsEditing] = useState(false);
 
@@ -327,6 +330,39 @@ const MyPage: React.FC = () => {
   const [modalSource, setModalSource] = useState<'keeper_registration' | 'my_place'>(
     'keeper_registration',
   );
+
+  // 중복확인 api호출 함수
+  const checkDuplicateNickname = async (nickname: string) => {
+    const token = localStorage.getItem('accessToken');
+    console.log('[중복 체크 요청 닉네임]', nickname.trim());
+
+    try {
+      const res = await client.get('/api/users/nickname', {
+        params: { nickname: nickname.trim() },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log('🔥 서버 응답:', JSON.stringify(res.data, null, 2));
+
+      const available = res.data?.data; // 여기만 바꿔도 됨
+
+      if (typeof available === 'boolean') {
+        return available;
+      }
+
+      console.warn('⚠️ 닉네임 중복 확인 응답 구조가 예상과 다릅니다:', res.data);
+      throw new Error('올바르지 않은 응답 형식');
+    } catch (err: any) {
+      const message = err?.response?.data?.message;
+
+      if (message === 'duplicate_nickname') return false;
+
+      console.error('[중복 확인 실패]', err?.response?.data || err);
+      throw err;
+    }
+  };
 
   // 토스트 메시지 표시 함수
   const showToast = (message: string) => {
@@ -573,36 +609,66 @@ const MyPage: React.FC = () => {
     setIsLogoutModalOpen(false);
   };
 
-  // 🔥 이 위치에 추가
+  // 닉네임 변경 처리 함수
   const handleSubmit = async () => {
-    if (nickname.trim().length === 0 || nickname.length > 10) {
-      alert('닉네임은 1~10자여야 합니다.');
+    const trimmed = nickname.trim();
+
+    if (trimmed.length === 0 || trimmed.length > 10) {
+      setHelperText('닉네임은 1~10자여야 합니다.');
       return;
     }
 
+    // 🔍 실제 비교 디버깅 로그
+    console.log('[입력값]', trimmed);
+    console.log('[현재 닉네임]', userState.userName.trim());
+    console.log('[일치 여부]', trimmed === userState.userName.trim());
+
+    // ✅ 기존 닉네임과 같은 경우
+    if (trimmed === userState.userName.trim()) {
+      setHelperText('기존 닉네임과 동일합니다.');
+      return;
+    }
+
+    // ✅ 중복 체크
+    try {
+      const isAvailable = await checkDuplicateNickname(trimmed);
+
+      if (!isAvailable) {
+        setHelperText('이미 사용 중인 닉네임입니다.');
+        return;
+      }
+    } catch (err) {
+      setHelperText('닉네임 중복 확인 중 오류가 발생했습니다.');
+      return;
+    }
+
+    // ✅ 사용자 ID 유효성 확인
     const userId = userState.userId?.toString();
     if (!userId) {
-      alert('유저 정보를 불러올 수 없습니다.');
+      setHelperText('유저 정보를 불러올 수 없습니다.');
       return;
     }
 
+    // ✅ 닉네임 변경 PATCH 요청
     try {
       const success = await client.patch(`/api/users/nickname?userId=${userId}`, {
-        nickname,
+        nickname: trimmed,
       });
+
       if (success) {
         setUserState(prev => ({
           ...prev,
-          userName: nickname,
+          userName: trimmed,
         }));
         setIsEditing(false);
+        setHelperText('');
         showToast('닉네임이 변경되었습니다.');
       } else {
-        alert('닉네임 변경에 실패했습니다.');
+        setHelperText('닉네임 변경에 실패했습니다.');
       }
     } catch (err) {
       console.error('닉네임 변경 중 오류:', err);
-      alert('오류가 발생했습니다.');
+      setHelperText('서버 오류가 발생했습니다.');
     }
   };
 
@@ -730,7 +796,6 @@ const MyPage: React.FC = () => {
                   autoFocus
                   value={nickname}
                   onChange={e => setNickname(e.target.value)}
-                  maxLength={10}
                   style={{
                     fontSize: '15px',
                     fontWeight: 700,
@@ -760,8 +825,8 @@ const MyPage: React.FC = () => {
               </div>
 
               {/* 헬퍼 텍스트 */}
-              <div style={{ fontSize: '8px', color: 'red', marginTop: '4px' }}>
-                헬퍼텍스트 영역입니다.
+              <div style={{ fontSize: '8px', color: 'red', marginTop: '4px', height: '12px' }}>
+                {helperText || ''}
               </div>
             </div>
           ) : (
