@@ -3,6 +3,10 @@ import { API_PATHS } from '../../../constants/api';
 import axios from 'axios';
 export interface PostByLocation {
   post_id: number;
+  post_title: string;
+  post_address: string;
+  latitude: number;
+  longitude: number;
   address: string;
   // 추가 필드가 있다면 여기에 추가
 }

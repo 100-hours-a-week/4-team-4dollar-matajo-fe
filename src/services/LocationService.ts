@@ -29,6 +29,7 @@ class LocationService {
   private constructor() {
     // 생성자는 private으로 설정하여 싱글톤 패턴 구현
     this.loadRecentLocations();
+    this.loadCurrentLocation();
   }
 
   public static getInstance(): LocationService {
@@ -84,6 +85,30 @@ class LocationService {
     return this.recentLocations;
   }
 
+  // 현재 위치 정보 불러오기
+  private loadCurrentLocation(): void {
+    try {
+      const savedLocation = localStorage.getItem('currentLocation');
+      if (savedLocation) {
+        this.currentLocation = JSON.parse(savedLocation);
+      }
+    } catch (error) {
+      console.error('현재 위치 정보 로드 실패:', error);
+      this.currentLocation = null;
+    }
+  }
+
+  // 현재 위치 정보 저장
+  private saveCurrentLocation(): void {
+    try {
+      if (this.currentLocation) {
+        localStorage.setItem('currentLocation', JSON.stringify(this.currentLocation));
+      }
+    } catch (error) {
+      console.error('현재 위치 정보 저장 실패:', error);
+    }
+  }
+
   // 현재 위치 가져오기
   public async getCurrentLocation(): Promise<LocationInfo | null> {
     if (this.currentLocation) {
@@ -110,7 +135,7 @@ class LocationService {
   // 현재 위치 설정
   public setCurrentLocation(location: LocationInfo): void {
     this.currentLocation = location;
-    this.addRecentLocation(location);
+    this.saveCurrentLocation();
   }
 
   // 주소로 위치 ID 조회 함수
