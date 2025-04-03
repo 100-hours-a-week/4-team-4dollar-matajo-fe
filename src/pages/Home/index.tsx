@@ -431,56 +431,103 @@ const HomePage: React.FC = () => {
         longitude: longitude || DEFAULT_COORDINATES.lng.toString(),
       };
 
+      // 선택한 위치를 현재 위치로 저장
       locationService.setCurrentLocation(locationInfo);
       locationService.addRecentLocation(locationInfo);
 
+      // 위치 상태 업데이트 모달 닫기기
       setLocation(address);
       setIsLocationModalOpen(false);
 
-      if (latitude && longitude) {
-        setMapCenter({
-          lat: parseFloat(latitude),
-          lng: parseFloat(longitude),
-        });
-      }
-
-      // 위치 ID 명시적으로 설정 후 데이터 로드
-      if (newLocationId) {
-        console.log('새 위치 ID 설정:', newLocationId);
-        setLocationId(newLocationId);
-        localStorage.setItem('currentLocationId', newLocationId.toString());
-      } else {
-        // newLocationId가 없는 경우 API를 통해 조회
+      // 위치 ID 설정 및 데이터 로드
+      let targetLocationId = newLocationId;
+      if (!targetLocationId) {
         console.log('위치 ID 조회 시작:', address);
-        const foundLocationId = await fetchLocationId(address);
-        console.log('조회된 위치 ID:', foundLocationId);
-        // fetchLocationId 내부에서 이미 setLocationId를 호출하므로 여기서는 추가 호출 불필요
+        targetLocationId = await fetchLocationId(address);
       }
 
-      // locationId가 변경되면 useEffect에서 loadMapData가 호출될 것이므로 여기서는 호출하지 않음
+      if (targetLocationId) {
+        setLocationId(targetLocationId);
+        localStorage.setItem('currentLocationId', targetLocationId.toString());
+
+        // 해당 위치의 게시글 데이터를 먼저 로드
+        const postsData = await getPostsByLocation(targetLocationId);
+
+        if (postsData && postsData.length > 0) {
+          // 첫 번째 게시글의 주소를 좌표로 변환
+          const coords = await convertAddressToCoords(postsData[0].address);
+
+          if (coords) {
+            // 게시글 위치보다 살짝 위로 이동 (더 넓은 시야 제공)
+            setMapCenter({
+              lat: coords.lat - 0.002, // 약간 위쪽으로 조정
+              lng: coords.lng,
+            });
+          } else {
+            // 좌표 변환 실패시 입력받은 좌표 사용
+            setMapCenter({
+              lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
+              lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
+            });
+          }
+        } else {
+          // 게시글이 없는 경우 입력받은 좌표 사용
+          setMapCenter({
+            lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
+            lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
+          });
+        }
+      }
     } catch (error) {
       console.error('위치 선택 처리 중 오류:', error);
+      // 에러 발생시 기본 좌표 사용
+      setMapCenter({
+        lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
+        lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
+      });
     }
   };
 
   const handleCurrentLocationClick = async () => {
     try {
       setLoading(true);
-      console.log('현재 위치로 이동 요청');
+      console.log('게시글 위치로 이동 요청');
 
-      // 1. 현재 위치 가져오기
-      const addr = await getCurrentLocation();
-      console.log('현재 위치 갱신 성공:', addr);
+      // 마커 데이터가 있는지 확인
+      if (markers && markers.length > 0) {
+        // 첫 번째 마커(혹은 랜덤 마커) 선택
+        const randomIndex = Math.floor(Math.random() * markers.length);
+        const targetMarker = markers[randomIndex];
 
-      // 2. 위치 ID 조회 및 데이터 로드
-      if (addr) {
+        console.log('선택된 마커 위치로 이동:', targetMarker.address);
+
+        // 선택된 마커의 좌표로 지도 중심 이동
+        setMapCenter({
+          lat: targetMarker.latitude - 0.002,
+          lng: targetMarker.longitude,
+        });
+
+        // 주소 정보 업데이트
+        setLocation(targetMarker.address);
+
+        // 위치 ID 업데이트
         console.log('새 위치에 대한 ID 조회');
-        const locationId = await fetchLocationId(addr);
+        const locationId = await fetchLocationId(targetMarker.address);
         console.log('위치 ID 조회 결과:', locationId);
-        // locationId 상태 업데이트와 loadMapData 호출은 상태 변경 감지 useEffect에서 처리
+      } else {
+        // 마커가 없는 경우 기존 현재 위치 기능 사용
+        console.log('게시글 위치 정보가 없어 현재 위치 사용');
+        const addr = await getCurrentLocation();
+        console.log('현재 위치 갱신 성공:', addr);
+
+        if (addr) {
+          console.log('새 위치에 대한 ID 조회');
+          const locationId = await fetchLocationId(addr);
+          console.log('위치 ID 조회 결과:', locationId);
+        }
       }
     } catch (error) {
-      console.error('현재 위치 이동 중 오류:', error);
+      console.error('위치 이동 중 오류:', error);
       setError('위치 정보를 갱신하는 중 오류가 발생했습니다');
     } finally {
       setLoading(false);
