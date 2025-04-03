@@ -93,6 +93,10 @@ export const API_PATHS = {
     PRESIGNED_URL: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/temp-upload',
     MOVE_IMAGE: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/move-image',
   },
+  // 알림 관련 경로 추가
+  NOTIFICATION: {
+    READ: '/api/notifications/read',
+  },
 };
 
 // 기본 내보내기
