@@ -699,18 +699,34 @@ const StorageRegistrationBasic: React.FC = () => {
   const hasDataChanged = (): boolean => {
     if (!initialData) {
       // 초기 데이터가 없고 현재 데이터가 있는 경우
-      return Object.values(formData).some(value =>
-        typeof value === 'string' ? value.trim() !== '' : value !== null,
-      );
+      return Object.values(formData).some(value => {
+        if (typeof value === 'string') {
+          return value.trim() !== '';
+        }
+        if (value === null || value === undefined) {
+          return false;
+        }
+        return true;
+      });
     }
 
-    return (
-      formData.postAddress !== initialData.postAddress ||
-      formData.postTitle !== initialData.postTitle ||
-      formData.postContent !== initialData.postContent ||
-      formData.preferPrice !== initialData.preferPrice ||
-      JSON.stringify(formData.postAddressData) !== JSON.stringify(initialData.postAddressData)
-    );
+    // 각 필드별로 비교
+    const fieldsToCompare = ['postAddress', 'postTitle', 'postContent', 'preferPrice'] as const;
+    const hasChanged = fieldsToCompare.some(field => {
+      const currentValue = formData[field];
+      const initialValue = initialData[field];
+
+      if (typeof currentValue === 'string' && typeof initialValue === 'string') {
+        return currentValue.trim() !== initialValue.trim();
+      }
+      return currentValue !== initialValue;
+    });
+
+    // postAddressData 비교
+    const addressDataChanged =
+      JSON.stringify(formData.postAddressData) !== JSON.stringify(initialData.postAddressData);
+
+    return hasChanged || addressDataChanged;
   };
 
   // 뒤로가기 핸들러 수정
