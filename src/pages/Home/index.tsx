@@ -508,7 +508,7 @@ const HomePage: React.FC = () => {
         });
 
         // 주소 정보 업데이트
-        setLocation(targetMarker.address);
+        // setLocation(targetMarker.address);
 
         // 위치 ID 업데이트
         console.log('새 위치에 대한 ID 조회');
