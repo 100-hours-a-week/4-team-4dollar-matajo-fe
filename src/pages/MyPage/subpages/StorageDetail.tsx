@@ -1019,6 +1019,21 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
       ]
     : [];
 
+  const requestLocationPermission = async () => {
+    try {
+      const permission = await navigator.permissions.query({ name: 'geolocation' });
+      if (permission.state === 'denied') {
+        // 사용자에게 위치 권한이 필요하다는 메시지 표시
+        alert('현재 위치 기능을 사용하기 위해서는 위치 권한이 필요합니다.');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('위치 권한 확인 중 오류:', error);
+      return false;
+    }
+  };
+
   return (
     <>
       {/* 상단 헤더 */}

@@ -335,6 +335,9 @@ const StorageRegistrationBasic: React.FC = () => {
   const DESCRIPTION_MAX_LENGTH = 15;
   const DETAILS_MAX_LENGTH = 500;
 
+  // 초기 데이터 저장
+  const [initialData, setInitialData] = useState<FormData | null>(null);
+
   // 다음 우편번호 검색 열기
   const openDaumPostcode = () => {
     console.log('다음 우편번호 검색 열기');
@@ -474,20 +477,16 @@ const StorageRegistrationBasic: React.FC = () => {
       }
 
       // 폼 데이터에 Daum 주소 데이터 업데이트
-      setFormData(prev => ({
-        ...prev,
-        postAddress: address,
-        postAddressData: daumAddressData,
-      }));
-
-      // 로컬 스토리지에 업데이트된 데이터 저장
-      const savedData = localStorage.getItem('registration_step1');
-      const updatedData = {
-        ...JSON.parse(savedData || '{}'),
+      const newFormData = {
+        ...formData,
         postAddress: address,
         postAddressData: daumAddressData,
       };
-      localStorage.setItem('registration_step1', JSON.stringify(updatedData));
+      setFormData(newFormData);
+      setInitialData(newFormData); // 초기 데이터 업데이트
+
+      // 로컬 스토리지에 업데이트된 데이터 저장
+      localStorage.setItem('storage_register_basic', JSON.stringify(newFormData));
 
       showToast('주소가 설정되었습니다.');
 
@@ -510,7 +509,14 @@ const StorageRegistrationBasic: React.FC = () => {
     // 로컬 스토리지에서 저장된 데이터 불러오기
     const savedData = localStorage.getItem('storage_register_basic');
     if (savedData) {
-      setFormData(JSON.parse(savedData));
+      try {
+        const parsedData = JSON.parse(savedData);
+        setFormData(parsedData);
+        setInitialData(parsedData); // 초기 데이터 저장
+      } catch (error) {
+        console.error('로컬 스토리지 데이터 파싱 오류:', error);
+        localStorage.removeItem('storage_register_basic');
+      }
     }
 
     // location.state에서 주소 데이터 확인
@@ -529,22 +535,19 @@ const StorageRegistrationBasic: React.FC = () => {
           console.log('Daum 주소 API 응답 데이터:', daumAddressData);
 
           // 폼 데이터에 주소 정보 및 Daum 주소 데이터 업데이트
-          setFormData(prev => ({
-            ...prev,
+          const newFormData = {
+            ...formData,
             postAddress: selectedAddress.address,
             postAddressData: daumAddressData,
-          }));
+          };
+          setFormData(newFormData);
+          setInitialData(newFormData); // 초기 데이터 업데이트
 
           // 주소 필드의 에러 초기화
           setErrors(prev => ({ ...prev, postAddress: '' }));
 
           // 로컬 스토리지에 업데이트된 데이터 저장
-          const updatedData = {
-            ...JSON.parse(savedData || '{}'),
-            postAddress: selectedAddress.address,
-            postAddressData: daumAddressData,
-          };
-          localStorage.setItem('storage_register_basic', JSON.stringify(updatedData));
+          localStorage.setItem('storage_register_basic', JSON.stringify(newFormData));
 
           showToast('주소 데이터가 변환되었습니다.');
         } catch (error) {
@@ -552,10 +555,12 @@ const StorageRegistrationBasic: React.FC = () => {
           showToast('주소 데이터 변환에 실패했습니다. 다시 시도해주세요.');
 
           // 주소만 업데이트
-          setFormData(prev => ({
-            ...prev,
+          const newFormData = {
+            ...formData,
             postAddress: selectedAddress.address,
-          }));
+          };
+          setFormData(newFormData);
+          setInitialData(newFormData); // 초기 데이터 업데이트
         } finally {
           setIsLoading(false);
         }
@@ -690,26 +695,69 @@ const StorageRegistrationBasic: React.FC = () => {
     return isValid;
   };
 
-  // 뒤로가기 핸들러
-  const handleBack = () => {
-    // 입력 데이터가 있는지 확인
-    const hasData = Object.values(formData).some(value =>
-      typeof value === 'string' ? value.trim() !== '' : true,
-    );
+  // 데이터 변경 여부 확인 함수
+  const hasDataChanged = (): boolean => {
+    if (!initialData) {
+      // 초기 데이터가 없고 현재 데이터가 있는 경우
+      return Object.values(formData).some(value => {
+        if (typeof value === 'string') {
+          return value.trim() !== '';
+        }
+        if (value === null || value === undefined) {
+          return false;
+        }
+        return true;
+      });
+    }
 
-    if (hasData) {
+    // 각 필드별로 비교
+    const fieldsToCompare = ['postAddress', 'postTitle', 'postContent', 'preferPrice'] as const;
+    const hasChanged = fieldsToCompare.some(field => {
+      const currentValue = formData[field];
+      const initialValue = initialData[field];
+
+      if (typeof currentValue === 'string' && typeof initialValue === 'string') {
+        return currentValue.trim() !== initialValue.trim();
+      }
+      return currentValue !== initialValue;
+    });
+
+    // postAddressData 비교
+    const addressDataChanged =
+      JSON.stringify(formData.postAddressData) !== JSON.stringify(initialData.postAddressData);
+
+    return hasChanged || addressDataChanged;
+  };
+
+  // 뒤로가기 핸들러 수정
+  const handleBack = () => {
+    console.log('hasDataChanged:', hasDataChanged());
+    if (hasDataChanged()) {
       setIsExitModalOpen(true);
     } else {
       navigate('/');
     }
   };
 
+  // 나가기 확인 핸들러 수정
   const handleExitConfirm = () => {
     setIsExitModalOpen(false);
+
     // 로컬 스토리지 데이터 삭제
-    localStorage.removeItem('storage_register_basic');
-    localStorage.removeItem('storage_register_details');
-    localStorage.removeItem('storage_register_images');
+    const keysToRemove = [
+      'storage_register_basic',
+      'storage_register_details',
+      'storage_register_images',
+      'storage_edit_basic',
+      'storage_edit_details',
+      'storage_edit_images',
+    ];
+
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      console.log('Removed key:', key);
+    });
+
     navigate('/');
   };
 
@@ -722,11 +770,15 @@ const StorageRegistrationBasic: React.FC = () => {
     }
 
     try {
+      console.log('=== 보관소 등록 시작 ===');
+      console.log('1. 폼 데이터:', formData);
+
       // Daum 주소 데이터가 없는 경우 API 호출하여 가져오기
       if (!formData.postAddressData) {
         setIsLoading(true);
-        console.log('주소 데이터 변환 시도...');
+        console.log('2. 주소 데이터 변환 시도...');
         const addressData = await autoConvertAddress(formData.postAddress);
+        console.log('3. 변환된 주소 데이터:', addressData);
 
         // 주소 데이터 업데이트
         const updatedFormData = {
@@ -737,16 +789,23 @@ const StorageRegistrationBasic: React.FC = () => {
         // 상태 및 로컬 스토리지 업데이트
         setFormData(updatedFormData);
         localStorage.setItem('storage_register_basic', JSON.stringify(updatedFormData));
+        console.log('4. 업데이트된 폼 데이터:', updatedFormData);
 
         // 다음 단계로 이동
+        console.log('5. 다음 단계로 이동:', ROUTES.STORAGE_REGISTER_DETAILS);
         navigate(ROUTES.STORAGE_REGISTER_DETAILS, { state: updatedFormData });
       } else {
         // 이미 주소 데이터가 있으면 바로 다음 단계로 이동
-        console.log('다음 단계로 이동', formData);
+        console.log('2. 주소 데이터가 이미 존재함');
+        console.log('3. 다음 단계로 이동:', ROUTES.STORAGE_REGISTER_DETAILS);
         navigate(ROUTES.STORAGE_REGISTER_DETAILS, { state: formData });
       }
     } catch (error) {
-      console.error('주소 데이터 처리 또는 이동 중 오류:', error);
+      console.error('=== 보관소 등록 오류 ===');
+      console.error('에러 객체:', error);
+      if (error instanceof Error) {
+        console.error('에러 메시지:', error.message);
+      }
       showToast('오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
@@ -822,11 +881,6 @@ const StorageRegistrationBasic: React.FC = () => {
                 name="postAddress"
                 value={formData.postAddress}
                 onChange={handleInputChange}
-                onFocus={e => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleAddressClick();
-                }}
                 onBlur={handleBlur}
                 placeholder="주소를 입력해주세요"
                 isError={!!errors.postAddress}

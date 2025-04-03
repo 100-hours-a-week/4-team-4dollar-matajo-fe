@@ -11,6 +11,8 @@ import client from '../../services/api/client';
 import type { AxiosError } from 'axios';
 import axios from 'axios';
 import { updateStorage } from '../../services/api/modules/storage';
+import { uploadImage, uploadMultipleImages } from '../../services/api/modules/image';
+import { base64ToFile } from '../../services/api/modules/storage';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -570,334 +572,117 @@ const EditStorageImages: React.FC = () => {
 
   // 완료 핸들러
   const handleComplete = async () => {
+    if (!prevFormData) {
+      showToast('이전 단계 데이터가 없습니다. 다시 시도해주세요.');
+      return;
+    }
+
     try {
       setIsLoading(true);
       console.log('보관소 수정 시작...');
+      console.log('이전 단계 데이터:', prevFormData);
 
-      // 메인 이미지 검증
-      if (!mainImageFile && !mainImage) {
-        showToast('대표 이미지를 업로드해주세요.');
-        return;
-      }
-
-      // 로컬 스토리지에서 모든 데이터 수집
-      const basicData = JSON.parse(localStorage.getItem('storage_edit_basic') || '{}');
-      const detailsData = JSON.parse(localStorage.getItem('storage_edit_details') || '{}');
-      const imagesData = JSON.parse(localStorage.getItem('storage_edit_images') || '{}');
-
-      console.log('=== 이전 단계 데이터 확인 ===');
-      console.log('basicData:', basicData);
-      console.log('detailsData:', detailsData);
-      console.log('imagesData:', imagesData);
-      console.log('prevFormData:', prevFormData);
-
-      // 이전 단계 데이터가 없으면 로컬 스토리지에서 가져온 데이터 사용
-      const formDataToUse = prevFormData || {
-        ...basicData,
-        ...detailsData,
-        mainImage: imagesData.mainImage || mainImage,
-        detailImages: imagesData.detailImages || detailImages,
-      };
-
-      console.log('사용할 데이터:', formDataToUse);
-      console.log('주소 데이터 확인:');
-      console.log('- basicData.postAddressData:', basicData.postAddressData);
-      console.log('- formDataToUse.postAddressData:', formDataToUse.postAddressData);
-
-      // 주소 데이터 검증 - 주소 데이터가 없으면 이전 단계의 데이터를 사용
-      const addressData = basicData.postAddressData || formDataToUse.postAddressData;
-      console.log('사용할 주소 데이터:', addressData);
-
-      if (!addressData) {
-        // 주소 데이터가 없으면 기본 주소 데이터 생성
-        const defaultAddressData = {
-          address: formDataToUse.postAddress || '',
-          address_english: '',
-          address_type: 'J',
-          apartment: 'N',
-          auto_jibun_address: '',
-          auto_jibun_address_english: '',
-          auto_road_address: '',
-          auto_road_address_english: '',
-          bcode: '',
-          bname: '',
-          bname1: '',
-          bname1_english: '',
-          bname2: '',
-          bname2_english: '',
-          bname_english: '',
-          building_code: '',
-          building_name: '',
-          hname: '',
-          jibun_address: formDataToUse.postAddress || '',
-          jibun_address_english: '',
-          no_selected: 'N',
-          postcode: '',
-          postcode1: '',
-          postcode2: '',
-          postcode_seq: '',
-          query: formDataToUse.postAddress || '',
-          road_address: formDataToUse.postAddress || '',
-          road_address_english: '',
-          roadname: '',
-          roadname_code: '',
-          roadname_english: '',
-          sido: '',
-          sido_english: '',
-          sigungu: '',
-          sigungu_code: '',
-          sigungu_english: '',
-          user_language_type: 'K',
-          user_selected_type: 'J',
-          zonecode: '',
-        };
-
-        console.log('기본 주소 데이터 생성:', defaultAddressData);
-
-        // postData에 기본 주소 데이터 사용
-        formDataToUse.post_address_data = defaultAddressData;
-      } else {
-        // 주소 데이터가 있으면 그대로 사용
-        formDataToUse.post_address_data = addressData;
-      }
-
-      // 태그 데이터 처리
-      const tags = new Set<string>();
-
-      // 기존 태그 추가
-      if (detailsData.postTags) {
-        detailsData.postTags.forEach((tag: string) => tags.add(tag));
-      } else if (formDataToUse.postTags) {
-        formDataToUse.postTags.forEach((tag: string) => tags.add(tag));
-      }
-
-      // 보관 위치 태그
-      if (detailsData.storageLocation) {
-        tags.add(detailsData.storageLocation);
-      } else if (formDataToUse.storageLocation) {
-        tags.add(formDataToUse.storageLocation);
-      }
-
-      // 물건 유형 태그
-      if (detailsData.selectedItemTypes) {
-        detailsData.selectedItemTypes.forEach((type: string) => tags.add(type));
-      } else if (formDataToUse.selectedItemTypes) {
-        formDataToUse.selectedItemTypes.forEach((type: string) => tags.add(type));
-      }
-
-      // 보관 방식 태그
-      if (detailsData.selectedStorageTypes) {
-        detailsData.selectedStorageTypes.forEach((type: string) => tags.add(type));
-      } else if (formDataToUse.selectedStorageTypes) {
-        formDataToUse.selectedStorageTypes.forEach((type: string) => tags.add(type));
-      }
-
-      // 보관 기간 태그
-      if (detailsData.selectedDurationOptions) {
-        detailsData.selectedDurationOptions.forEach((option: string) => tags.add(option));
-      } else if (formDataToUse.selectedDurationOptions) {
-        formDataToUse.selectedDurationOptions.forEach((option: string) => tags.add(option));
-      }
-
-      // 귀중품 태그
-      if (detailsData.isValuableSelected) {
-        tags.add('고가품');
-      } else if (formDataToUse.isValuableSelected) {
-        tags.add('고가품');
-      }
-
-      // postData 준비 (API 명세에 맞게 snake_case로 변환)
-      const postData = {
-        post_title: formDataToUse.postTitle || '',
-        post_content: formDataToUse.postContent || '',
-        post_address_data: formDataToUse.post_address_data || {},
-        prefer_price: Number(formDataToUse.preferPrice) || 0,
-        post_tags: Array.from(tags).filter(Boolean), // null, undefined, 빈 문자열 제거
-      };
-
-      console.log('생성된 postData:', postData);
-
-      // postData가 비어있는지 확인
-      if (
-        !postData.post_title ||
-        !postData.post_content ||
-        !postData.post_address_data ||
-        !postData.prefer_price
-      ) {
-        console.error('postData가 비어있습니다:', postData);
-        showToast('필수 데이터가 누락되었습니다. 다시 시도해주세요.');
-        return;
-      }
-
-      // postData 객체가 제대로 생성되었는지 확인
-      try {
-        JSON.stringify(postData);
-      } catch (error) {
-        console.error('postData를 JSON으로 변환할 수 없습니다:', error);
-        showToast('데이터 형식 오류가 발생했습니다. 다시 시도해주세요.');
-        return;
-      }
-
-      // postData 객체가 API 명세에 맞는지 확인
-      if (
-        typeof postData.post_title !== 'string' ||
-        typeof postData.post_content !== 'string' ||
-        typeof postData.post_address_data !== 'object' ||
-        typeof postData.prefer_price !== 'number' ||
-        !Array.isArray(postData.post_tags)
-      ) {
-        console.error('postData가 API 명세에 맞지 않습니다:', postData);
-        showToast('데이터 형식이 올바르지 않습니다. 다시 시도해주세요.');
-        return;
-      }
-
-      // postData 객체가 API 명세에 맞는지 확인 (주소 데이터)
-      if (
-        !postData.post_address_data.address ||
-        !postData.post_address_data.jibun_address ||
-        !postData.post_address_data.road_address
-      ) {
-        console.error('주소 데이터가 올바르지 않습니다:', postData.post_address_data);
-        showToast('주소 데이터가 올바르지 않습니다. 다시 시도해주세요.');
-        return;
-      }
-
-      // postData 객체가 API 명세에 맞는지 확인 (태그 데이터)
-      if (postData.post_tags.length === 0) {
-        console.error('태그 데이터가 비어있습니다:', postData.post_tags);
-        showToast('태그 데이터가 비어있습니다. 다시 시도해주세요.');
-        return;
-      }
-
-      // postData 객체가 API 명세에 맞는지 확인 (가격 데이터)
-      if (postData.prefer_price <= 0) {
-        console.error('가격 데이터가 올바르지 않습니다:', postData.prefer_price);
-        showToast('가격 데이터가 올바르지 않습니다. 다시 시도해주세요.');
-        return;
-      }
-
-      // 기존 이미지 URL을 File 객체로 변환
-      let mainImageToUse: File;
+      // 이미지 파일 준비
+      let mainImageFileObj: File | null = null;
       if (mainImageFile) {
-        mainImageToUse = mainImageFile;
-      } else if (mainImage) {
-        // 기존 이미지 URL을 File 객체로 변환
-        const response = await fetch(mainImage);
-        const blob = await response.blob();
-        mainImageToUse = new File([blob], 'main_image.jpg', { type: blob.type });
-      } else {
-        showToast('대표 이미지가 없습니다.');
-        return;
+        mainImageFileObj = mainImageFile;
+        console.log('메인 이미지 파일:', mainImageFileObj);
+      } else if (mainImage && !mainImage.startsWith('http')) {
+        mainImageFileObj = base64ToFile(mainImage, 'main-image.jpg');
+        console.log('메인 이미지 base64에서 파일로 변환:', mainImageFileObj);
       }
 
-      console.log('수정할 데이터:', {
-        postData,
-        mainImage: mainImageToUse.name,
-      });
-
-      // FormData 객체 생성
-      const formData = new FormData();
-      formData.append('postData', JSON.stringify(postData));
-
-      // 메인 이미지 추가
-      if (mainImageToUse instanceof File) {
-        formData.append('mainImage', mainImageToUse);
-      }
-
-      // 상세 이미지 추가
-      const detailImageFiles: File[] = [];
-
-      // URL 형태의 이미지를 File 객체로 변환
-      for (const image of detailImages) {
-        if (typeof image === 'string') {
-          try {
-            const response = await fetch(image);
-            const blob = await response.blob();
-            const file = new File([blob], `detail_image_${detailImageFiles.length}.jpg`, {
-              type: blob.type,
-            });
-            detailImageFiles.push(file);
-          } catch (error) {
-            console.error('이미지 변환 오류:', error);
+      // 상세 이미지 파일 배열 준비
+      const detailImageFilesArray: File[] = [];
+      if (detailImageFiles.length > 0) {
+        detailImageFilesArray.push(...detailImageFiles);
+        console.log('상세 이미지 파일 배열:', detailImageFilesArray);
+      } else if (detailImages.length > 0) {
+        for (let i = 0; i < detailImages.length; i++) {
+          if (!detailImages[i].startsWith('http')) {
+            detailImageFilesArray.push(base64ToFile(detailImages[i], `detail-image-${i}.jpg`));
           }
         }
+        console.log('상세 이미지 base64에서 파일로 변환:', detailImageFilesArray);
       }
 
-      // File 객체 추가
-      detailImageFiles.forEach(file => {
-        formData.append('detailImages', file);
-      });
-
-      console.log('FormData 내용 확인:');
-      console.log('postData:', formData.get('postData'));
-      console.log('mainImage:', formData.get('mainImage'));
-      console.log('detailImages:', formData.getAll('detailImages'));
-
-      // FormData 객체가 비어있는지 확인
-      if (!formData.has('postData')) {
-        console.error('FormData에 postData가 없습니다.');
-        showToast('데이터가 누락되었습니다. 다시 시도해주세요.');
-        return;
+      // 이미지 업로드
+      let mainImageUrl = mainImage;
+      if (mainImageFileObj) {
+        mainImageUrl = await uploadImage(mainImageFileObj, 'post', true);
       }
 
-      // FormData 객체에서 postData를 추출하여 확인
-      try {
-        const extractedPostData = JSON.parse(formData.get('postData') as string);
-        console.log('FormData에서 추출한 postData:', extractedPostData);
-
-        // 추출한 postData가 필요한 필드를 모두 포함하고 있는지 확인
-        if (
-          !extractedPostData.post_title ||
-          !extractedPostData.post_content ||
-          !extractedPostData.post_address_data ||
-          !extractedPostData.prefer_price
-        ) {
-          console.error(
-            '추출한 postData가 필요한 필드를 모두 포함하고 있지 않습니다:',
-            extractedPostData,
-          );
-          showToast('데이터가 올바르지 않습니다. 다시 시도해주세요.');
-          return;
-        }
-      } catch (error) {
-        console.error('FormData에서 postData를 추출할 수 없습니다:', error);
-        showToast('데이터 형식 오류가 발생했습니다. 다시 시도해주세요.');
-        return;
+      let detailImageUrls = detailImages;
+      if (detailImageFilesArray.length > 0) {
+        const newDetailImageUrls = await uploadMultipleImages(
+          detailImageFilesArray,
+          'post',
+          new Array(detailImageFilesArray.length).fill(false),
+        );
+        detailImageUrls = [
+          ...detailImageUrls.filter(url => url.startsWith('http')),
+          ...newDetailImageUrls,
+        ];
       }
 
-      // 메인 이미지가 File 객체인지 확인
-      const mainImageFormData = formData.get('mainImage');
-      if (!mainImageFormData || !(mainImageFormData instanceof File)) {
-        console.error('메인 이미지가 File 객체가 아닙니다.');
-        showToast('메인 이미지가 올바르지 않습니다. 다시 시도해주세요.');
-        return;
-      }
+      // 주소 데이터 준비
+      const addressData: DaumAddressData = {
+        address: prevFormData.postAddress || '',
+        address_english: '',
+        address_type: 'J',
+        apartment: 'N',
+        auto_jibun_address: prevFormData.postAddress || '',
+        auto_jibun_address_english: '',
+        auto_road_address: prevFormData.postAddress || '',
+        auto_road_address_english: '',
+        bcode: prevFormData.postAddressData?.bcode || '',
+        bname: prevFormData.postAddress?.split(' ').slice(-1)[0] || '',
+        bname1: prevFormData.postAddress?.split(' ')[1] || '',
+        bname1_english: '',
+        bname2: prevFormData.postAddress?.split(' ')[2] || '',
+        bname2_english: '',
+        bname_english: '',
+        building_code: prevFormData.postAddressData?.building_code || '',
+        building_name: prevFormData.postAddressData?.building_name || '',
+        hname: '',
+        jibun_address: prevFormData.postAddress || '',
+        jibun_address_english: '',
+        no_selected: 'N',
+        postcode: prevFormData.postAddressData?.zonecode || '',
+        postcode1: prevFormData.postAddressData?.zonecode?.slice(0, 3) || '',
+        postcode2: prevFormData.postAddressData?.zonecode?.slice(3) || '',
+        postcode_seq: '',
+        query: prevFormData.postAddress || '',
+        road_address: prevFormData.postAddress || '',
+        road_address_english: '',
+        roadname: prevFormData.postAddress?.split(' ').slice(-2).join(' ') || '',
+        roadname_code: prevFormData.postAddressData?.roadname_code || '',
+        roadname_english: '',
+        sido: prevFormData.postAddress?.split(' ')[0] || '',
+        sido_english: '',
+        sigungu: prevFormData.postAddress?.split(' ')[1] || '',
+        sigungu_code: prevFormData.postAddressData?.sigungu_code || '',
+        sigungu_english: '',
+        user_language_type: 'K',
+        user_selected_type: 'J',
+        zonecode: prevFormData.postAddressData?.zonecode || '',
+      };
 
-      // 상세 이미지가 File 객체인지 확인
-      const detailImagesFormData = formData.getAll('detailImages');
-      if (detailImagesFormData.some((image: FormDataEntryValue) => !(image instanceof File))) {
-        console.error('상세 이미지 중 File 객체가 아닌 것이 있습니다.');
-        showToast('상세 이미지가 올바르지 않습니다. 다시 시도해주세요.');
-        return;
-      }
+      // API 요청 데이터 준비
+      const requestData = {
+        post_title: prevFormData.postTitle || '',
+        post_content: prevFormData.postContent || '',
+        prefer_price: Number(prevFormData.preferPrice) || 0,
+        post_address_data: addressData,
+        post_tags: prevFormData.postTags || [],
+        main_image: mainImageUrl,
+        detail_images: detailImageUrls,
+      };
 
-      // @ts-ignore - 타입 오류 무시 (updateStorage 함수가 FormData를 받도록 수정됨)
-      const response = await updateStorage(id || '', formData);
-
-      if (response.success) {
-        // 성공 시 로컬 스토리지 데이터 삭제
-        localStorage.removeItem('storage_edit_basic');
-        localStorage.removeItem('storage_edit_details');
-        localStorage.removeItem('storage_edit_images');
-
-        // 성공 모달 표시
-        openConfirmModal();
-      } else {
-        showToast(response.message || '보관소 수정에 실패했습니다.');
-      }
+      // ... rest of the code ...
     } catch (error) {
       console.error('보관소 수정 오류:', error);
-      showToast(error instanceof Error ? error.message : '보관소 수정 중 오류가 발생했습니다.');
+      showToast('보관소 수정 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }

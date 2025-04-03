@@ -83,6 +83,8 @@ export interface StorageRegistrationRequest {
   };
   prefer_price: number;
   post_tags: string[];
+  main_image: string;
+  detail_images: string[];
 }
 
 // 보관소 등록 응답 인터페이스
@@ -115,40 +117,17 @@ export interface StorageUpdateResponse {
  */
 export const registerStorage = async (
   postData: StorageRegistrationRequest,
-  mainImage: File,
-  detailImages: File[],
 ): Promise<StorageRegistrationResponse> => {
   try {
-    const formData = new FormData();
-    const postDataBlob = new Blob([JSON.stringify(postData)], { type: 'application/json' });
-    formData.append('postData', postDataBlob);
-    formData.append('mainImage', mainImage);
+    // 요청 데이터를 snake_case로 변환
+    const transformedData = transformKeysToSnake(postData);
 
-    // 상세 이미지가 있는 경우에만 추가
-    if (detailImages && detailImages.length > 0) {
-      detailImages.forEach(file => {
-        formData.append('detailImages', file);
-      });
-    } else {
-      // 상세 이미지가 없는 경우 빈 배열 전송
-      formData.append('detailImages', new Blob([], { type: 'application/json' }));
-    }
+    console.log('=== API 요청 데이터 ===');
+    console.log('transformedData:', JSON.stringify(transformedData, null, 2));
 
-    console.log('=== FormData 내용 ===');
-    console.log('postData:', postData);
-    console.log('mainImage:', mainImage.name, 'size:', mainImage.size);
-    console.log(
-      'detailImages:',
-      detailImages.map(img => ({ name: img.name, size: img.size })),
-    );
-
-    formData.forEach((value, key) => {
-      console.log(`${key}:`, value instanceof File ? `${value.name} (${value.size} bytes)` : value);
-    });
-
-    const response = await client.post<StorageRegistrationResponse>('/api/posts', formData, {
+    const response = await client.post<StorageRegistrationResponse>('/api/posts', transformedData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
       },
     });
@@ -161,7 +140,11 @@ export const registerStorage = async (
       console.error('서버 응답 에러:', error.response?.data);
       console.error('에러 상태 코드:', error.response?.status);
       console.error('에러 헤더:', error.response?.headers);
-      throw new Error(error.response?.data?.message || '보관소 등록에 실패했습니다.');
+      console.error('요청 데이터:', error.config?.data);
+
+      // 서버 에러 메시지가 있는 경우 해당 메시지를 사용
+      const errorMessage = error.response?.data?.message || '보관소 등록에 실패했습니다.';
+      throw new Error(errorMessage);
     }
     throw error;
   }

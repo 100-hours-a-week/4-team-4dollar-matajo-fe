@@ -83,7 +83,16 @@ export const createTrade = async (data: CreateTradeRequest): Promise<CreateTrade
  */
 export const getMyTrades = async (): Promise<TradeItem[]> => {
   try {
-    const response = await client.get<MyTradesResponse>(API_PATHS.TRADES.MY_TRADES);
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      throw new Error('인증 토큰이 없습니다.');
+    }
+
+    const response = await client.get<MyTradesResponse>(API_PATHS.TRADES.MY_TRADES, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (response.data && response.data.success && Array.isArray(response.data.data)) {
       console.log('거래 내역 조회 성공:', response.data);
@@ -94,20 +103,12 @@ export const getMyTrades = async (): Promise<TradeItem[]> => {
     return [];
   } catch (error: any) {
     console.error('거래 내역 조회 실패:', error);
-
     if (error.response?.status === 401) {
       // 토큰이 만료되었거나 유효하지 않은 경우
       localStorage.removeItem('accessToken');
       throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
-    } else if (error.response?.status === 500) {
-      throw new Error('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-    } else if (error.response?.status === 404) {
-      throw new Error('요청한 API를 찾을 수 없습니다.');
-    } else if (!error.response) {
-      throw new Error('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.');
     }
-
-    throw new Error('거래 내역을 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.');
+    throw error;
   }
 };
 

@@ -166,36 +166,87 @@ const HomePage: React.FC = () => {
         try {
           // 위치 ID 기반 게시글 조회
           const postsData = await getPostsByLocation(locationId);
+          console.log('게시글 데이터:', postsData);
 
-          // 게시글 데이터를 마커 형식으로 변환
-          newMarkers = postsData.map((post, index) => ({
-            id: post.post_id.toString(),
-            name: `보관소 ${index + 1}`,
-            latitude: mapCenter.lat + (Math.random() * 0.01 - 0.005),
-            longitude: mapCenter.lng + (Math.random() * 0.01 - 0.005),
-            address: post.address,
-          }));
+          if (postsData && postsData.length > 0) {
+            // 주소를 좌표로 변환하는 Promise 배열 생성
+            const coordinatePromises = postsData.map(async post => {
+              try {
+                return new Promise<{ lat: number; lng: number } | null>(resolve => {
+                  const geocoder = new window.kakao.maps.services.Geocoder();
+                  console.log('주소 변환 시도:', post.post_address);
+                  geocoder.addressSearch(post.post_address, (result: any, status: any) => {
+                    if (status === 'OK') {
+                      console.log('주소 변환 성공:', result[0]);
+                      resolve({
+                        lat: parseFloat(result[0].y),
+                        lng: parseFloat(result[0].x),
+                      });
+                    } else {
+                      console.error('주소 좌표 변환 실패:', status, post.post_address);
+                      resolve(null);
+                    }
+                  });
+                });
+              } catch (error) {
+                console.error('주소 좌표 변환 오류:', error, post.post_address);
+                return null;
+              }
+            });
 
-          setMarkers(newMarkers);
+            // 모든 주소의 좌표 변환 완료 대기
+            const coordinates = await Promise.all(coordinatePromises);
+            console.log('변환된 좌표:', coordinates);
 
-          // 지역 특가 데이터 조회
-          const dealsResponse = await getLocalDeals(locationId);
-          if (dealsResponse.success && dealsResponse.data.posts) {
-            setDiscountItems(dealsResponse.data.posts);
+            // 좌표가 있는 게시글만 마커로 변환
+            newMarkers = postsData
+              .map((post, index) => {
+                const coords = coordinates[index];
+                if (!coords) {
+                  console.log('좌표 변환 실패한 게시글:', post);
+                  return null;
+                }
+
+                const marker = {
+                  id: post.post_id.toString(),
+                  name: post.post_title || '보관소',
+                  latitude: coords.lat,
+                  longitude: coords.lng,
+                  address: post.post_address,
+                };
+                console.log('생성된 마커:', marker);
+                return marker;
+              })
+              .filter((marker): marker is NonNullable<typeof marker> => marker !== null);
+
+            console.log('최종 마커 배열:', newMarkers);
+            setMarkers(newMarkers);
+
+            // 지역 특가 데이터 조회
+            const dealsResponse = await getLocalDeals(locationId);
+            if (dealsResponse.success && dealsResponse.data.posts) {
+              setDiscountItems(dealsResponse.data.posts);
+            } else {
+              setDiscountItems([]);
+            }
+
+            // 최근 거래내역 조회
+            await fetchRecentTrades(locationId);
           } else {
+            console.log('게시글 데이터 없음');
+            setMarkers([]);
             setDiscountItems([]);
+            setRecentItems([]);
           }
-
-          // 최근 거래내역 조회
-          await fetchRecentTrades(locationId);
         } catch (err) {
           console.error('데이터 조회 오류:', err);
-          // 오류 시 빈 마커 배열 설정
           setMarkers([]);
           setDiscountItems([]);
           setRecentItems([]);
         }
       } else {
+        console.log('locationId 없음');
+        setMarkers([]);
         setDiscountItems([]);
         setRecentItems([]);
       }
@@ -329,26 +380,32 @@ const HomePage: React.FC = () => {
     longitude?: string,
     newLocationId?: number,
   ) => {
-    // 위치 정보가 변경되었을 때만 API 호출
-    if (newLocationId && newLocationId !== locationId) {
+    try {
+      const locationService = LocationService.getInstance();
+      const locationInfo: LocationInfo = {
+        formatted_address: address,
+        display_name: address,
+        latitude: latitude || DEFAULT_COORDINATES.lat.toString(),
+        longitude: longitude || DEFAULT_COORDINATES.lng.toString(),
+      };
+
+      locationService.setCurrentLocation(locationInfo);
+      locationService.addRecentLocation(locationInfo);
+
       setLocation(address);
       setLocationId(newLocationId);
+      setIsLocationModalOpen(false);
 
-      // 병렬로 API 호출하여 시간 단축
-      try {
-        // 지도 중심 변경
-        if (latitude && longitude) {
-          setMapCenter({
-            lat: parseFloat(latitude),
-            lng: parseFloat(longitude),
-          });
-        }
-
-        // 지도 데이터 로드 (이미 구현된 함수 활용)
-        await loadMapData();
-      } catch (error) {
-        console.error('데이터 로드 오류:', error);
+      if (latitude && longitude) {
+        setMapCenter({
+          lat: parseFloat(latitude),
+          lng: parseFloat(longitude),
+        });
       }
+
+      await loadMapData();
+    } catch (error) {
+      console.error('위치 선택 처리 중 오류:', error);
     }
   };
 
@@ -402,29 +459,6 @@ const HomePage: React.FC = () => {
     setError(null);
     getCurrentLocation();
   };
-
-  useEffect(() => {
-    const fetchMarkers = async () => {
-      try {
-        const response = await getLocationPosts('1'); // string으로 변경
-        if (response.success) {
-          const postsData = response.data.posts;
-          const formattedMarkers: Marker[] = postsData.map((post: LocationPost) => ({
-            id: post.post_id.toString(),
-            name: post.post_title || '보관소',
-            latitude: post.latitude,
-            longitude: post.longitude,
-            address: post.post_address,
-          }));
-          setMarkers(formattedMarkers);
-        }
-      } catch (error) {
-        console.error('마커 데이터 가져오기 실패:', error);
-      }
-    };
-
-    fetchMarkers();
-  }, []);
 
   if (loading) {
     return (

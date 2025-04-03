@@ -3,6 +3,10 @@ import { API_PATHS } from '../../../constants/api';
 import axios from 'axios';
 export interface PostByLocation {
   post_id: number;
+  post_title: string;
+  post_address: string;
+  latitude: number;
+  longitude: number;
   address: string;
   // 추가 필드가 있다면 여기에 추가
 }
@@ -265,17 +269,15 @@ export const getLocalDeals = async (locationInfoId: number) => {
 
 export const toggleStorageVisibility = async (postId: string) => {
   try {
-    const response = await axios.patch(
-      `${API_PATHS.POSTS.TOGGLE_VISIBILITY.replace(':postId', postId)}`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      },
-    );
+    const endpoint = API_PATHS.POSTS.TOGGLE_VISIBILITY.replace(':postId', postId);
+    const response = await client.patch(endpoint);
     return response;
   } catch (error) {
+    console.error('보관소 공개/비공개 전환 오류:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('서버 응답 에러:', error.response?.data);
+      console.error('에러 상태 코드:', error.response?.status);
+    }
     throw error;
   }
 };

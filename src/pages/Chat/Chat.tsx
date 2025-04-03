@@ -8,6 +8,7 @@ import { API_BACKEND_URL, API_PATHS } from '../../constants/api';
 import axios from 'axios';
 import moment from 'moment-timezone';
 import client from '../../services/api/client';
+import { uploadImage } from '../../services/api/modules/image';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -26,26 +27,28 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 100%; // 변경: 100%로 설정하여 반응형으로 변경
-  max-width: 375px; // 추가: 최대 너비 제한
+  width: 100%;
+  max-width: 375px;
   height: 100vh;
   position: relative;
   background: ${THEME.background};
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  margin: 0 auto; // 추가: 중앙 정렬
+  margin: 0 auto;
 `;
 
-// 채팅 영역 - bottom padding 증가
+// 채팅 영역 - 스타일 수정
 const ChatContainer = styled.div`
   flex: 1;
   padding: 10px 24px;
-  padding-top: 90px; // 헤더 높이 고려
-  padding-bottom: 80px; // 입력창 높이 고려 (증가)
+  padding-top: 90px; // 헤더 높이
+  padding-bottom: 60px; // 입력창 높이
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  -webkit-overflow-scrolling: touch; // iOS 스크롤 부드럽게
+  scroll-behavior: smooth; // 스크롤 부드럽게
 `;
 
 // 날짜 표시
@@ -66,12 +69,12 @@ const DateText = styled.span`
   letter-spacing: 0.2px;
 `;
 
-// 메시지 그룹 (버블 + 시간)
+// 메시지 그룹 (버블 + 시간) - 마진 조정
 const MessageGroup = styled.div`
   display: flex;
   flex-direction: row;
   max-width: 75%;
-  margin-bottom: 15px;
+  margin-bottom: 8px; // 마진 줄임
   position: relative;
 `;
 const TimeReadGroup = styled.div`
@@ -205,15 +208,16 @@ const InputContainer = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
-  max-width: 375px; // 추가: 최대 너비 제한
+  max-width: 375px;
   height: 60px;
   background: white;
   padding: 10px;
   display: flex;
   align-items: center;
   z-index: 100;
-  margin: 0 auto; // 추가: 중앙 정렬
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); // 추가: 그림자 효과
+  margin: 0 auto;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  transition: bottom 0.3s ease;
 `;
 
 const AddButton = styled.button`
@@ -449,6 +453,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 채팅방 재입장 시 마지막 접속 시간 확인
   const [lastAccessTime, setLastAccessTime] = useState<string | null>(null);
 
+  // 키보드 높이 상태 추가
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // 스크롤 위치 상태 추가
+  const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
+
   // API 요청 헤더에 userId 추가
   useEffect(() => {
     // localStorage에서 userId 가져오기
@@ -683,21 +693,55 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     }
   };
 
-  // 채팅 스크롤 관리
+  // 스크롤 이벤트 핸들러
+  const handleScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      const isBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
+      setIsScrolledToBottom(isBottom);
+    }
+  };
+
+  // 스크롤 이벤트 리스너 등록
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
+  // 스크롤 관련 useEffect 수정
   useEffect(() => {
     const scrollToBottom = () => {
       if (chatContainerRef.current) {
         const container = chatContainerRef.current;
         container.scrollTo({
           top: container.scrollHeight,
-          behavior: 'auto',
+          behavior: 'smooth',
         });
       }
     };
 
-    // 메시지가 변경될 때마다 스크롤
-    scrollToBottom();
-  }, [messages]);
+    // 메시지가 변경될 때마다 스크롤 (하단에 있을 때만)
+    if (isScrolledToBottom) {
+      scrollToBottom();
+    }
+  }, [messages, isScrolledToBottom]);
+
+  // 새 메시지 수신 시 스크롤다운
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.sender_id === currentUserId) {
+      // 내가 보낸 메시지인 경우 항상 스크롤다운
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [messages, currentUserId]);
 
   // 메시지 전송 핸들러
   const handleSendMessage = async () => {
@@ -730,6 +774,14 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
       // 입력창 초기화
       setInputMessage('');
+
+      // 메시지 전송 후 강제로 스크롤다운
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
     } catch (error) {
       console.error('메시지 전송 실패:', error);
       setError('메시지 전송에 실패했습니다. 네트워크 연결을 확인해주세요.');
@@ -799,8 +851,8 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       setError(null);
       setIsUploading(true);
 
-      // 이미지 업로드 API 호출
-      const imageUrl = await chatService.uploadImage(file);
+      // 이미지 업로드
+      const imageUrl = await uploadImage(file, 'chat');
 
       // 이미지 메시지 전송
       await chatService.sendImageMessage(roomId, currentUserId, imageUrl);
@@ -986,13 +1038,48 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     }
   }, [messages, currentUserId, roomId]);
 
-  /* // savedMessages가 변경될 때마다 localStorage에 저장
+  // 키보드 이벤트 핸들러
   useEffect(() => {
-    if (roomId && savedMessages.length > 0) {
-      localStorage.setItem(`chat_messages_${roomId}`, JSON.stringify(savedMessages));
-      console.log('메시지를 로컬 스토리지에 저장:', savedMessages.length);
-    }
-  }, [savedMessages, roomId]); */
+    const handleResize = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    const handleFocus = () => {
+      // 모바일에서 input focus 시 키보드가 올라오는 것을 감지
+      setTimeout(() => {
+        const currentHeight = window.innerHeight;
+        const windowHeight = window.outerHeight;
+        const keyboardHeight = windowHeight - currentHeight;
+        setKeyboardHeight(keyboardHeight);
+      }, 100);
+    };
+
+    const handleBlur = () => {
+      setKeyboardHeight(0);
+    };
+
+    // 초기 높이 설정
+    handleResize();
+
+    // 이벤트 리스너 등록
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('focusin', handleFocus);
+    window.addEventListener('focusout', handleBlur);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('focusin', handleFocus);
+      window.removeEventListener('focusout', handleBlur);
+    };
+  }, []);
+
+  // InputContainer 스타일 동적 적용
+  const inputContainerStyle = {
+    bottom: keyboardHeight,
+    transition: 'bottom 0.3s ease',
+  };
 
   return (
     <Container>
@@ -1012,7 +1099,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       )}
 
       {/* 채팅 영역 */}
-      <ChatContainer ref={chatContainerRef}>
+      <ChatContainer
+        ref={chatContainerRef}
+        style={{
+          paddingBottom: isScrolledToBottom ? '60px' : '20px',
+        }}
+      >
         {error && (
           <ErrorMessage>
             {error}
@@ -1102,7 +1194,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       <UploadStatus visible={isUploading}>이미지 업로드 중...</UploadStatus>
 
       {/* 메시지 입력 영역 */}
-      <InputContainer>
+      <InputContainer style={inputContainerStyle}>
         <AddButton onClick={handleAddImage}>
           <AddIcon />
         </AddButton>

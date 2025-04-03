@@ -30,7 +30,7 @@ const Container = styled.div`
   background: white;
   overflow-y: auto;
   padding-bottom: 40px;
-  padding-top: 10px;
+  padding-top: 60px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -40,8 +40,8 @@ const Container = styled.div`
 // 장소 카드 스타일
 const PlaceCard = styled.div`
   width: 326px;
-  height: 96px;
-  margin: 15px auto;
+  height: 80px;
+  margin: 10px auto;
   background: rgba(217, 217, 217, 0);
   border-radius: 10px;
   border: 1px ${THEME.borderColor} solid;
