@@ -506,6 +506,7 @@ const EditStorageBasic: React.FC = () => {
       'storage_edit_basic',
       'storage_edit_details',
       'storage_edit_images',
+      'storage_edit_images_changed',
       'storage_register_basic',
       'storage_register_details',
       'storage_register_images',

@@ -98,18 +98,58 @@ export interface StorageRegistrationResponse {
 export interface StorageUpdateRequest {
   post_title: string;
   post_content: string;
-  post_address_data: DaumAddressData;
+  post_address_data: {
+    address: string;
+    address_english: string;
+    address_type: string;
+    apartment: string;
+    auto_jibun_address: string;
+    auto_jibun_address_english: string;
+    auto_road_address: string;
+    auto_road_address_english: string;
+    bcode: string;
+    bname: string;
+    bname1: string;
+    bname1_english: string;
+    bname2: string;
+    bname2_english: string;
+    bname_english: string;
+    building_code: string;
+    building_name: string;
+    hname: string;
+    jibun_address: string;
+    jibun_address_english: string;
+    no_selected: string;
+    postcode: string;
+    postcode1: string;
+    postcode2: string;
+    postcode_seq: string;
+    query: string;
+    road_address: string;
+    road_address_english: string;
+    roadname: string;
+    roadname_code: string;
+    roadname_english: string;
+    sido: string;
+    sido_english: string;
+    sigungu: string;
+    sigungu_code: string;
+    sigungu_english: string;
+    user_language_type: string;
+    user_selected_type: string;
+    zonecode: string;
+  };
   prefer_price: number;
   post_tags: string[];
+  main_image: string;
+  detail_images: string[];
 }
 
 // 보관소 수정 응답 인터페이스
 export interface StorageUpdateResponse {
+  id: string;
   success: boolean;
-  message: string;
-  data: {
-    post_id: number;
-  };
+  message?: string;
 }
 
 /**
@@ -124,11 +164,11 @@ export const registerStorage = async (
 
     console.log('=== API 요청 데이터 ===');
     console.log('transformedData:', JSON.stringify(transformedData, null, 2));
-
+    const token = localStorage.getItem('accessToken');
     const response = await client.post<StorageRegistrationResponse>('/api/posts', transformedData, {
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -181,51 +221,37 @@ export const base64ToFile = (
 export const updateStorage = async (
   postId: string,
   postData: StorageUpdateRequest,
-  mainImage: File,
-  detailImages: File[],
 ): Promise<StorageUpdateResponse> => {
   try {
-    const formData = new FormData();
-
-    // postData를 snake_case로 변환하고 JSON 문자열로 변환하여 Blob으로 전송
-    const transformedPostData = transformKeysToSnake(postData);
-    const postDataBlob = new Blob([JSON.stringify(transformedPostData)], {
-      type: 'application/json',
-    });
-    formData.append('postData', postDataBlob);
-
-    // 메인 이미지 추가
-    formData.append('mainImage', mainImage);
-
-    // 상세 이미지가 있는 경우에만 추가
-    if (detailImages && detailImages.length > 0) {
-      detailImages.forEach((file, index) => {
-        formData.append(`detailImages`, file);
-      });
-    }
-
-    // FormData 내용 로깅
-    console.log('=== FormData 내용 ===');
-    console.log('postData:', transformedPostData);
-    console.log('mainImage:', mainImage.name, 'size:', mainImage.size);
-    console.log(
-      'detailImages:',
-      detailImages.map(img => ({ name: img.name, size: img.size })),
+    const transformedData = transformKeysToSnake(postData);
+    console.log('=== API 요청 데이터 ===');
+    console.log('transformedData:', JSON.stringify(transformedData, null, 2));
+    const token = localStorage.getItem('accessToken');
+    const response = await client.patch<StorageUpdateResponse>(
+      `/api/posts/${postId}`,
+      transformedData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      },
     );
 
-    const response = await client.patch<StorageUpdateResponse>(`/api/posts/${postId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
+    console.log('서버 응답:', response.data);
     return response.data;
   } catch (error) {
+    console.error('보관소 수정 API 오류:', error);
     console.error('보관소 수정 API 오류:', error);
     if (axios.isAxiosError(error)) {
       console.error('서버 응답 에러:', error.response?.data);
       console.error('에러 상태 코드:', error.response?.status);
-      throw new Error(error.response?.data?.message || '보관소 수정에 실패했습니다.');
+      console.error('에러 헤더:', error.response?.headers);
+      console.error('요청 데이터:', error.config?.data);
+
+      // 서버 에러 메시지가 있는 경우 해당 메시지를 사용
+      const errorMessage = error.response?.data?.message || '보관소 수정에 실패했습니다.';
+      throw new Error(errorMessage);
     }
     throw error;
   }
