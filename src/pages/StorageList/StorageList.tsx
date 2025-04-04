@@ -97,6 +97,7 @@ const FilterContainer = styled.div`
   width: 100%;
   height: 40px;
   overflow-x: auto;
+  justify-content: center;
   white-space: nowrap;
   scrollbar-width: none; /* Firefox */
   &::-webkit-scrollbar {
@@ -112,6 +113,7 @@ const FilterContainer = styled.div`
 // 아이템 그리드 컨테이너
 const ItemGridContainer = styled.div`
   width: 100%;
+  max-width: 480px;
   padding: 10px 15px 76px;
   display: grid;
   grid-template-columns: 1fr 1fr;

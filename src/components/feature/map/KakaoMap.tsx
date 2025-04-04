@@ -13,9 +13,9 @@ const MapContainer = styled.div`
 
 // 새로고침 버튼 스타일
 const RefreshButton = styled.button`
-  position: fixed;
-  top: 70px;
-  right: 10px;
+  position: absolute;
+  top: 50px;
+  right: 15px;
   width: 40px;
   height: 40px;
   background-color: white;
