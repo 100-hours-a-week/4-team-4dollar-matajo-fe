@@ -90,6 +90,11 @@ export const API_PATHS = {
     PRESIGNED_URL: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/temp-upload',
     MOVE_IMAGE: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/move-image',
   },
+  FCM: {
+    REGISTER_TOKEN: '/api/fcm/token',
+    REFRESH_TOKEN: '/api/fcm/token/refresh',
+    DELETE_TOKEN: '/api/fcm/token',
+  },
 };
 
 // 기본 내보내기

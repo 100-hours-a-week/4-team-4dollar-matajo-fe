@@ -9,6 +9,7 @@ import axios from 'axios';
 import moment from 'moment-timezone';
 import client from '../../services/api/client';
 import { uploadImage } from '../../services/api/modules/image';
+import FcmService from '../../services/FcmService';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -302,7 +303,6 @@ const SendIcon = styled.div`
     mask-repeat: no-repeat;
   }
 `;
-
 // 업로드 상태 표시
 const UploadStatus = styled.div<{ visible: boolean }>`
   display: ${props => (props.visible ? 'block' : 'none')};
@@ -366,6 +366,32 @@ const ReadStatus = styled.div`
   text-align: right;
 `;
 
+// 알림 권한 요청 컴포넌트
+const NotificationPermissionBanner = styled.div`
+  position: fixed;
+  top: 50px;
+  left: 0;
+  right: 0;
+  background-color: rgba(91, 89, 253, 0.9);
+  color: white;
+  text-align: center;
+  padding: 8px;
+  font-size: 12px;
+  z-index: 11;
+`;
+
+const PermissionButton = styled.button`
+  background-color: white;
+  color: ${THEME.primary};
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+`;
+
 interface ChatProps {
   onBack?: () => void;
 }
@@ -377,6 +403,9 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // 채팅 서비스 인스턴스
   const chatService = ChatService.getInstance();
+
+  // FCM 서비스 인스턴스
+  const fcmService = FcmService.getInstance();
 
   // 사용자 ID 상태 - localStorage에서 가져오거나 설정
   const [currentUserId, setCurrentUserId] = useState<number>(() => {
@@ -394,16 +423,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 메시지 상태 관리 - localStorage에서 로드
   const [messages, setMessages] = useState<ChatMessageResponseDto[]>(() => {
     if (!roomId) return [];
-
-    /* // localStorage에서 저장된 메시지 로드
-    const savedMessagesJson = localStorage.getItem(`chat_messages_${roomId}`);
-    if (savedMessagesJson) {
-      try {
-        return JSON.parse(savedMessagesJson);
-      } catch (e) {
-        console.error('저장된 메시지 파싱 실패:', e);
-      }
-    } */
     return [];
   });
 
@@ -437,16 +456,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 메시지 저장을 위한 상태 추가 - localStorage에서 로드
   const [savedMessages, setSavedMessages] = useState<ChatMessageResponseDto[]>(() => {
     if (!roomId) return [];
-
-    /* // localStorage에서 저장된 메시지 로드
-    const savedMessagesJson = localStorage.getItem(`chat_messages_${roomId}`);
-    if (savedMessagesJson) {
-      try {
-        return JSON.parse(savedMessagesJson);
-      } catch (e) {
-        console.error('저장된 메시지 파싱 실패:', e);
-      }
-    } */
     return [];
   });
 
@@ -458,6 +467,54 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // 스크롤 위치 상태 추가
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
+
+  // 알림 권한 상태 추가
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission | null>(null);
+
+  // 알림 배너 표시 여부
+  const [showNotificationBanner, setShowNotificationBanner] = useState(false);
+
+  // 새 메시지 사운드 객체 생성
+  const messageSound = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // 기존 오디오 객체가 있으면 제거
+    if (messageSound.current) {
+      messageSound.current.pause();
+      messageSound.current = null;
+    }
+
+    try {
+      // 새 오디오 객체 생성
+      messageSound.current = new Audio('/notification.mp3');
+
+      // iOS에서 더 안정적인 재생을 위한 설정
+      messageSound.current.preload = 'auto';
+
+      // 사용자 상호작용 이벤트에서 오디오 로드
+      const loadAudio = () => {
+        if (messageSound.current) {
+          messageSound.current.load();
+        }
+        // 한 번만 실행하도록 이벤트 리스너 제거
+        document.removeEventListener('click', loadAudio);
+      };
+
+      document.addEventListener('click', loadAudio);
+
+      // 컴포넌트 언마운트 시 오디오 정리
+      return () => {
+        if (messageSound.current) {
+          messageSound.current.pause();
+          messageSound.current = null;
+        }
+        document.removeEventListener('click', loadAudio);
+      };
+    } catch (error) {
+      console.error('오디오 초기화 오류:', error);
+    }
+  }, []); // 빈 의존성 배열
 
   // API 요청 헤더에 userId 추가
   useEffect(() => {
@@ -493,6 +550,124 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // 방 제목
   const [roomTitle, setRoomTitle] = useState('채팅방');
+
+  // FCM 설정 초기화
+  useEffect(() => {
+    // FCM 서비스 가시성 리스너 설정
+    fcmService.setupVisibilityListener();
+
+    // 현재 알림 권한 확인
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+
+      // 알림 권한이 'default'인 경우 배너 표시
+      if (Notification.permission === 'default') {
+        setShowNotificationBanner(true);
+      } else if (Notification.permission === 'granted') {
+        // 권한이 이미 있는 경우 FCM 토큰 등록
+        initializeFcm();
+      }
+    }
+
+    // FCM 메시지 이벤트 리스너 (컴포넌트 외부에서 발생한 FCM 이벤트 처리)
+    const handleFcmMessage = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const payload = customEvent.detail;
+
+      if (payload?.notification) {
+        const title = payload.notification.title || '';
+        const body = payload.notification.body || '';
+        const message = title ? `${title}: ${body}` : body;
+
+        if (message) {
+          playNotificationSound();
+        }
+      }
+    };
+
+    // DOM에 FCM 이벤트 리스너 등록
+    window.addEventListener('fcm-message', handleFcmMessage);
+
+    // 클린업 함수
+    return () => {
+      window.removeEventListener('fcm-message', handleFcmMessage);
+    };
+  }, []);
+
+  // FCM 초기화 함수
+  const initializeFcm = async () => {
+    try {
+      // FCM 토큰 생성 및 등록
+      const token = await fcmService.getAndRegisterToken();
+      console.log('FCM token registered:', token);
+
+      // FCM 메시지 리스너 등록 - 토스트 메시지 연결
+      fcmService.onMessage(payload => {
+        try {
+          const title = payload.notification?.title || '';
+          const body = payload.notification?.body || '';
+          const message = title ? `${title}: ${body}` : body;
+
+          if (message) {
+            // 디버깅용 로그 추가
+            console.log('토스트 메시지 호출 시도:', message);
+
+            // 메시지 길이 제한
+            const trimmedMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
+
+            // 알림 사운드 재생
+            playNotificationSound();
+          }
+        } catch (error) {
+          console.error('토스트 메시지 호출 중 오류:', error);
+        }
+      });
+
+      // 토큰 갱신 설정
+      fcmService.setupTokenRefresh();
+    } catch (error) {
+      console.error('FCM initialization error:', error);
+    }
+  };
+
+  // 알림 권한 요청 처리
+  const handleRequestPermission = async () => {
+    try {
+      const permission = await fcmService.requestPermissionByUserGesture();
+      setNotificationPermission(permission ? 'granted' : 'denied');
+      setShowNotificationBanner(false);
+
+      if (permission) {
+        // 권한 획득 후 FCM 초기화
+        initializeFcm();
+      }
+    } catch (error) {
+      console.error('Permission request error:', error);
+    }
+  };
+
+  // 재생 관련 문제를 방지하기 위해 사운드 재생 함수 개선
+  const playNotificationSound = () => {
+    try {
+      // 이미 생성된 오디오 객체 사용
+      if (messageSound.current) {
+        // iOS에서 사용자 상호작용 없이 오디오 재생을 위해 초기화
+        messageSound.current.currentTime = 0;
+        messageSound.current.volume = 0.5;
+
+        const playPromise = messageSound.current.play();
+
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.warn('Audio play failed:', error);
+            // 자동 재생 정책으로 인한 오류는 무시 (사용자 상호작용 필요)
+          });
+        }
+      }
+    } catch (error) {
+      console.error('알림 사운드 재생 실패:', error);
+    }
+  };
 
   // 채팅방 컴포넌트에서 연결 상태 관리 개선
   useEffect(() => {
@@ -559,6 +734,14 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
             setSavedMessages(newMessages);
             return newMessages;
           });
+
+          // 상대방이 보낸 메시지인 경우 읽음 처리
+          if (message.sender_id !== currentUserId) {
+            // 메시지 읽음 처리
+            chatService.markMessagesAsRead(roomId, currentUserId).catch(e => {
+              console.error('읽음 처리 실패:', e);
+            });
+          }
         });
 
         console.log('채팅방 구독 성공');
@@ -622,8 +805,36 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
       chatService.removeConnectListener(connectListener);
       chatService.removeErrorListener(errorListener);
+
+      // FCM 메시지 리스너 제거
+      fcmService.offMessage(() => {});
     };
   }, [roomId, currentUserId]);
+
+  // 메시지 수신 시 토스트 알림 표시 - 로직 추가
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+
+      // 방금 받은 메시지가 다른 사람이 보낸 것이고, 스크롤이 하단에 있지 않은 경우
+      if (
+        lastMessage.sender_id !== currentUserId &&
+        !isScrolledToBottom &&
+        !lastMessage.content.includes('사용자가 채팅방에 입장했습니다')
+      ) {
+        // 새 메시지 알림 토스트 표시
+        const senderName = lastMessage.sender_nickname || '상대방';
+        const messagePreview =
+          lastMessage.message_type === MessageType.IMAGE
+            ? '📷 이미지를 보냈습니다'
+            : lastMessage.content.length > 15
+              ? `${lastMessage.content.substring(0, 15)}...`
+              : lastMessage.content;
+
+        playNotificationSound();
+      }
+    }
+  }, [messages, currentUserId, isScrolledToBottom]);
 
   // 메시지 로드 함수 수정
   const loadPreviousMessages = async () => {
@@ -632,39 +843,9 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     try {
       console.log('이전 메시지 로드 시작...');
 
-      /* // 로컬 스토리지에서 메시지 로드
-      let localMessages: ChatMessageResponseDto[] = [];
-      const savedMessagesJson = localStorage.getItem(`chat_messages_${roomId}`);
-      if (savedMessagesJson) {
-        try {
-          localMessages = JSON.parse(savedMessagesJson);
-          console.log('로컬 스토리지에서 로드된 메시지:', localMessages.length);
-        } catch (e) {
-          console.error('저장된 메시지 파싱 실패:', e);
-        }
-      } */
-
       // 서버에서 메시지 로드
       const serverMessages = await chatService.loadMessages(roomId);
       console.log('서버에서 받은 메시지:', serverMessages.length);
-
-      /* // 모든 메시지 병합
-      const allMessages = [...localMessages, ...serverMessages];
-
-      // 중복 제거 및 정렬
-      const uniqueMessages = Array.from(
-        new Map(allMessages.map(msg => [msg.message_id, msg])).values(),
-      ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-      console.log('정렬된 메시지:', uniqueMessages.length);
-
-      // 메시지 상태 업데이트
-      setMessages(uniqueMessages);
-      setSavedMessages(uniqueMessages);
-
-      // localStorage에 저장
-      localStorage.setItem(`chat_messages_${roomId}`, JSON.stringify(uniqueMessages));
-      console.log('메시지 상태 업데이트 완료'); */
 
       // 서버 메시지만 사용
       setMessages(serverMessages);
@@ -1090,6 +1271,14 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       <ConnectionStatus connected={isConnected}>
         {isConnected ? '연결됨' : '연결 끊김'}
       </ConnectionStatus>
+
+      {/* 알림 권한 요청 배너 */}
+      {showNotificationBanner && (
+        <NotificationPermissionBanner>
+          실시간 메시지 알림을 받으시겠습니까?
+          <PermissionButton onClick={handleRequestPermission}>허용</PermissionButton>
+        </NotificationPermissionBanner>
+      )}
 
       {/* 확정하기 버튼 - 보관인일 때만 표시 */}
       {isKeeper() && (
