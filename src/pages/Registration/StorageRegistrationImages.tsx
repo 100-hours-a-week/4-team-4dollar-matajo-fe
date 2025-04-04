@@ -600,45 +600,58 @@ const Registration3: React.FC = () => {
 
       // 주소 데이터 준비
       const addressData: DaumAddressData = {
-        address: prevFormData.postAddress || '',
-        address_english: '',
-        address_type: 'J',
-        apartment: 'N',
-        auto_jibun_address: prevFormData.postAddress || '',
-        auto_jibun_address_english: '',
-        auto_road_address: prevFormData.postAddress || '',
-        auto_road_address_english: '',
+        // 원본 postAddressData의 모든 필드를 최대한 활용
+        address: prevFormData.postAddressData?.address || prevFormData.postAddress || '',
+        address_english: prevFormData.postAddressData?.address_english || '',
+        address_type: prevFormData.postAddressData?.address_type || 'R',
+        apartment: prevFormData.postAddressData?.apartment || 'N',
+        auto_jibun_address:
+          prevFormData.postAddressData?.auto_jibun_address || prevFormData.postAddress || '',
+        auto_jibun_address_english: prevFormData.postAddressData?.auto_jibun_address_english || '',
+        auto_road_address:
+          prevFormData.postAddressData?.auto_road_address || prevFormData.postAddress || '',
+        auto_road_address_english: prevFormData.postAddressData?.auto_road_address_english || '',
         bcode: prevFormData.postAddressData?.bcode || '',
-        bname: prevFormData.postAddress?.split(' ').slice(-1)[0] || '',
-        bname1: prevFormData.postAddress?.split(' ')[1] || '',
-        bname1_english: '',
-        bname2: prevFormData.postAddress?.split(' ')[2] || '',
-        bname2_english: '',
-        bname_english: '',
+        bname: prevFormData.postAddressData?.bname || '',
+        bname1: prevFormData.postAddressData?.bname1 || '',
+        bname1_english: prevFormData.postAddressData?.bname1_english || '',
+        bname2: prevFormData.postAddressData?.bname2 || '',
+        bname2_english: prevFormData.postAddressData?.bname2_english || '',
+        bname_english: prevFormData.postAddressData?.bname_english || '',
         building_code: prevFormData.postAddressData?.building_code || '',
         building_name: prevFormData.postAddressData?.building_name || '',
-        hname: '',
-        jibun_address: prevFormData.postAddress || '',
-        jibun_address_english: '',
-        no_selected: 'N',
-        postcode: prevFormData.postAddressData?.zonecode || '',
-        postcode1: prevFormData.postAddressData?.zonecode?.slice(0, 3) || '',
-        postcode2: prevFormData.postAddressData?.zonecode?.slice(3) || '',
-        postcode_seq: '',
-        query: prevFormData.postAddress || '',
-        road_address: prevFormData.postAddress || '',
-        road_address_english: '',
-        roadname: prevFormData.postAddress?.split(' ').slice(-2).join(' ') || '',
+        hname: prevFormData.postAddressData?.hname || '',
+        jibun_address:
+          prevFormData.postAddressData?.jibun_address || prevFormData.postAddress || '',
+        jibun_address_english: prevFormData.postAddressData?.jibun_address_english || '',
+        no_selected: prevFormData.postAddressData?.no_selected || 'N',
+        postcode:
+          prevFormData.postAddressData?.postcode || prevFormData.postAddressData?.zonecode || '',
+        postcode1:
+          prevFormData.postAddressData?.postcode1 ||
+          prevFormData.postAddressData?.zonecode?.slice(0, 3) ||
+          '',
+        postcode2:
+          prevFormData.postAddressData?.postcode2 ||
+          prevFormData.postAddressData?.zonecode?.slice(3) ||
+          '',
+        postcode_seq: prevFormData.postAddressData?.postcode_seq || '',
+        query: prevFormData.postAddressData?.query || '',
+        road_address: prevFormData.postAddressData?.road_address || prevFormData.postAddress || '',
+        road_address_english: prevFormData.postAddressData?.road_address_english || '',
+        roadname: prevFormData.postAddressData?.roadname || '',
         roadname_code: prevFormData.postAddressData?.roadname_code || '',
-        roadname_english: '',
-        sido: prevFormData.postAddress?.split(' ')[0] || '',
-        sido_english: '',
-        sigungu: prevFormData.postAddress?.split(' ')[1] || '',
+        roadname_english: prevFormData.postAddressData?.roadname_english || '',
+        sido: prevFormData.postAddressData?.sido || '',
+        sido_english: prevFormData.postAddressData?.sido_english || '',
+        sigungu: prevFormData.postAddressData?.sigungu || '',
         sigungu_code: prevFormData.postAddressData?.sigungu_code || '',
-        sigungu_english: '',
-        user_language_type: 'K',
-        user_selected_type: 'J',
+        sigungu_english: prevFormData.postAddressData?.sigungu_english || '',
+        user_language_type: prevFormData.postAddressData?.user_language_type || 'K',
+        user_selected_type: prevFormData.postAddressData?.user_selected_type || 'R',
         zonecode: prevFormData.postAddressData?.zonecode || '',
+        latitude: prevFormData.postAddressData?.latitude,
+        longitude: prevFormData.postAddressData?.longitude,
       };
 
       // API 요청 데이터 준비
