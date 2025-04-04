@@ -555,7 +555,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 알림 권한 요청 처리
   const handleRequestPermission = async () => {
     try {
-      const permission = await fcmService.requestPermission();
+      const permission = await fcmService.requestPermissionByUserGesture();
       setNotificationPermission(permission ? 'granted' : 'denied');
       setShowNotificationBanner(false);
 

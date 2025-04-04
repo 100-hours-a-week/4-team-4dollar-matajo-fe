@@ -11,15 +11,20 @@ import client from './api/client';
 import { API_PATHS } from '../constants/api';
 
 // 메시지 페이로드 타입 정의
-type MessagePayload = {
+interface MessagePayload {
   notification?: {
     title: string;
     body: string;
   };
-  data?: {
-    [key: string]: string;
-  };
-};
+  data?: Record<string, string>;
+}
+
+// renotify, data 등 추가 옵션을 허용하기 위한 CustomNotificationOptions
+interface CustomNotificationOptions extends NotificationOptions {
+  renotify?: boolean;
+  // data 필드가 any여야 브라우저 내부나 Safari 호환성 문제를 줄일 수 있음
+  data?: unknown;
+}
 
 // Firebase 설정값
 const firebaseConfig = {
@@ -33,14 +38,16 @@ const firebaseConfig = {
 };
 
 class FcmService {
-  private static instance: FcmService;
+  private static instance: FcmService | null = null;
   private app: FirebaseApp | null = null;
   private messaging: Messaging | null = null;
+  private currentToken: string | null = null;
   private initialized = false;
-  private messageCallbacks: ((payload: MessagePayload) => void)[] = [];
   private vapidKey = process.env.REACT_APP_FIREBASE_VAPID_KEY || '';
 
-  // 싱글톤 인스턴스 얻기
+  private messageCallbacks: Array<(payload: MessagePayload) => void> = [];
+  private tokenChangeCallbacks: Array<(token: string) => void> = [];
+
   public static getInstance(): FcmService {
     if (!FcmService.instance) {
       FcmService.instance = new FcmService();
@@ -49,143 +56,149 @@ class FcmService {
   }
 
   private constructor() {
-    if (this.isSupported()) {
-      try {
-        this.app = initializeApp(firebaseConfig);
-        this.messaging = getMessaging(this.app);
-        this.initialized = true;
-        console.log('Firebase Messaging initialized successfully');
-
-        // 포그라운드 메시지 핸들러 등록
-        this.setupMessageListener();
-      } catch (error) {
-        console.error('Firebase initialization error:', error);
-      }
-    } else {
-      console.warn('Firebase Messaging is not supported in this browser');
-    }
-  }
-
-  // FCM이 브라우저에서 지원되는지 확인
-  private isSupported(): boolean {
-    return 'serviceWorker' in navigator && 'Notification' in window && 'PushManager' in window;
-  }
-
-  // 알림 권한 요청
-  public async requestPermission(): Promise<boolean> {
-    if (!this.initialized) {
-      console.warn('Firebase Messaging not initialized');
-      return false;
+    // 자동 초기화 시도 (단, Safari에서 Notification.requestPermission()은 "사용자 제스처" 필요)
+    if (!this.isSupported()) {
+      console.warn('Browser does not support FCM');
+      return;
     }
 
     try {
-      const permission = await Notification.requestPermission();
-      console.log('Notification permission:', permission);
-      return permission === 'granted';
+      this.app = initializeApp(firebaseConfig);
+      this.messaging = getMessaging(this.app);
+      this.initialized = true;
+      console.log('Firebase Messaging initialized');
+
+      // 로컬 스토리지에서 기존 토큰 복원
+      this.currentToken = localStorage.getItem('fcmToken');
+
+      // 메시지 리스너 설정
+      this.setupMessageListener();
     } catch (error) {
-      console.error('Permission request error:', error);
+      console.error('Firebase initialization failed:', error);
+    }
+  }
+
+  /**
+   * Safari 등 일부 브라우저에서는 권한 요청이 사용자 클릭 이벤트 등에서만 가능
+   * → 실제 버튼 onClick 등에서 이 메서드를 호출하도록 권장
+   */
+  public async requestPermissionByUserGesture(): Promise<boolean> {
+    try {
+      const permission = await Notification.requestPermission();
+      return permission === 'granted';
+    } catch {
       return false;
     }
   }
 
-  // FCM 토큰 가져오기 및 서버에 등록
+  /**
+   * 기존에 자동으로 requestPermission()을 호출했던 부분 제거
+   * → 브라우저 사용자가 명시적으로 동의 버튼을 눌렀을 때 "requestPermissionByUserGesture"를 먼저 호출해야 함
+   * → 그 후 getAndRegisterToken()을 호출하면 안전
+   */
   public async getAndRegisterToken(): Promise<string | null> {
-    if (!this.initialized || !this.messaging) {
-      console.warn('Firebase Messaging not initialized');
+    if (!this.initialized || !this.messaging) return null;
+
+    // check permission but do not forcibly request
+    if (Notification.permission !== 'granted') {
+      console.warn(
+        'Notification permission not granted yet. Call requestPermissionByUserGesture first.',
+      );
       return null;
     }
 
     try {
-      // 알림 권한 확인
-      const permission = await this.requestPermission();
-      if (!permission) {
-        console.warn('Notification permission not granted');
-        return null;
-      }
-
-      // FCM 토큰 가져오기
-      const token = await getToken(this.messaging, {
-        vapidKey: this.vapidKey,
-      });
-
-      if (token) {
-        console.log('FCM Token:', token);
-
-        // 서버에 토큰 등록
-        await this.registerTokenWithServer(token);
-
-        // 로컬 스토리지에 저장
-        localStorage.setItem('fcmToken', token);
-
-        return token;
-      } else {
+      const token = await getToken(this.messaging, { vapidKey: this.vapidKey });
+      if (!token) {
         console.warn('No FCM token available');
         return null;
       }
+
+      if (this.currentToken !== token) {
+        const oldToken = this.currentToken;
+        this.currentToken = token;
+
+        const success = oldToken
+          ? await this.refreshToken(oldToken, token)
+          : await this.registerTokenWithServer(token);
+
+        if (success) {
+          localStorage.setItem('fcmToken', token);
+          this.notifyTokenChange(token);
+          console.log('FCM Token stored and server updated');
+        }
+      }
+
+      return token;
     } catch (error) {
-      console.error('Error getting FCM token:', error);
+      console.error('Failed to get and register token:', error);
       return null;
     }
   }
 
-  // 서버에 FCM 토큰 등록
+  /**
+   * 서버에 최초 토큰 등록
+   */
   private async registerTokenWithServer(token: string): Promise<boolean> {
     try {
-      const response = await client.post(API_PATHS.FCM.REGISTER_TOKEN, { token });
-      return response.data.success === true;
+      const res = await client.post(API_PATHS.FCM.REGISTER_TOKEN, { token });
+      return res.data.success === true;
     } catch (error) {
-      console.error('Error registering FCM token with server:', error);
+      console.error('registerTokenWithServer error:', error);
       return false;
     }
   }
 
+  /**
+   * 서버에 토큰 갱신( old_token → new_token )
+   * 400 에러 시 기존 토큰이 서버에 없다고 판단, deleteToken()으로 로컬도 제거
+   */
   public async refreshToken(oldToken: string, newToken: string): Promise<boolean> {
     try {
-      const response = await client.post(API_PATHS.FCM.REFRESH_TOKEN, {
-        oldToken, // 서버가 기대하는 oldToken 필드 추가
-        newToken,
+      const res = await client.post(API_PATHS.FCM.REFRESH_TOKEN, {
+        old_token: oldToken,
+        new_token: newToken,
       });
+      return res.data.success === true;
+    } catch (error: any) {
+      console.error('refreshToken error:', error);
 
-      // 로컬 스토리지 업데이트
-      localStorage.setItem('fcmToken', newToken);
-      return response.data.success === true;
-    } catch (error) {
-      console.error('Error refreshing FCM token:', error);
+      if (error.response?.status === 400) {
+        console.warn('Token refresh failed (400). Clearing local token');
+        await this.deleteToken();
+        return false;
+      }
       return false;
     }
   }
 
-  // 토큰 삭제
+  /**
+   * 서버 & 로컬 스토리지에서 토큰 삭제
+   */
   public async deleteToken(): Promise<boolean> {
-    if (!this.initialized || !this.messaging) {
-      console.warn('Firebase Messaging not initialized');
-      return false;
-    }
+    if (!this.initialized || !this.messaging) return false;
 
     try {
-      // Firebase에서 토큰 삭제
       await deleteToken(this.messaging);
-
-      // 서버에서 토큰 삭제
-      const response = await client.delete(API_PATHS.FCM.DELETE_TOKEN);
-
-      // 로컬 스토리지에서 제거
+      await client.delete(API_PATHS.FCM.DELETE_TOKEN);
       localStorage.removeItem('fcmToken');
-
-      return response.data.success === true;
+      this.currentToken = null;
+      console.log('FCM 토큰 삭제 완료');
+      return true;
     } catch (error) {
-      console.error('Error deleting FCM token:', error);
+      console.error('deleteToken error:', error);
       return false;
     }
   }
 
-  // 포그라운드 메시지 리스너 설정
+  /**
+   * FCM 포그라운드 메시지(브라우저 탭 활성 상태에서 수신되는 메시지) 핸들러 설정
+   */
   private setupMessageListener(): void {
-    if (!this.initialized || !this.messaging) return;
+    if (!this.messaging) return;
 
     onMessage(this.messaging, (payload: FirebaseMessagePayload) => {
-      // Firebase의 MessagePayload를 우리의 MessagePayload로 변환
-      const customPayload: MessagePayload = {
+      const message: MessagePayload = {
         notification: payload.notification
           ? {
               title: payload.notification.title || '',
@@ -195,81 +208,115 @@ class FcmService {
         data: payload.data,
       };
 
-      console.log('Foreground message received:', customPayload);
-
-      // 토스트 알림 표시
-      this.showNotification(customPayload);
-
-      // 등록된 콜백 실행
-      this.messageCallbacks.forEach(callback => callback(customPayload));
+      this.showNotification(message);
+      this.messageCallbacks.forEach(cb => cb(message));
     });
   }
 
-  // 포그라운드 메시지 핸들러 등록
+  /**
+   * 알림 표시 (사용자 설정에 따라)
+   * Safari 등에서는 알림 권한을 자동 요청하면 에러
+   */
+  private showNotification(payload: MessagePayload): void {
+    if (!payload.notification || Notification.permission !== 'granted') return;
+
+    const { title = '알림', body } = payload.notification;
+    const { data } = payload;
+
+    // 커스텀 타입으로 renotify 허용
+    const options: CustomNotificationOptions = {
+      body,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      tag: data?.roomId || 'general',
+      renotify: true,
+      data,
+    };
+
+    const notif = new Notification(title, options);
+
+    notif.onclick = () => {
+      if (typeof data?.roomId === 'string') {
+        window.location.href = `/chat/${data.roomId}`;
+        window.focus();
+      }
+    };
+  }
+
+  /**
+   * 포그라운드 메시지 콜백 등록
+   */
   public onMessage(callback: (payload: MessagePayload) => void): void {
     this.messageCallbacks.push(callback);
   }
 
-  // 포그라운드 메시지 핸들러 제거
   public offMessage(callback: (payload: MessagePayload) => void): void {
     this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
   }
 
-  // 토스트 알림 표시
-  private showNotification(payload: MessagePayload): void {
-    const { notification } = payload;
-
-    if (notification) {
-      // 브라우저 알림 표시
-      if ('Notification' in window && Notification.permission === 'granted') {
-        const { title = '알림', body = '' } = notification;
-
-        new Notification(title, {
-          body,
-          icon: '/favicon.ico', // 적절한 아이콘 경로로 교체
-        });
-      }
-
-      // 또는 커스텀 토스트 알림 사용
-      // 여기에 토스트 라이브러리 활용 코드 추가
+  /**
+   * 토큰 변경 시 호출될 콜백 등록
+   */
+  public onTokenChange(callback: (token: string) => void): void {
+    this.tokenChangeCallbacks.push(callback);
+    if (this.currentToken) {
+      callback(this.currentToken);
     }
   }
 
-  // 토큰 변경 이벤트 리스너 설정
+  public offTokenChange(callback: (token: string) => void): void {
+    this.tokenChangeCallbacks = this.tokenChangeCallbacks.filter(cb => cb !== callback);
+  }
+
+  private notifyTokenChange(token: string): void {
+    this.tokenChangeCallbacks.forEach(cb => cb(token));
+  }
+
+  /**
+   * 토큰 주기적 확인 (디폴트 6시간 간격)
+   * requestPermission()은 호출하지 않고, 권한이 granted 상태면 getToken()
+   */
   public setupTokenRefresh(): void {
-    if (!this.initialized || !this.messaging) return;
+    if (!this.messaging) return;
 
-    // Firebase의 토큰 갱신 이벤트가 별도로 없어서,
-    // 주기적으로 토큰을 확인하는 방식으로 구현
-
-    // 앱 시작 시 현재 토큰 확인
     this.checkAndUpdateToken();
-
-    // 주기적으로 토큰 확인 (6시간마다)
     setInterval(() => this.checkAndUpdateToken(), 6 * 60 * 60 * 1000);
   }
 
-  // 토큰 확인 및 업데이트
   private async checkAndUpdateToken(): Promise<void> {
-    if (!this.initialized || !this.messaging) return;
+    if (!this.messaging) return;
 
     try {
-      const currentToken = localStorage.getItem('fcmToken');
-      if (!currentToken) return;
+      if (Notification.permission !== 'granted') {
+        console.warn('Notification permission not granted, skip checkAndUpdateToken');
+        return;
+      }
 
-      // 새 토큰 가져오기
-      const freshToken = await getToken(this.messaging, {
-        vapidKey: this.vapidKey,
-      });
+      const storedToken = localStorage.getItem('fcmToken');
+      const freshToken = await getToken(this.messaging, { vapidKey: this.vapidKey });
 
-      // 토큰이 변경된 경우 서버에 알림
-      if (freshToken && freshToken !== currentToken) {
-        console.log('FCM token refreshed');
-        await this.refreshToken(currentToken, freshToken);
+      if (freshToken && freshToken !== storedToken) {
+        const success = storedToken
+          ? await this.refreshToken(storedToken, freshToken)
+          : await this.registerTokenWithServer(freshToken);
+
+        if (success) {
+          localStorage.setItem('fcmToken', freshToken);
+          this.currentToken = freshToken;
+          this.notifyTokenChange(freshToken);
+        }
       }
     } catch (error) {
-      console.error('Error checking token:', error);
+      console.error('checkAndUpdateToken error:', error);
     }
+  }
+
+  private isSupported(): boolean {
+    return 'serviceWorker' in navigator && 'Notification' in window && 'PushManager' in window;
+  }
+
+  public getCurrentToken(): string | null {
+    return this.currentToken;
   }
 }
 

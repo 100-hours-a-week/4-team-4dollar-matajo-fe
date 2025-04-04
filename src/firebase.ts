@@ -1,5 +1,4 @@
 import { initializeApp } from 'firebase/app';
-import { getMessaging } from 'firebase/messaging';
 
 // ✅ Firebase 설정 (환경 변수에서 가져오기)
 const firebaseConfig = {
@@ -12,8 +11,9 @@ const firebaseConfig = {
   measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
+console.log('🔥 Firebase Config:', firebaseConfig);
+
 // 🔥 Firebase 앱 초기화
 const firebaseApp = initializeApp(firebaseConfig);
-const messaging = getMessaging(firebaseApp);
 
-export { firebaseApp, messaging };
+export { firebaseApp };
