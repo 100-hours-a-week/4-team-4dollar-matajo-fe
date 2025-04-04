@@ -71,7 +71,7 @@ export const API_PATHS = {
     TRADE_INFO: '/api/trades',
     UPLOAD_IMAGE: '/api/chats/image',
     READ: '/api/chats/:roomId/read',
-    LEAVE: '/api/chat/:roomId',
+    LEAVE: '/api/chats/:roomId',
     DETAIL: '/api/chats/:roomId',
   },
   KEEPER: {
