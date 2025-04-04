@@ -139,13 +139,13 @@ class FcmService {
     }
   }
 
-  // 토큰 갱신 서버 통보
   public async refreshToken(oldToken: string, newToken: string): Promise<boolean> {
     try {
+      // oldToken 필드를 제거하고 newToken만 전송
       const response = await client.post(API_PATHS.FCM.REFRESH_TOKEN, {
-        oldToken,
         newToken,
       });
+
       // 로컬 스토리지 업데이트
       localStorage.setItem('fcmToken', newToken);
       return response.data.success === true;
