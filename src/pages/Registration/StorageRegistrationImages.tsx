@@ -13,6 +13,8 @@ import {
 import { DaumAddressData } from '../../services/KakaoMapService';
 import { ROUTES } from '../../constants/routes';
 import {
+  ImageData,
+  StorageData,
   uploadImage,
   uploadMultipleImages,
   getPresignedUrl,
@@ -333,16 +335,6 @@ interface CombinedFormData {
   detailImages?: string[];
   mainImageFile?: File | null;
   detailImageFiles?: File[];
-}
-
-interface ImageData {
-  image_url: string;
-  temp_key: string;
-}
-
-interface StorageData {
-  mainImage: ImageData | null;
-  detailImages: ImageData[];
 }
 
 const Registration3: React.FC = () => {

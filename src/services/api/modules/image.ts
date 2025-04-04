@@ -1,6 +1,16 @@
 import axios from 'axios';
 import { API_PATHS } from '../../../constants/api';
 
+export interface ImageData {
+  image_url: string;
+  temp_key: string;
+}
+
+export interface StorageData {
+  mainImage: ImageData | null;
+  detailImages: ImageData[];
+}
+
 interface PresignedUrlResponse {
   success: boolean;
   message: string;

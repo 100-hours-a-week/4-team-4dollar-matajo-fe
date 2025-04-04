@@ -9,10 +9,15 @@ import { ROUTES } from '../../constants/routes';
 import { DaumAddressData } from '../../services/KakaoMapService';
 import client from '../../services/api/client';
 import type { AxiosError } from 'axios';
-import axios from 'axios';
 import { updateStorage } from '../../services/api/modules/storage';
-import { uploadImage, uploadMultipleImages } from '../../services/api/modules/image';
-import { base64ToFile } from '../../services/api/modules/storage';
+import {
+  getPresignedUrl,
+  moveImages,
+  ImageData,
+  uploadImageWithPresignedUrl,
+  uploadMultipleImages,
+  StorageData,
+} from '../../services/api/modules/image';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -351,157 +356,154 @@ interface FormData {
   postTags: string[];
 }
 
+// 초기 이미지 타입 정의
+interface InitialImages {
+  mainImage: string | null;
+  detailImages: string[];
+}
+
 const EditStorageImages: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 이전 단계에서 전달받은 데이터
-  const [prevFormData, setPrevFormData] = useState<FormData | null>(null);
+  // 통합된 상태 관리
+  const [state, setState] = useState({
+    updatedMainImage: null as string | null,
+    updatedDetailImages: [] as string[],
+    prevFormData: null as FormData | null,
+    mainImage: null as string | null,
+    detailImages: [] as string[],
+    mainImageData: null as ImageData | null,
+    detailImagesData: [] as ImageData[],
+    mainImageFile: null as File | null,
+    detailImagesFile: [] as File[],
+    isLoading: false,
+    toastVisible: false,
+    toastMessage: '',
+    isConfirmModalOpen: false,
+  });
+
+  // 초기 이미지 데이터 저장을 위한 상태 추가
+  const [initialImages, setInitialImages] = useState<InitialImages>({
+    mainImage: null,
+    detailImages: [],
+  });
 
   // 파일 입력 참조
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const detailImagesInputRef = useRef<HTMLInputElement>(null);
 
-  // 이미지 상태 관리
-  const [mainImage, setMainImage] = useState<string | null>(null);
-  const [detailImages, setDetailImages] = useState<string[]>([]);
+  // 이미지가 변경되었는지 확인하는 함수
+  const hasImagesChanged = (): boolean => {
+    if (!initialImages.mainImage && state.mainImage) return true;
+    if (initialImages.mainImage && !state.mainImage) return true;
+    if (initialImages.mainImage !== state.mainImage) return true;
 
-  // 원본 파일 객체
-  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
-  const [detailImageFiles, setDetailImageFiles] = useState<File[]>([]);
+    // 상세 이미지 갯수 비교
+    if (initialImages.detailImages.length !== state.detailImages.length) return true;
 
-  // 모달 상태 관리
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    // 각 상세 이미지 비교
+    for (let i = 0; i < state.detailImages.length; i++) {
+      if (initialImages.detailImages[i] !== state.detailImages[i]) return true;
+    }
 
-  // 로딩 상태
-  const [isLoading, setIsLoading] = useState(false);
+    return false;
+  };
 
-  // 토스트 상태
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  // 변경된 이미지 데이터만 반환하는 함수
+  const getChangedImageData = () => {
+    const changedData: any = {};
+
+    if (initialImages.mainImage !== state.mainImage) {
+      changedData.main_image = state.mainImage || '';
+    }
+
+    if (
+      initialImages.detailImages.length !== state.detailImages.length ||
+      !initialImages.detailImages.every((img, idx) => img === state.detailImages[idx])
+    ) {
+      changedData.detail_images = state.detailImages;
+    }
+
+    return changedData;
+  };
 
   // 로컬 스토리지에서 데이터 불러오기
   useEffect(() => {
-    // 이미지 데이터 불러오기
-    const savedImageData = localStorage.getItem('storage_edit_images');
-    if (savedImageData) {
-      try {
-        const parsedImageData = JSON.parse(savedImageData);
-        if (parsedImageData.mainImage) setMainImage(parsedImageData.mainImage);
-        if (parsedImageData.detailImages) setDetailImages(parsedImageData.detailImages);
-      } catch (error) {
-        console.error('Error parsing saved image data:', error);
+    const loadData = () => {
+      const savedImageData = localStorage.getItem('storage_edit_images_changed');
+      if (savedImageData) {
+        const parsedData: StorageData = JSON.parse(savedImageData);
+        if (parsedData.mainImage) {
+          setState(prev => ({ ...prev, mainImageData: parsedData.mainImage }));
+          console.log('changed images storage 메인이미지 불러옴');
+        }
+        if (parsedData.detailImages) {
+          setState(prev => ({ ...prev, detailImagesData: parsedData.detailImages }));
+          console.log('changed images storage 서브이미지 불러옴');
+        }
       }
-    }
 
-    // 기본 데이터 불러오기
-    const savedBasicData = localStorage.getItem('storage_edit_basic');
-    const savedDetailsData = localStorage.getItem('storage_edit_details');
+      // 이전 단계에서 전달된 데이터 불러오기
+      const savedBasicData = localStorage.getItem('storage_edit_basic');
+      const savedDetailsData = localStorage.getItem('storage_edit_details');
 
-    if (savedBasicData || savedDetailsData) {
-      try {
+      if (savedBasicData || savedDetailsData) {
         const basicData = savedBasicData ? JSON.parse(savedBasicData) : {};
         const detailsData = savedDetailsData ? JSON.parse(savedDetailsData) : {};
 
-        // 이전 단계 데이터 설정
-        setPrevFormData({
-          ...basicData,
-          ...detailsData,
-        });
-
-        console.log('로컬 스토리지에서 데이터 로드됨:', {
-          basicData,
-          detailsData,
-        });
-      } catch (error) {
-        console.error('Error parsing saved data:', error);
+        setState(prev => ({
+          ...prev,
+          prevFormData: {
+            ...prev.prevFormData,
+            ...basicData,
+            ...detailsData,
+          },
+        }));
+      } else if (location.state) {
+        // navigation state로 전달된 데이터가 있으면 사용
+        setState(prev => ({
+          ...prev,
+          prevFormData: {
+            ...prev.prevFormData,
+            ...location.state,
+          },
+        }));
       }
-    }
-  }, []);
+    };
 
-  // 상태 변경시 로컬 스토리지에 저장
-  useEffect(() => {
-    // 이미지 데이터 저장
-    localStorage.setItem(
-      'storage_edit_images',
-      JSON.stringify({
-        mainImage,
-        detailImages,
-      }),
-    );
-
-    // 이전 단계 데이터가 있으면 함께 저장
-    if (prevFormData) {
-      // storage_edit_details에 이미지 데이터를 포함하여 저장
-      const detailsData = JSON.parse(localStorage.getItem('storage_edit_details') || '{}');
-      const updatedDetailsData = {
-        ...detailsData,
-        mainImage,
-        detailImages,
-      };
-      localStorage.setItem('storage_edit_details', JSON.stringify(updatedDetailsData));
-
-      console.log('이미지 데이터와 함께 details 데이터 업데이트:', updatedDetailsData);
-    }
-  }, [mainImage, detailImages, prevFormData]);
-
-  // 이전 단계 데이터 로드
-  useEffect(() => {
-    if (location.state) {
-      setPrevFormData(location.state as FormData);
-      console.log('이전 단계 데이터 로드됨:', location.state);
-    } else {
-      // location.state가 없으면 로컬 스토리지에서 데이터 로드
-      const basicData = JSON.parse(localStorage.getItem('storage_edit_basic') || '{}');
-      const detailsData = JSON.parse(localStorage.getItem('storage_edit_details') || '{}');
-
-      if (Object.keys(basicData).length > 0 || Object.keys(detailsData).length > 0) {
-        const combinedData = {
-          ...basicData,
-          ...detailsData,
-        };
-        setPrevFormData(combinedData);
-        console.log('로컬 스토리지에서 데이터 로드됨:', combinedData);
-      }
-    }
+    loadData();
   }, [location.state]);
 
   // API에서 이미지 데이터 가져오기
   useEffect(() => {
     const fetchPostData = async () => {
+      if (!id) return;
       try {
         console.log('=== 이미지 데이터 가져오기 시작 ===');
         console.log('요청 URL:', `/api/posts/${id}`);
-
         const response = await client.get(`/api/posts/${id}`);
         console.log('API 응답:', response.data);
 
         if (response.data.success) {
           const postData = response.data.data;
-          console.log('=== 받아온 게시물 데이터 ===');
-          console.log('전체 데이터:', postData);
-          console.log('이미지 배열:', postData.post_images);
+          const mainImg = postData.post_images[0] || null;
+          const detailImgs = postData.post_images.slice(1) || [];
 
-          // 이미지 설정
-          if (postData.post_images && postData.post_images.length > 0) {
-            console.log('이미지 개수:', postData.post_images.length);
-            console.log('이미지 URL 목록:', postData.post_images);
+          // 초기 이미지 상태 저장
+          setInitialImages({
+            mainImage: mainImg,
+            detailImages: detailImgs,
+          });
 
-            // 첫 번째 이미지를 메인 이미지로 설정
-            setMainImage(postData.post_images[0]);
-            console.log('메인 이미지 설정:', postData.post_images[0]);
-
-            // 나머지 이미지를 상세 이미지로 설정
-            const detailImages = postData.post_images.slice(1);
-            setDetailImages(detailImages);
-            console.log('상세 이미지 설정:', detailImages);
-          } else {
-            console.log('이미지가 없습니다.');
-          }
-        } else {
-          console.error('게시물 데이터 가져오기 실패:', response.data.message);
-          showToast(response.data.message || '데이터를 불러오는데 실패했습니다.');
+          setState(prev => ({
+            ...prev,
+            mainImage: mainImg,
+            updatedMainImage: mainImg,
+            detailImages: detailImgs,
+            updatedDetailImages: detailImgs,
+          }));
         }
       } catch (error) {
         console.error('=== 이미지 데이터 가져오기 오류 ===');
@@ -511,195 +513,164 @@ const EditStorageImages: React.FC = () => {
         showToast(axiosError.response?.data?.message || '데이터를 불러오는데 실패했습니다.');
       }
     };
-
-    if (id) {
-      console.log('=== 이미지 데이터 가져오기 시작 ===');
-      console.log('게시물 ID:', id);
-      fetchPostData();
-    }
+    fetchPostData();
   }, [id]);
 
-  // 토스트 메시지 표시 함수
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 3000);
-  };
-
-  // 메인 이미지 업로드 핸들러
-  const handleMainImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setMainImageFile(file);
-      setMainImage(URL.createObjectURL(file));
-    }
-  };
-
-  // 상세 이미지 업로드 핸들러
-  const handleDetailImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      // 현재 이미지 개수 + 새로 추가할 이미지 개수가 4개를 초과하는지 체크
-      if (detailImages.length + files.length > 4) {
-        showToast('상세 이미지는 최대 4개까지 업로드할 수 있습니다.');
-        return;
-      }
-      const newFiles = Array.from(files);
-      setDetailImageFiles(newFiles);
-      const newDetails = newFiles.map(file => URL.createObjectURL(file));
-      setDetailImages(newDetails);
-    }
-  };
-
-  // 메인 이미지 삭제 핸들러
-  const handleMainImageDelete = () => {
-    setMainImage(null);
-    setMainImageFile(null);
-  };
-
-  // 상세 이미지 삭제 핸들러
-  const handleDetailImageDelete = (index: number) => {
-    const newDetails = detailImages.filter((_, i) => i !== index);
-    setDetailImages(newDetails);
-    const newFiles = detailImageFiles.filter((_, i) => i !== index);
-    setDetailImageFiles(newFiles);
-  };
-
-  // 뒤로가기 핸들러
-  const handleBack = () => {
-    navigate(ROUTES.STORAGE_EDIT_DETAILS.replace(':id', id || ''));
-  };
-
-  // 완료 핸들러
+  // 완료 핸들러 - 변경된 부분만 전송하도록 수정
   const handleComplete = async () => {
-    if (!prevFormData) {
-      showToast('이전 단계 데이터가 없습니다. 다시 시도해주세요.');
+    if (!id) {
+      showToast('게시글 ID가 없습니다. 다시 시도해주세요.');
       return;
     }
 
+    setState(prev => ({ ...prev, isLoading: true }));
+
     try {
-      setIsLoading(true);
-      console.log('보관소 수정 시작...');
-      console.log('이전 단계 데이터:', prevFormData);
+      // 최종적으로 사용할 이미지 URL들
+      let finalMainImage = state.mainImage;
+      let finalDetailImages = [...state.detailImages];
 
-      // 이미지 파일 준비
-      let mainImageFileObj: File | null = null;
-      if (mainImageFile) {
-        mainImageFileObj = mainImageFile;
-        console.log('메인 이미지 파일:', mainImageFileObj);
-      } else if (mainImage && !mainImage.startsWith('http')) {
-        mainImageFileObj = base64ToFile(mainImage, 'main-image.jpg');
-        console.log('메인 이미지 base64에서 파일로 변환:', mainImageFileObj);
-      }
+      // 새로 업로드된 이미지가 있는지 확인
+      const hasNewImages = state.mainImageData || state.detailImagesData.length > 0;
 
-      // 상세 이미지 파일 배열 준비
-      const detailImageFilesArray: File[] = [];
-      if (detailImageFiles.length > 0) {
-        detailImageFilesArray.push(...detailImageFiles);
-        console.log('상세 이미지 파일 배열:', detailImageFilesArray);
-      } else if (detailImages.length > 0) {
-        for (let i = 0; i < detailImages.length; i++) {
-          if (!detailImages[i].startsWith('http')) {
-            detailImageFilesArray.push(base64ToFile(detailImages[i], `detail-image-${i}.jpg`));
+      if (hasNewImages) {
+        const tempKeys = [
+          ...(state.mainImageData ? [state.mainImageData.temp_key] : []),
+          ...state.detailImagesData.map(img => img.temp_key),
+        ];
+
+        const mainFlags = [
+          ...(state.mainImageData ? [true] : []),
+          ...new Array(state.detailImagesData.length).fill(false),
+        ];
+
+        // 새 이미지들만 moveImages로 처리
+        const moveResponse = await moveImages(tempKeys, 'post', mainFlags);
+
+        if (moveResponse.data && moveResponse.data.moved_images) {
+          // 메인 이미지가 변경되었는지 확인
+          if (state.mainImageData) {
+            // 이동된 메인 이미지 URL을 사용
+            finalMainImage = moveResponse.data.moved_images[0].image_url;
+
+            // 상세 이미지 처리 시작 인덱스 조정
+            const detailImgStartIndex = state.mainImageData ? 1 : 0;
+
+            // 새로 업로드된 상세 이미지가 있다면
+            if (state.detailImagesData.length > 0) {
+              // 이동된 상세 이미지 URL들을 매핑
+              const newDetailImageUrls = moveResponse.data.moved_images
+                .slice(detailImgStartIndex)
+                .map(img => img.image_url);
+
+              // 기존 상세 이미지(변경되지 않은)와 새 상세 이미지 병합
+              // 여기서는 mainImage가 변경되고 detailImages도 변경된 경우
+              finalDetailImages = newDetailImageUrls;
+            }
+          } else if (state.detailImagesData.length > 0) {
+            // 메인 이미지는 변경되지 않았고 상세 이미지만 변경된 경우
+            const newDetailImageUrls = moveResponse.data.moved_images.map(img => img.image_url);
+
+            finalDetailImages = newDetailImageUrls;
           }
         }
-        console.log('상세 이미지 base64에서 파일로 변환:', detailImageFilesArray);
       }
 
-      // 이미지 업로드
-      let mainImageUrl = mainImage;
-      if (mainImageFileObj) {
-        mainImageUrl = await uploadImage(mainImageFileObj, 'post', true);
+      // 변경된 데이터만 포함하는 요청 객체 생성
+      const requestData: any = {};
+
+      // 이전 단계(Basic, Details)에서 변경된 데이터 추가
+      if (state.prevFormData) {
+        if (state.prevFormData.postTitle) {
+          requestData.post_title = state.prevFormData.postTitle;
+        }
+
+        if (state.prevFormData.postContent) {
+          requestData.post_content = state.prevFormData.postContent;
+        }
+
+        if (state.prevFormData.preferPrice) {
+          requestData.prefer_price = Number(state.prevFormData.preferPrice);
+        }
+
+        if (state.prevFormData.postAddressData) {
+          requestData.post_address_data = state.prevFormData.postAddressData;
+        }
+
+        if (state.prevFormData.postTags && state.prevFormData.postTags.length > 0) {
+          requestData.post_tags = state.prevFormData.postTags;
+        }
       }
 
-      let detailImageUrls = detailImages;
-      if (detailImageFilesArray.length > 0) {
-        const newDetailImageUrls = await uploadMultipleImages(
-          detailImageFilesArray,
-          'post',
-          new Array(detailImageFilesArray.length).fill(false),
-        );
-        detailImageUrls = [
-          ...detailImageUrls.filter(url => url.startsWith('http')),
-          ...newDetailImageUrls,
-        ];
+      // 이미지가 변경되었는지 확인하고 변경된 경우에만 추가
+      if (hasImagesChanged()) {
+        if (finalMainImage !== initialImages.mainImage) {
+          requestData.main_image = finalMainImage || '';
+        }
+
+        // 상세 이미지 비교
+        const initialDetailImagesStr = JSON.stringify(initialImages.detailImages);
+        const finalDetailImagesStr = JSON.stringify(finalDetailImages);
+
+        if (initialDetailImagesStr !== finalDetailImagesStr) {
+          requestData.detail_images = finalDetailImages;
+        }
       }
 
-      // 주소 데이터 준비
-      const addressData: DaumAddressData = {
-        address: prevFormData.postAddress || '',
-        address_english: '',
-        address_type: 'J',
-        apartment: 'N',
-        auto_jibun_address: prevFormData.postAddress || '',
-        auto_jibun_address_english: '',
-        auto_road_address: prevFormData.postAddress || '',
-        auto_road_address_english: '',
-        bcode: prevFormData.postAddressData?.bcode || '',
-        bname: prevFormData.postAddress?.split(' ').slice(-1)[0] || '',
-        bname1: prevFormData.postAddress?.split(' ')[1] || '',
-        bname1_english: '',
-        bname2: prevFormData.postAddress?.split(' ')[2] || '',
-        bname2_english: '',
-        bname_english: '',
-        building_code: prevFormData.postAddressData?.building_code || '',
-        building_name: prevFormData.postAddressData?.building_name || '',
-        hname: '',
-        jibun_address: prevFormData.postAddress || '',
-        jibun_address_english: '',
-        no_selected: 'N',
-        postcode: prevFormData.postAddressData?.zonecode || '',
-        postcode1: prevFormData.postAddressData?.zonecode?.slice(0, 3) || '',
-        postcode2: prevFormData.postAddressData?.zonecode?.slice(3) || '',
-        postcode_seq: '',
-        query: prevFormData.postAddress || '',
-        road_address: prevFormData.postAddress || '',
-        road_address_english: '',
-        roadname: prevFormData.postAddress?.split(' ').slice(-2).join(' ') || '',
-        roadname_code: prevFormData.postAddressData?.roadname_code || '',
-        roadname_english: '',
-        sido: prevFormData.postAddress?.split(' ')[0] || '',
-        sido_english: '',
-        sigungu: prevFormData.postAddress?.split(' ')[1] || '',
-        sigungu_code: prevFormData.postAddressData?.sigungu_code || '',
-        sigungu_english: '',
-        user_language_type: 'K',
-        user_selected_type: 'J',
-        zonecode: prevFormData.postAddressData?.zonecode || '',
-      };
+      console.log('변경된 데이터만 서버로 전송:', requestData);
 
-      // API 요청 데이터 준비
-      const requestData = {
-        post_title: prevFormData.postTitle || '',
-        post_content: prevFormData.postContent || '',
-        prefer_price: Number(prevFormData.preferPrice) || 0,
-        post_address_data: addressData,
-        post_tags: prevFormData.postTags || [],
-        main_image: mainImageUrl,
-        detail_images: detailImageUrls,
-      };
+      // 변경된 데이터가 없는 경우 처리
+      if (Object.keys(requestData).length === 0) {
+        console.log('변경된 데이터가 없습니다.');
+        showToast('변경된 내용이 없습니다.');
+        setState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
 
-      // ... rest of the code ...
+      // 변경된 데이터만 서버로 전송
+      await handleCompleteRequest(requestData);
     } catch (error) {
-      console.error('보관소 수정 오류:', error);
-      showToast('보관소 수정 중 오류가 발생했습니다.');
+      console.error('이미지 처리 중 오류:', error);
+      showToast('이미지 처리 중 오류가 발생했습니다.');
     } finally {
-      setIsLoading(false);
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
-  // 등록 완료 확인 모달
+  // 완료 요청 핸들러
+  const handleCompleteRequest = async (requestData: any) => {
+    try {
+      console.log('저장할 데이터:', requestData);
+      const response = await updateStorage(String(id), requestData);
+
+      if (response.success) {
+        // 성공 시 로컬 스토리지 정리
+        localStorage.removeItem('storage_edit_basic');
+        localStorage.removeItem('storage_edit_details');
+        localStorage.removeItem('storage_edit_images_changed');
+
+        showToast('보관소가 성공적으로 수정되었습니다!');
+        openConfirmModal();
+      } else {
+        showToast('보관소 수정 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('Error updating storage:', error);
+      showToast('보관소 수정 중 오류가 발생했습니다.');
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  // 토스트 메시지 표시 함수
+  const showToast = (message: string) => {
+    setState(prev => ({ ...prev, toastMessage: message, toastVisible: true }));
+    setTimeout(() => setState(prev => ({ ...prev, toastVisible: false })), 3000);
+  };
+
+  // 모달 열기
   const openConfirmModal = () => {
-    setIsConfirmModalOpen(true);
-  };
-
-  const handleConfirmCancel = () => {
-    setIsConfirmModalOpen(false);
-  };
-
-  const handleConfirmConfirm = () => {
-    setIsConfirmModalOpen(false);
-    navigate(`/storages/${id}`);
+    setState(prev => ({ ...prev, isConfirmModalOpen: true }));
   };
 
   // 모달 내용 컴포넌트
@@ -711,6 +682,126 @@ const EditStorageImages: React.FC = () => {
       </span>
     </div>
   );
+
+  // 뒤로가기 핸들러
+  const handleBack = () => {
+    navigate(ROUTES.STORAGE_EDIT_DETAILS.replace(':id', id || ''));
+  };
+
+  // 메인 이미지 업로드 핸들러
+  const handleMainImageUpload = () => {
+    if (mainImageInputRef.current) {
+      console.log('메인이미지 업로드 클릭');
+      mainImageInputRef.current.click();
+    }
+  };
+
+  // 서브 이미지 업로드 핸들러
+  const handleDetailImagesUpload = () => {
+    if (detailImagesInputRef.current) {
+      console.log('서브이미지 업로드 클릭');
+      detailImagesInputRef.current.click();
+    }
+  };
+
+  const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // presigned URL 요청
+      const presignedUrlResponse = await getPresignedUrl(file.name, file.type, 'post');
+
+      // S3에 이미지 업로드
+      await uploadImageWithPresignedUrl(presignedUrlResponse.data.presigned_url, file);
+
+      // 이미지 데이터 저장
+      setState(prev => ({
+        ...prev,
+        mainImageData: {
+          image_url: presignedUrlResponse.data.image_url,
+          temp_key: presignedUrlResponse.data.temp_key,
+        },
+        mainImageFile: file,
+        mainImage: presignedUrlResponse.data.image_url,
+      }));
+
+      console.log('메인이미지 업로드 완료');
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      showToast('이미지 업로드에 실패했습니다.');
+    }
+  };
+
+  const handleDetailImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    // 최대 4장까지 가능
+    const remainingSlots = 4 - state.detailImages.length;
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+    try {
+      const newImagesData: ImageData[] = [];
+      const newImages: string[] = [];
+      const newFiles: File[] = [];
+
+      for (const file of filesToProcess) {
+        // presigned URL 요청
+        const presignedUrlResponse = await getPresignedUrl(file.name, file.type, 'post');
+
+        // S3에 이미지 업로드
+        await uploadImageWithPresignedUrl(presignedUrlResponse.data.presigned_url, file);
+
+        // 이미지 데이터 저장
+        newImagesData.push({
+          image_url: presignedUrlResponse.data.image_url,
+          temp_key: presignedUrlResponse.data.temp_key,
+        });
+
+        // 미리보기용 이미지 URL 설정
+        newImages.push(presignedUrlResponse.data.image_url);
+        newFiles.push(file);
+      }
+
+      setState(prev => ({
+        ...prev,
+        detailImages: [...prev.detailImages, ...newImages],
+        detailImagesData: [...prev.detailImagesData, ...newImagesData],
+        detailImagesFile: [...prev.detailImagesFile, ...newFiles],
+      }));
+
+      console.log('서브이미지 업로드 완료');
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      showToast('이미지 업로드에 실패했습니다.');
+    }
+  };
+
+  // 메인 이미지 삭제 핸들러
+  const handleMainImageDelete = () => {
+    setState(prev => ({ ...prev, mainImage: null, mainImageFile: null }));
+    console.log('메인이미지 삭제 완료');
+  };
+
+  // 상세 이미지 삭제 핸들러
+  const handleDetailImageDelete = (index: number) => {
+    const newDetails = state.detailImages.filter((_, i) => i !== index);
+    const newFiles = state.detailImagesFile.filter((_, i) => i !== index);
+    setState(prev => ({ ...prev, detailImages: newDetails, detailImagesFile: newFiles }));
+    console.log('서브이미지 삭제 완료');
+  };
+
+  // 모달 취소 핸들러
+  const handleConfirmCancel = () => {
+    setState(prev => ({ ...prev, isConfirmModalOpen: false }));
+  };
+
+  // 모달 확인 핸들러
+  const handleConfirmConfirm = () => {
+    setState(prev => ({ ...prev, isConfirmModalOpen: false }));
+    navigate(`/storages/${id}`);
+  };
 
   return (
     <>
@@ -736,9 +827,9 @@ const EditStorageImages: React.FC = () => {
             </SectionLabel>
 
             <MainImageUploadArea>
-              {mainImage ? (
+              {state.mainImage ? (
                 <UploadedImageContainer>
-                  <UploadedMainImage src={mainImage} alt="대표 이미지" />
+                  <UploadedMainImage src={state.mainImage} alt="대표 이미지" />
                   <DeleteButton onClick={handleMainImageDelete}>×</DeleteButton>
                 </UploadedImageContainer>
               ) : (
@@ -748,9 +839,7 @@ const EditStorageImages: React.FC = () => {
                     <br />
                     (필수)
                   </UploadGuideText>
-                  <UploadButton onClick={() => mainImageInputRef.current?.click()}>
-                    파일 업로드
-                  </UploadButton>
+                  <UploadButton onClick={handleMainImageUpload}>파일 업로드</UploadButton>
                 </>
               )}
             </MainImageUploadArea>
@@ -759,7 +848,7 @@ const EditStorageImages: React.FC = () => {
             <input
               type="file"
               ref={mainImageInputRef}
-              onChange={handleMainImageUpload}
+              onChange={handleMainImageChange}
               accept="image/*"
               style={{ display: 'none' }}
             />
@@ -771,15 +860,15 @@ const EditStorageImages: React.FC = () => {
             </SectionLabel>
 
             <DetailImageUploadArea>
-              {detailImages.length > 0 ? (
+              {state.detailImages.length > 0 ? (
                 <DetailImagesScrollContainer>
-                  {detailImages.map((img, index) => (
+                  {state.detailImages.map((img, index) => (
                     <DetailImageItem key={index}>
                       <DetailImage src={img} alt={`추가 이미지 ${index + 1}`} />
                       <DeleteButton onClick={() => handleDetailImageDelete(index)}>×</DeleteButton>
                     </DetailImageItem>
                   ))}
-                  {detailImages.length < 4 && (
+                  {state.detailImages.length < 4 && (
                     <DetailImageItem
                       style={{
                         display: 'flex',
@@ -788,7 +877,7 @@ const EditStorageImages: React.FC = () => {
                         alignItems: 'center',
                         background: THEME.lightGray,
                       }}
-                      onClick={() => detailImagesInputRef.current?.click()}
+                      onClick={handleDetailImagesUpload}
                     >
                       <UploadGuideText>추가 이미지</UploadGuideText>
                       <div style={{ fontSize: '24px', marginTop: '10px' }}>+</div>
@@ -802,9 +891,7 @@ const EditStorageImages: React.FC = () => {
                     <br />
                     (선택사항)
                   </UploadGuideText>
-                  <UploadButton onClick={() => detailImagesInputRef.current?.click()}>
-                    파일 업로드
-                  </UploadButton>
+                  <UploadButton onClick={handleDetailImagesUpload}>파일 업로드</UploadButton>
                 </>
               )}
             </DetailImageUploadArea>
@@ -813,7 +900,7 @@ const EditStorageImages: React.FC = () => {
             <input
               type="file"
               ref={detailImagesInputRef}
-              onChange={handleDetailImageUpload}
+              onChange={handleDetailImagesChange}
               accept="image/*"
               multiple
               style={{ display: 'none' }}
@@ -829,19 +916,19 @@ const EditStorageImages: React.FC = () => {
       <BottomNavigation activeTab="보관소" />
 
       {/* 로딩 오버레이 */}
-      {isLoading && (
+      {state.isLoading && (
         <LoadingOverlay>
           <LoadingSpinner />
         </LoadingOverlay>
       )}
 
       {/* 토스트 메시지 */}
-      {toastVisible && <Toast message={toastMessage} visible={toastVisible} />}
+      {state.toastVisible && <Toast message={state.toastMessage} visible={state.toastVisible} />}
 
       {/* 등록 완료 확인 모달 */}
       <Modal
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
+        isOpen={state.isConfirmModalOpen}
+        onClose={() => setState(prev => ({ ...prev, isConfirmModalOpen: false }))}
         content={confirmModalContent}
         cancelText="홈으로 가기"
         confirmText="내 보관소로 이동"

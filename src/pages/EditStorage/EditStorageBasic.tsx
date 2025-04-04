@@ -317,7 +317,37 @@ const EditStorageBasic: React.FC = () => {
     setTimeout(() => setToastVisible(false), 3000);
   };
 
-  // 보관소 상세 정보 조회
+  // 어떤 필드가 변경되었는지 확인하는 함수
+  const getChangedFields = (): Partial<FormData> => {
+    if (!initialData) return formData;
+
+    const changedFields: Partial<FormData> = { postId: id };
+
+    if (formData.postTitle !== initialData.postTitle) {
+      changedFields.postTitle = formData.postTitle;
+    }
+
+    if (formData.postContent !== initialData.postContent) {
+      changedFields.postContent = formData.postContent;
+    }
+
+    if (formData.preferPrice !== initialData.preferPrice) {
+      changedFields.preferPrice = formData.preferPrice;
+    }
+
+    // 주소 관련 로직 - 주소가 변경되었는지 확인
+    if (formData.postAddress !== initialData.postAddress) {
+      changedFields.postAddress = formData.postAddress;
+      // 새로운 주소인 경우 postAddressData도 포함
+      if (formData.postAddressData) {
+        changedFields.postAddressData = formData.postAddressData;
+      }
+    }
+
+    return changedFields;
+  };
+
+  // 보관소 상세 정보 조회 후 로컬 스토리지 데이터 적용
   useEffect(() => {
     const fetchStorageDetail = async () => {
       if (!id) return;
@@ -327,7 +357,7 @@ const EditStorageBasic: React.FC = () => {
         const response = await getStorageDetail(id);
         if (response.data.success) {
           const detail = response.data.data;
-          const newFormData = {
+          const apiFormData = {
             postId: id,
             postAddress: detail.post_address || '',
             postTitle: detail.post_title || '',
@@ -335,8 +365,37 @@ const EditStorageBasic: React.FC = () => {
             preferPrice: detail.prefer_price?.toString() || '',
             postAddressData: detail.post_address_data,
           };
-          setFormData(newFormData);
-          setInitialData(newFormData); // 초기 데이터 저장
+
+          // 초기 데이터 저장 (API에서 받아온 원본 데이터)
+          setInitialData(apiFormData);
+
+          // 로컬 스토리지에서 이전에 변경한 데이터가 있는지 확인
+          const savedData = localStorage.getItem('storage_edit_basic');
+
+          if (savedData) {
+            try {
+              // 로컬 스토리지에 저장된 변경 데이터
+              const parsedData = JSON.parse(savedData);
+
+              // API 데이터에 로컬 스토리지의 변경 데이터 덮어쓰기
+              setFormData({
+                ...apiFormData,
+                ...parsedData,
+              });
+
+              console.log('API 데이터와 로컬 스토리지 데이터 병합:', {
+                api: apiFormData,
+                localStorage: parsedData,
+                merged: { ...apiFormData, ...parsedData },
+              });
+            } catch (error) {
+              console.error('Error parsing saved data:', error);
+              setFormData(apiFormData); // 파싱 오류 시 API 데이터 사용
+            }
+          } else {
+            // 로컬 스토리지에 데이터가 없으면 API 데이터만 사용
+            setFormData(apiFormData);
+          }
         } else {
           showToast('보관소 정보를 가져오는데 실패했습니다.');
         }
@@ -350,33 +409,6 @@ const EditStorageBasic: React.FC = () => {
 
     fetchStorageDetail();
   }, [id]);
-
-  // 로컬 스토리지에서 데이터 불러오기
-  useEffect(() => {
-    const savedData = localStorage.getItem('storage_edit_basic');
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        setFormData(prev => ({
-          ...prev,
-          ...parsedData,
-        }));
-      } catch (error) {
-        console.error('Error parsing saved data:', error);
-      }
-    }
-  }, []);
-
-  // 상태 변경시 로컬 스토리지에 저장
-  useEffect(() => {
-    localStorage.setItem(
-      'storage_edit_basic',
-      JSON.stringify({
-        ...formData,
-        postAddressData: formData.postAddressData || prevFormData?.postAddressData,
-      }),
-    );
-  }, [formData, prevFormData]);
 
   // 이전 단계 데이터 로드
   useEffect(() => {
@@ -506,6 +538,7 @@ const EditStorageBasic: React.FC = () => {
       'storage_edit_basic',
       'storage_edit_details',
       'storage_edit_images',
+      'storage_edit_images_changed',
       'storage_register_basic',
       'storage_register_details',
       'storage_register_images',
@@ -519,20 +552,32 @@ const EditStorageBasic: React.FC = () => {
     navigate(`/storages/${id}`);
   };
 
-  // 다음 단계로 이동
+  // 다음 단계로 이동 - 수정됨
   const handleNext = () => {
     if (!validateForm()) {
       showToast('필수 입력 항목을 확인해주세요.');
       return;
     }
 
-    // 현재 데이터를 로컬 스토리지에 저장
-    localStorage.setItem('storage_edit_basic', JSON.stringify(formData));
-    console.log('Saved form data to storage_edit_basic:', formData);
+    // 변경된 데이터만 추출
+    const changedData = getChangedFields();
 
-    // 다음 단계로 이동하면서 현재 데이터 전달
+    // 변경된 필드가 있는지 확인 (postId는 기본적으로 포함되므로 1보다 커야 함)
+    const hasChanges = Object.keys(changedData).length > 1;
+
+    // 변경된 데이터가 있는 경우에만 로컬 스토리지에 저장
+    if (hasChanges) {
+      localStorage.setItem('storage_edit_basic', JSON.stringify(changedData));
+      console.log('변경된 데이터를 storage_edit_basic에 저장:', changedData);
+    } else {
+      // 변경된 데이터가 없으면 기존 데이터 삭제
+      localStorage.removeItem('storage_edit_basic');
+      console.log('변경된 데이터가 없어 storage_edit_basic 삭제');
+    }
+
+    // 다음 단계로 이동하면서 변경된 데이터 또는 필수 데이터만 전달
     navigate(ROUTES.STORAGE_EDIT_DETAILS.replace(':id', id || ''), {
-      state: formData,
+      state: hasChanges ? changedData : { postId: id },
     });
   };
 
@@ -570,7 +615,7 @@ const EditStorageBasic: React.FC = () => {
     }
   };
 
-  // 다음 주소 검색 팝업 열기
+  // 다음 주소 검색 팝업 열기 - 수정됨
   const openDaumAddressSearch = () => {
     try {
       new window.daum.Postcode({
@@ -596,7 +641,7 @@ const EditStorageBasic: React.FC = () => {
             fullAddress += ' (' + extraAddress + ')';
           }
 
-          // 폼 데이터에 주소 정보 업데이트
+          // 폼 데이터에 주소 정보 업데이트 - 새 주소가 선택되었으므로 postAddressData도 함께 저장
           setFormData(prev => ({
             ...prev,
             postAddress: fullAddress,

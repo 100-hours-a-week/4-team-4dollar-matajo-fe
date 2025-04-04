@@ -7,8 +7,8 @@ import Toast from '../../components/common/Toast';
 import { ROUTES } from '../../constants/routes';
 import { DaumAddressData } from '../../services/KakaoMapService';
 import { convertTagsToStrings } from '../../services/domain/tag/TagMappingService';
-import client from '../../services/api/client';
 import type { AxiosError } from 'axios';
+import { getStorageDetail } from '../../services/api/modules/place';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -228,26 +228,73 @@ const EditStorageDetails: React.FC = () => {
     isValuableSelected: previousData?.isValuableSelected || false,
   });
 
+  // 초기 데이터 저장을 위한 상태 추가
+  const [initialData, setInitialData] = useState<FormData | null>(null);
+
   // 토스트 상태
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // API에서 데이터 가져오기
+  // 어떤 필드가 변경되었는지 확인하는 함수
+  const getChangedFields = (): Partial<FormData> => {
+    if (!initialData) return formData;
+
+    const changedFields: Partial<FormData> = { postId: id };
+
+    // 보관 위치 확인
+    if (formData.storageLocation !== initialData.storageLocation) {
+      changedFields.storageLocation = formData.storageLocation;
+    }
+
+    // 물건 유형 확인
+    if (
+      JSON.stringify(formData.selectedItemTypes) !== JSON.stringify(initialData.selectedItemTypes)
+    ) {
+      changedFields.selectedItemTypes = formData.selectedItemTypes;
+    }
+
+    // 보관 방식 확인
+    if (
+      JSON.stringify(formData.selectedStorageTypes) !==
+      JSON.stringify(initialData.selectedStorageTypes)
+    ) {
+      changedFields.selectedStorageTypes = formData.selectedStorageTypes;
+    }
+
+    // 보관 기간 확인
+    if (
+      JSON.stringify(formData.selectedDurationOptions) !==
+      JSON.stringify(initialData.selectedDurationOptions)
+    ) {
+      changedFields.selectedDurationOptions = formData.selectedDurationOptions;
+    }
+
+    // 귀중품 확인
+    if (formData.isValuableSelected !== initialData.isValuableSelected) {
+      changedFields.isValuableSelected = formData.isValuableSelected;
+    }
+
+    return changedFields;
+  };
+
+  // API에서 데이터 가져오기 및 localStorage 데이터 적용
   useEffect(() => {
-    const fetchPostData = async () => {
+    const fetchStorageDetail = async () => {
+      if (!id) return;
+
+      setIsLoading(true);
       try {
         console.log('Fetching post data for ID:', id);
 
-        const response = await client.get(`/api/posts/${id}`);
-
+        const response = await getStorageDetail(id);
         console.log('API Response:', response.data);
 
         if (response.data.success) {
           const postData = response.data.data;
 
           // API 응답 데이터를 폼 데이터로 변환
-          const newFormData: FormData = {
+          const apiFormData: FormData = {
             postId: postData.post_id.toString(),
             postAddress: postData.post_address,
             postTitle: postData.post_title,
@@ -269,30 +316,70 @@ const EditStorageDetails: React.FC = () => {
 
             // 보관 위치 태그 처리
             if (tags.includes('실내')) {
-              newFormData.storageLocation = '실내';
+              apiFormData.storageLocation = '실내';
             } else if (tags.includes('실외')) {
-              newFormData.storageLocation = '실외';
+              apiFormData.storageLocation = '실외';
             }
 
             // 물건 유형 태그 처리
-            newFormData.selectedItemTypes = tags.filter((tag: string) => itemTypes.includes(tag));
+            apiFormData.selectedItemTypes = tags.filter((tag: string) => itemTypes.includes(tag));
 
             // 보관 방식 태그 처리
-            newFormData.selectedStorageTypes = tags.filter((tag: string) =>
+            apiFormData.selectedStorageTypes = tags.filter((tag: string) =>
               storageTypes.includes(tag),
             );
 
             // 보관 기간 태그 처리
-            newFormData.selectedDurationOptions = tags.filter((tag: string) =>
+            apiFormData.selectedDurationOptions = tags.filter((tag: string) =>
               durationOptions.includes(tag),
             );
 
             // 귀중품 태그 처리
-            newFormData.isValuableSelected = tags.includes('귀중품');
+            apiFormData.isValuableSelected = tags.includes('귀중품');
           }
 
-          console.log('Processed form data:', newFormData);
-          setFormData(newFormData);
+          // 초기 데이터 저장 (API에서 받아온 원본 데이터)
+          setInitialData(apiFormData);
+
+          // 로컬 스토리지에서 이전에 변경한 데이터가 있는지 확인
+          const savedData = localStorage.getItem('storage_edit_details');
+
+          if (savedData) {
+            try {
+              // 로컬 스토리지에 저장된 변경 데이터
+              const parsedData = JSON.parse(savedData);
+
+              // API 데이터에 로컬 스토리지의 변경 데이터 덮어쓰기
+              const mergedData = {
+                ...apiFormData,
+                ...parsedData,
+                // 이전 단계(EditStorageBasic)에서 전달받은 데이터도 병합
+                ...previousData,
+              };
+
+              setFormData(mergedData);
+
+              console.log('데이터 병합 결과:', {
+                api: apiFormData,
+                localStorage: parsedData,
+                previousData: previousData,
+                merged: mergedData,
+              });
+            } catch (error) {
+              console.error('Error parsing saved data:', error);
+              // 이전 단계 데이터와 API 데이터 병합
+              setFormData({
+                ...apiFormData,
+                ...previousData,
+              });
+            }
+          } else {
+            // 로컬 스토리지에 데이터가 없으면 이전 단계 데이터와 API 데이터 병합
+            setFormData({
+              ...apiFormData,
+              ...previousData,
+            });
+          }
         } else {
           showToast(response.data.message || '데이터를 불러오는데 실패했습니다.');
         }
@@ -311,30 +398,9 @@ const EditStorageDetails: React.FC = () => {
     };
 
     if (id) {
-      fetchPostData();
+      fetchStorageDetail();
     }
-  }, [id]);
-
-  // 로컬 스토리지에서 데이터 불러오기
-  useEffect(() => {
-    const savedData = localStorage.getItem('storage_edit_details');
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        setFormData(prev => ({
-          ...prev,
-          ...parsedData,
-        }));
-      } catch (error) {
-        console.error('Error parsing saved data:', error);
-      }
-    }
-  }, []);
-
-  // 상태 변경시 로컬 스토리지에 저장
-  useEffect(() => {
-    localStorage.setItem('storage_edit_details', JSON.stringify(formData));
-  }, [formData]);
+  }, [id, previousData]);
 
   // 토스트 메시지 표시 함수
   const showToast = (message: string) => {
@@ -411,6 +477,12 @@ const EditStorageDetails: React.FC = () => {
       return;
     }
 
+    // 변경된 데이터만 추출
+    const changedData = getChangedFields();
+
+    // 변경된 필드가 있는지 확인 (postId는 기본적으로 포함되므로 1보다 커야 함)
+    const hasChanges = Object.keys(changedData).length > 1;
+
     // 태그 문자열 리스트로 변환
     const tagStrings = convertTagsToStrings({
       storageLocation: formData.storageLocation,
@@ -420,9 +492,30 @@ const EditStorageDetails: React.FC = () => {
       isValuableSelected: formData.isValuableSelected,
     });
 
-    // 이미지 페이지로 이동 (서버 저장 없이)
+    // 변경된 데이터가 있는 경우에만 로컬 스토리지에 저장
+    if (hasChanges) {
+      localStorage.setItem(
+        'storage_edit_details',
+        JSON.stringify({
+          ...changedData,
+          postTags: tagStrings,
+        }),
+      );
+      console.log('변경된 데이터를 storage_edit_details에 저장:', {
+        ...changedData,
+        postTags: tagStrings,
+      });
+    } else {
+      console.log('변경된 데이터가 없어 storage_edit_details에 저장하지 않음');
+    }
+
+    // 이미지 페이지로 이동 (변경된 데이터 + 기본 데이터 전달)
     navigate(ROUTES.STORAGE_EDIT_IMAGES.replace(':id', id || ''), {
-      state: { ...formData, postTags: tagStrings },
+      state: {
+        ...previousData, // 이전 단계 데이터 유지
+        ...formData, // 현재 폼 데이터 (전체)
+        postTags: tagStrings, // 태그 정보
+      },
     });
   };
 
