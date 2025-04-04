@@ -10,8 +10,6 @@ import moment from 'moment-timezone';
 import client from '../../services/api/client';
 import { uploadImage } from '../../services/api/modules/image';
 import FcmService from '../../services/FcmService';
-import Toast, { ToastType } from '../../components/modals/Toast'; // 토스트 컴포넌트 가져오기
-import useToast from '../../hooks/ui/useToast'; // 토스트 훅 가져오기
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -409,9 +407,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // FCM 서비스 인스턴스
   const fcmService = FcmService.getInstance();
 
-  // 토스트 관련 기능 가져오기 (커스텀 훅 사용)
-  const { toasts, removeToast, showInfoToast, showSuccessToast, showErrorToast } = useToast();
-
   // 사용자 ID 상태 - localStorage에서 가져오거나 설정
   const [currentUserId, setCurrentUserId] = useState<number>(() => {
     // localStorage에서 userId 확인
@@ -585,7 +580,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         const message = title ? `${title}: ${body}` : body;
 
         if (message) {
-          showInfoToast(message, 5000);
           playNotificationSound();
         }
       }
@@ -600,29 +594,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     };
   }, []);
 
-  // 토스트 관련 디버깅 메시지 추가 (테스트용)
-  useEffect(() => {
-    // 토스트 시스템이 정상 작동하는지 확인하는 디버그 메시지
-    console.log('토스트 시스템 상태:', {
-      '토스트 개수': toasts.length,
-      '토스트 함수들': {
-        showInfoToast: typeof showInfoToast === 'function',
-        showSuccessToast: typeof showSuccessToast === 'function',
-        showErrorToast: typeof showErrorToast === 'function',
-      },
-    });
-
-    // 개발 중에만 채팅방 입장 시 테스트 토스트 표시 (실제 배포 시 제거)
-    if (process.env.NODE_ENV === 'development') {
-      // 약간의 지연 후 테스트 토스트 메시지 표시
-      const timer = setTimeout(() => {
-        showInfoToast('채팅방에 입장했습니다', 3000);
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
   // FCM 초기화 함수
   const initializeFcm = async () => {
     try {
@@ -632,25 +603,23 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
       // FCM 메시지 리스너 등록 - 토스트 메시지 연결
       fcmService.onMessage(payload => {
-        console.log('FCM message received in chat component:', payload);
+        try {
+          const title = payload.notification?.title || '';
+          const body = payload.notification?.body || '';
+          const message = title ? `${title}: ${body}` : body;
 
-        // 현재 채팅방과 관련된 메시지인 경우 별도 처리
-        if (payload.data && payload.data.roomId && parseInt(payload.data.roomId) === roomId) {
-          console.log('Message for current room, handled by WebSocket');
-          return; // 현재 방 메시지는 WebSocket으로 처리하므로 무시
-        }
+          if (message) {
+            // 디버깅용 로그 추가
+            console.log('토스트 메시지 호출 시도:', message);
 
-        // 알림 정보 추출
-        const title = payload.notification?.title || '';
-        const body = payload.notification?.body || '';
-        const message = title ? `${title}: ${body}` : body;
+            // 메시지 길이 제한
+            const trimmedMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
 
-        // 토스트 메시지 표시 (5초 동안)
-        if (message) {
-          showInfoToast(message, 5000);
-
-          // 알림 사운드 재생
-          playNotificationSound();
+            // 알림 사운드 재생
+            playNotificationSound();
+          }
+        } catch (error) {
+          console.error('토스트 메시지 호출 중 오류:', error);
         }
       });
 
@@ -862,7 +831,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
               ? `${lastMessage.content.substring(0, 15)}...`
               : lastMessage.content;
 
-        showInfoToast(`${senderName}: ${messagePreview}`, 3000);
         playNotificationSound();
       }
     }
@@ -1449,9 +1417,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         onConfirm={handleTradeConfirm}
         chatroomId={roomId || 0}
       />
-
-      {/* 토스트 메시지 컴포넌트 추가 */}
-      <Toast toasts={toasts} removeToast={removeToast} />
     </Container>
   );
 };

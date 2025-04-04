@@ -26,8 +26,8 @@ self.addEventListener('message', event => {
 
         const notificationOptions = {
           body,
-          icon: icon || '/favicon.ico',
-          badge: '/favicon.ico',
+          icon: icon || '/logo_color.png',
+          badge: '/logo_color.png',
           image: image || undefined,
           data: {
             clickAction,
@@ -51,8 +51,8 @@ self.addEventListener('push', event => {
 
   const options = {
     body,
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/logo_color.png',
+    badge: '/logo_color.png',
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
