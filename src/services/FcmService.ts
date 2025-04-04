@@ -215,32 +215,20 @@ class FcmService {
 
   /**
    * 알림 표시 (사용자 설정에 따라)
-   * Safari 등에서는 알림 권한을 자동 요청하면 에러
+   * 기본 브라우저 Notification 대신 커스텀 토스트 메시지 사용
    */
   private showNotification(payload: MessagePayload): void {
-    if (!payload.notification || Notification.permission !== 'granted') return;
+    // 기본 브라우저 Notification 생성 코드 제거
 
-    const { title = '알림', body } = payload.notification;
-    const { data } = payload;
+    // 대신 모든 콜백에 메시지 전달
+    // onMessage 콜백에서 토스트 컴포넌트를 사용하도록 구현
+    this.messageCallbacks.forEach(cb => cb(payload));
 
-    // 커스텀 타입으로 renotify 허용
-    const options: CustomNotificationOptions = {
-      body,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      tag: data?.roomId || 'general',
-      renotify: true,
-      data,
-    };
-
-    const notif = new Notification(title, options);
-
-    notif.onclick = () => {
-      if (typeof data?.roomId === 'string') {
-        window.location.href = `/chat/${data.roomId}`;
-        window.focus();
-      }
-    };
+    // 콜백이 없는 경우에도 사용자가 이벤트를 구독할 수 있도록 커스텀 이벤트 발생
+    const event = new CustomEvent('fcm-notification', {
+      detail: payload,
+    });
+    window.dispatchEvent(event);
   }
 
   /**

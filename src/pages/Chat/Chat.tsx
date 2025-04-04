@@ -9,7 +9,9 @@ import axios from 'axios';
 import moment from 'moment-timezone';
 import client from '../../services/api/client';
 import { uploadImage } from '../../services/api/modules/image';
-import FcmService from '../../services/FcmService'; // FCM 서비스 추가
+import FcmService from '../../services/FcmService';
+import Toast, { ToastType } from '../../components/modals/Toast'; // 토스트 컴포넌트 가져오기
+import useToast from '../../hooks/ui/useToast'; // 토스트 훅 가져오기
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -407,6 +409,9 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // FCM 서비스 인스턴스
   const fcmService = FcmService.getInstance();
 
+  // 토스트 관련 기능 가져오기 (커스텀 훅 사용)
+  const { toasts, removeToast, showInfoToast, showSuccessToast, showErrorToast } = useToast();
+
   // 사용자 ID 상태 - localStorage에서 가져오거나 설정
   const [currentUserId, setCurrentUserId] = useState<number>(() => {
     // localStorage에서 userId 확인
@@ -475,6 +480,18 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 알림 배너 표시 여부
   const [showNotificationBanner, setShowNotificationBanner] = useState(false);
 
+  // 새 메시지 사운드 객체 생성
+  const messageSound = useRef<HTMLAudioElement | null>(null);
+
+  // 사운드 초기화
+  useEffect(() => {
+    try {
+      messageSound.current = new Audio('/notification.mp3');
+    } catch (error) {
+      console.error('사운드 초기화 오류:', error);
+    }
+  }, []);
+
   // API 요청 헤더에 userId 추가
   useEffect(() => {
     // localStorage에서 userId 가져오기
@@ -539,6 +556,16 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         if (payload.data && payload.data.roomId && parseInt(payload.data.roomId) === roomId) {
           console.log('Ignoring FCM message for current chat room');
           return;
+        }
+
+        // 토스트 메시지로 표시
+        if (payload.notification) {
+          showInfoToast(
+            payload.notification.title + ': ' + payload.notification.body,
+            5000, // 5초 동안 표시
+          );
+        } else if (payload.data && payload.data.message) {
+          showInfoToast(payload.data.message);
         }
 
         // 사운드 재생 (선택사항)
@@ -1301,6 +1328,9 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         onConfirm={handleTradeConfirm}
         chatroomId={roomId || 0}
       />
+
+      {/* 토스트 메시지 컴포넌트 추가 */}
+      <Toast toasts={toasts} removeToast={removeToast} />
     </Container>
   );
 };
