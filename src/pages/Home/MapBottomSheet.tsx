@@ -454,21 +454,27 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     }
   };
 
-  // 이제 MapBottomSheet에서는 index.tsx에서 전달받은 값을 사용하므로,
-  // 현재 위치를 가져오는 별도의 useEffect는 제거합니다.
-  // (필요시 index.tsx에서 관리된 current location을 그대로 사용)
-
-  useEffect(() => {
-    if (propLocationInfoId !== locationInfoId) {
-      setLocationInfoId(propLocationInfoId ?? undefined);
-    }
-  }, [propLocationInfoId]);
-
   useEffect(() => {
     if (location !== currentLocation) {
       setCurrentLocation(location);
+
+      // 위치가 변경되었을 때 해당 위치의 데이터를 가져오기 위해
+      // locationInfoId가 없거나 위치 변경 시 fetchLocationId 호출
+      if (fetchLocationId && !propLocationInfoId) {
+        console.log('위치 변경으로 위치 ID 조회 시작:', location);
+        fetchLocationId(location)
+          .then(newLocationId => {
+            if (newLocationId) {
+              console.log('새로운 위치 ID 조회 완료:', newLocationId);
+              setLocationInfoId(newLocationId);
+            }
+          })
+          .catch(error => {
+            console.error('위치 ID 조회 중 오류:', error);
+          });
+      }
     }
-  }, [location, currentLocation]);
+  }, [location, currentLocation, fetchLocationId, propLocationInfoId]);
 
   useEffect(() => {
     const fetchRecentTrades = async () => {

@@ -111,6 +111,45 @@ class LocationService {
 
   // 현재 위치 가져오기
   public async getCurrentLocation(): Promise<LocationInfo | null> {
+    // 1. 먼저 브라우저의 Geolocation API를 사용하여 실제 위치를 가져옵니다.
+    if (navigator.geolocation) {
+      try {
+        // Promise로 Geolocation API 래핑
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            position => resolve(position),
+            error => reject(error),
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 },
+          );
+        });
+
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        // 좌표를 주소로 변환
+        const addressInfo = await this.convertCoordsToAddress(userLat, userLng);
+
+        if (addressInfo) {
+          const locationInfo: LocationInfo = {
+            formatted_address: addressInfo.shortAddress,
+            display_name: addressInfo.shortAddress,
+            latitude: userLat.toString(),
+            longitude: userLng.toString(),
+          };
+
+          // 현재 위치 및 최근 위치 목록 업데이트
+          this.setCurrentLocation(locationInfo);
+          this.addRecentLocation(locationInfo);
+
+          return locationInfo;
+        }
+      } catch (error) {
+        console.warn('실제 위치 정보를 가져오는데 실패했습니다:', error);
+        // 실패 시 아래 기존 로직으로 진행
+      }
+    }
+
+    // 2. 실제 위치를 가져오는데 실패한 경우, 기존 로직으로 진행
     if (this.currentLocation) {
       return this.currentLocation;
     }
@@ -130,6 +169,44 @@ class LocationService {
     };
 
     return this.currentLocation;
+  }
+
+  // 좌표를 주소로 변환하는 함수
+  private async convertCoordsToAddress(
+    lat: number,
+    lng: number,
+  ): Promise<{ shortAddress: string } | null> {
+    return new Promise(resolve => {
+      try {
+        // kakao maps API가 로드되었는지 확인
+        if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+
+          geocoder.coord2Address(lng, lat, (result: any, status: any) => {
+            if (status === 'OK' && result && result.length > 0) {
+              const addressResult = result[0];
+
+              // 동/읍/리 단위까지만 추출
+              const region1 = addressResult.address.region_1depth_name || ''; // 시/도
+              const region2 = addressResult.address.region_2depth_name || ''; // 시/군/구
+              const region3 = addressResult.address.region_3depth_name || ''; // 동/읍/면
+
+              // 동/읍/리 단위 주소
+              const shortAddress = `${region1} ${region2} ${region3}`.trim();
+              resolve({ shortAddress });
+            } else {
+              resolve(null);
+            }
+          });
+        } else {
+          console.error('카카오맵 API가 로드되지 않았습니다.');
+          resolve(null);
+        }
+      } catch (error) {
+        console.error('주소 변환 중 예외 발생:', error);
+        resolve(null);
+      }
+    });
   }
 
   // 현재 위치 설정

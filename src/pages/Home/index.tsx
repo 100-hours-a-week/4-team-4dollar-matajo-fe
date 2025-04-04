@@ -288,44 +288,6 @@ const HomePage: React.FC = () => {
     });
   };
 
-  // 현재 위치를 가져오는 함수
-  const getCurrentLocation = async (): Promise<string> => {
-    try {
-      console.log('현재 위치 정보 조회 시작');
-      const currentLocation = await locationService.getCurrentLocation();
-
-      if (currentLocation && currentLocation.formatted_address) {
-        const formattedAddress = currentLocation.formatted_address;
-        console.log('현재 위치 정보 조회 성공:', formattedAddress);
-
-        // 상태 업데이트
-        setLocation(formattedAddress);
-
-        // 좌표 정보가 있으면 지도 중심 업데이트
-        const lat = parseFloat(currentLocation.latitude);
-        const lng = parseFloat(currentLocation.longitude);
-        if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-          console.log('현재 위치 좌표:', lat, lng);
-          setMapCenter({ lat, lng });
-        } else {
-          console.warn('현재 위치의 좌표 정보가 유효하지 않습니다.');
-        }
-
-        return formattedAddress;
-      } else {
-        console.warn('현재 위치 정보를 가져올 수 없어 기본 위치를 사용합니다.');
-        setLocation(DEFAULT_LOCATION);
-        setMapCenter(DEFAULT_COORDINATES);
-        return DEFAULT_LOCATION;
-      }
-    } catch (error) {
-      console.error('위치 정보 조회 오류:', error);
-      setLocation(DEFAULT_LOCATION);
-      setMapCenter(DEFAULT_COORDINATES);
-      return DEFAULT_LOCATION;
-    }
-  };
-
   // initializeApp에서는 getCurrentLocation의 반환값(주소)에 대해 한 번만 fetchLocationId()를 호출합니다.
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -339,20 +301,44 @@ const HomePage: React.FC = () => {
         setError(null);
 
         console.log('앱 초기화 시작');
-        // 1. 현재 위치 가져오기
-        const addr = await getCurrentLocation();
-        console.log('현재 위치 조회 성공:', addr);
+        // 1. 현재 위치 가져오기 - 개선된 LocationService.getCurrentLocation() 사용
+        const locationInfo = await locationService.getCurrentLocation();
 
-        // 2. 위치 ID 조회
-        console.log('위치 ID 조회 시작');
-        const locationId = await fetchLocationId(addr);
-        console.log('위치 ID 조회 결과:', locationId);
+        if (locationInfo && locationInfo.formatted_address) {
+          console.log('현재 위치 조회 성공:', locationInfo);
 
-        // locationId 상태 업데이트는 fetchLocationId 함수 내에서 수행
-        // loadMapData는 locationId 변경 useEffect에서 호출됨
+          // 위치 정보 업데이트
+          setLocation(locationInfo.formatted_address);
+
+          // 지도 중심 업데이트
+          const lat = parseFloat(locationInfo.latitude);
+          const lng = parseFloat(locationInfo.longitude);
+          if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+            console.log('초기 지도 중심 설정:', { lat, lng });
+            setMapCenter({ lat, lng });
+          }
+
+          // 2. 위치 ID 조회
+          console.log('위치 ID 조회 시작');
+          const locationId = await fetchLocationId(locationInfo.formatted_address);
+          console.log('위치 ID 조회 결과:', locationId);
+        } else {
+          console.warn('현재 위치 정보를 가져올 수 없어 기본 위치를 사용합니다.');
+          setLocation(DEFAULT_LOCATION);
+          setMapCenter(DEFAULT_COORDINATES);
+
+          // 기본 위치의 ID 조회
+          await fetchLocationId(DEFAULT_LOCATION);
+        }
       } catch (error) {
         console.error('앱 초기화 오류:', error);
         setError('앱을 초기화하는 중 오류가 발생했습니다');
+
+        // 기본 위치 사용
+        setLocation(DEFAULT_LOCATION);
+        setMapCenter(DEFAULT_COORDINATES);
+        await fetchLocationId(DEFAULT_LOCATION);
+
         setLoading(false);
       }
     };
@@ -450,7 +436,7 @@ const HomePage: React.FC = () => {
         setLocationId(targetLocationId);
         localStorage.setItem('currentLocationId', targetLocationId.toString());
 
-        // 해당 위치의 게시글 데이터를 먼저 로드
+        // 해당 위치의 게시글 데이터를 먼저 로드L
         const postsData = await getPostsByLocation(targetLocationId);
 
         if (postsData && postsData.length > 0) {
@@ -491,67 +477,52 @@ const HomePage: React.FC = () => {
   const handleCurrentLocationClick = async () => {
     try {
       setLoading(true);
-      console.log('현재 위치 기반 가까운 게시글 찾기 시작');
+      console.log('현재 위치로 이동 시작');
 
-      // 1. 현재 위치 가져오기
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async position => {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
-            console.log('현재 위치 좌표:', { lat: userLat, lng: userLng });
+      // 개선된 LocationService.getCurrentLocation() 사용
+      const locationInfo = await locationService.getCurrentLocation();
 
-            // 2. 마커 데이터가 있는지 확인
-            if (markers && markers.length > 0) {
-              // 3. 현재 위치에서 가장 가까운 마커 찾기
-              let closestMarker = markers[0];
+      if (locationInfo && locationInfo.formatted_address) {
+        console.log('현재 위치 정보 조회 성공:', locationInfo);
 
-              // 4. 가장 가까운 마커의 위치로 지도 중심 이동
-              setMapCenter({
-                lat: closestMarker.latitude - 0.002, // 약간 위로 조정
-                lng: closestMarker.longitude,
-              });
+        // 주소 상태 업데이트
+        setLocation(locationInfo.formatted_address);
 
-              // 5. 위치 ID 업데이트
-              console.log('새 위치에 대한 ID 조회');
-              const locationId = await fetchLocationId(closestMarker.address);
-              console.log('위치 ID 조회 결과:', locationId);
-            } else {
-              // 마커가 없는 경우 현재 위치 사용
-              console.log('게시글 위치 정보가 없어 현재 위치만 사용');
-              const addr = await getCurrentLocation();
-              console.log('현재 위치 갱신 성공:', addr);
+        // 지도 중심 좌표 설정
+        const lat = parseFloat(locationInfo.latitude);
+        const lng = parseFloat(locationInfo.longitude);
 
-              if (addr) {
-                console.log('새 위치에 대한 ID 조회');
-                const locationId = await fetchLocationId(addr);
-                console.log('위치 ID 조회 결과:', locationId);
-              }
-            }
-          },
-          error => {
-            console.error('현재 위치 가져오기 실패:', error);
-            alert('위치 정보를 가져올 수 없습니다. 위치 권한을 확인해주세요.');
-            // 위치 정보 획득 실패시 기존 로직 사용
-            getCurrentLocation().then(addr => fetchLocationId(addr));
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0,
-          },
-        );
-      } else {
-        // geolocation이 지원되지 않는 경우
-        console.warn('이 브라우저에서는 위치 정보를 지원하지 않습니다.');
-        const addr = await getCurrentLocation();
-        if (addr) {
-          await fetchLocationId(addr);
+        if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+          console.log('지도 중심 이동:', { lat, lng });
+          setMapCenter({ lat, lng });
+
+          // 지도 레벨 설정
+          setMapLevel(3);
+        } else {
+          console.warn('현재 위치의 좌표 정보가 유효하지 않습니다.');
         }
+
+        // 위치 ID 조회하여 locationId 업데이트
+        const locationId = await fetchLocationId(locationInfo.formatted_address);
+        console.log('현재 위치 ID 조회 결과:', locationId);
+
+        // locationId가 업데이트되면 useEffect가 자동으로 loadMapData()를 호출함
+      } else {
+        console.warn('현재 위치 정보를 가져올 수 없습니다.');
+        // 기본 위치 정보 사용
+        const addr = DEFAULT_LOCATION;
+        setLocation(addr);
+        setMapCenter(DEFAULT_COORDINATES);
+        await fetchLocationId(addr);
       }
     } catch (error) {
       console.error('위치 이동 중 오류:', error);
       setError('위치 정보를 갱신하는 중 오류가 발생했습니다');
+      // 기본 위치 정보 사용
+      const addr = DEFAULT_LOCATION;
+      setLocation(addr);
+      setMapCenter(DEFAULT_COORDINATES);
+      await fetchLocationId(addr);
     } finally {
       setLoading(false);
     }
@@ -589,7 +560,18 @@ const HomePage: React.FC = () => {
   const handleRetry = () => {
     setLoading(true);
     setError(null);
-    getCurrentLocation().then(addr => fetchLocationId(addr));
+
+    // 개선된 LocationService.getCurrentLocation() 사용
+    locationService.getCurrentLocation().then(locationInfo => {
+      if (locationInfo && locationInfo.formatted_address) {
+        setLocation(locationInfo.formatted_address);
+        fetchLocationId(locationInfo.formatted_address);
+      } else {
+        setLocation(DEFAULT_LOCATION);
+        setMapCenter(DEFAULT_COORDINATES);
+        fetchLocationId(DEFAULT_LOCATION);
+      }
+    });
   };
 
   if (loading) {
