@@ -36,6 +36,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: matajo
           SENTRY_PROJECT: matajo-s3-test
+          REACT_APP_TEST2_KAKAO_REST_API_KEY: ${{ secrets.REACT_APP_TEST2_KAKAO_REST_API_KEY }}
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
