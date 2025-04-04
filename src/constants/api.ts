@@ -1,6 +1,6 @@
 // constants/api.ts
 
-if (!process.env.REACT_APP_API_BACKEND_URL) {
+/* if (!process.env.REACT_APP_API_BACKEND_URL) {
   throw new Error('REACT_APP_API_BACKEND_URL is not defined');
 }
 
@@ -14,15 +14,15 @@ if (!process.env.REACT_APP_KAKAO_REST_API_KEY) {
 
 if (!process.env.REACT_APP_KAKAO_REDIRECT_URI) {
   throw new Error('REACT_APP_KAKAO_REDIRECT_URI is not defined');
-}
+} */
 
-export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL;
-export const API_URL = process.env.REACT_APP_API_URL;
+export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL || 'https://api.matajo.store';
+export const API_URL = process.env.REACT_APP_API_URL || 'https://api.matajo.store';
 export const API_BASE_URL = API_BACKEND_URL; // 이전 코드와의 호환성을 위해 추가
 
 export const KAKAO_AUTH = {
-  REST_API_KEY: process.env.REACT_APP_KAKAO_REST_API_KEY,
-  REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI,
+  REST_API_KEY: process.env.REACT_APP_TEST2_KAKAO_REST_API_KEY,
+  REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'https://matajo.store/auth/kakao',
   getLoginUrl: () => {
     return `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_AUTH.REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
   },
