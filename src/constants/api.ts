@@ -16,8 +16,8 @@ if (!process.env.REACT_APP_KAKAO_REDIRECT_URI) {
   throw new Error('REACT_APP_KAKAO_REDIRECT_URI is not defined');
 } */
 
-export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL || 'https://api.matajo.store';
-export const API_URL = process.env.REACT_APP_API_URL || 'https://api.matajo.store';
+export const API_BACKEND_URL = process.env.REACT_APP_API_BACKEND_URL || 'https://api.matajo.store/';
+export const API_URL = process.env.REACT_APP_API_URL || 'https://api.matajo.store/';
 export const API_BASE_URL = API_BACKEND_URL; // 이전 코드와의 호환성을 위해 추가
 
 export const KAKAO_AUTH = {

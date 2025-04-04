@@ -574,7 +574,7 @@ const MyPage: React.FC = () => {
 
     // 보관인 등록 페이지로 이동
     console.log('보관인 등록 페이지로 이동합니다.');
-    navigate(`/${ROUTES.MYPAGE}/${ROUTES.KEEPER_REGISTRATION}`);
+    navigate(`/${ROUTES.KEEPER_REGISTRATION}`);
   };
 
   // 보관인 등록 취소 처리
