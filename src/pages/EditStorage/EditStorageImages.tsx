@@ -356,6 +356,12 @@ interface FormData {
   postTags: string[];
 }
 
+// 초기 이미지 타입 정의
+interface InitialImages {
+  mainImage: string | null;
+  detailImages: string[];
+}
+
 const EditStorageImages: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -378,9 +384,50 @@ const EditStorageImages: React.FC = () => {
     isConfirmModalOpen: false,
   });
 
+  // 초기 이미지 데이터 저장을 위한 상태 추가
+  const [initialImages, setInitialImages] = useState<InitialImages>({
+    mainImage: null,
+    detailImages: [],
+  });
+
   // 파일 입력 참조
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const detailImagesInputRef = useRef<HTMLInputElement>(null);
+
+  // 이미지가 변경되었는지 확인하는 함수
+  const hasImagesChanged = (): boolean => {
+    if (!initialImages.mainImage && state.mainImage) return true;
+    if (initialImages.mainImage && !state.mainImage) return true;
+    if (initialImages.mainImage !== state.mainImage) return true;
+
+    // 상세 이미지 갯수 비교
+    if (initialImages.detailImages.length !== state.detailImages.length) return true;
+
+    // 각 상세 이미지 비교
+    for (let i = 0; i < state.detailImages.length; i++) {
+      if (initialImages.detailImages[i] !== state.detailImages[i]) return true;
+    }
+
+    return false;
+  };
+
+  // 변경된 이미지 데이터만 반환하는 함수
+  const getChangedImageData = () => {
+    const changedData: any = {};
+
+    if (initialImages.mainImage !== state.mainImage) {
+      changedData.main_image = state.mainImage || '';
+    }
+
+    if (
+      initialImages.detailImages.length !== state.detailImages.length ||
+      !initialImages.detailImages.every((img, idx) => img === state.detailImages[idx])
+    ) {
+      changedData.detail_images = state.detailImages;
+    }
+
+    return changedData;
+  };
 
   // 로컬 스토리지에서 데이터 불러오기
   useEffect(() => {
@@ -398,16 +445,36 @@ const EditStorageImages: React.FC = () => {
         }
       }
 
+      // 이전 단계에서 전달된 데이터 불러오기
       const savedBasicData = localStorage.getItem('storage_edit_basic');
       const savedDetailsData = localStorage.getItem('storage_edit_details');
+
       if (savedBasicData || savedDetailsData) {
         const basicData = savedBasicData ? JSON.parse(savedBasicData) : {};
         const detailsData = savedDetailsData ? JSON.parse(savedDetailsData) : {};
-        setState(prev => ({ ...prev, prevFormData: { ...basicData, ...detailsData } }));
+
+        setState(prev => ({
+          ...prev,
+          prevFormData: {
+            ...prev.prevFormData,
+            ...basicData,
+            ...detailsData,
+          },
+        }));
+      } else if (location.state) {
+        // navigation state로 전달된 데이터가 있으면 사용
+        setState(prev => ({
+          ...prev,
+          prevFormData: {
+            ...prev.prevFormData,
+            ...location.state,
+          },
+        }));
       }
     };
+
     loadData();
-  }, []);
+  }, [location.state]);
 
   // API에서 이미지 데이터 가져오기
   useEffect(() => {
@@ -421,12 +488,21 @@ const EditStorageImages: React.FC = () => {
 
         if (response.data.success) {
           const postData = response.data.data;
+          const mainImg = postData.post_images[0] || null;
+          const detailImgs = postData.post_images.slice(1) || [];
+
+          // 초기 이미지 상태 저장
+          setInitialImages({
+            mainImage: mainImg,
+            detailImages: detailImgs,
+          });
+
           setState(prev => ({
             ...prev,
-            mainImage: postData.post_images[0],
-            updatedMainImage: postData.post_images[0],
-            detailImages: postData.post_images.slice(1),
-            updatedDetailImages: postData.post_images.slice(1),
+            mainImage: mainImg,
+            updatedMainImage: mainImg,
+            detailImages: detailImgs,
+            updatedDetailImages: detailImgs,
           }));
         }
       } catch (error) {
@@ -440,10 +516,10 @@ const EditStorageImages: React.FC = () => {
     fetchPostData();
   }, [id]);
 
-  // 완료 핸들러
+  // 완료 핸들러 - 변경된 부분만 전송하도록 수정
   const handleComplete = async () => {
-    if (!state.prevFormData || !id) {
-      showToast('이전 단계 데이터가 없습니다. 다시 시도해주세요.');
+    if (!id) {
+      showToast('게시글 ID가 없습니다. 다시 시도해주세요.');
       return;
     }
 
@@ -500,60 +576,58 @@ const EditStorageImages: React.FC = () => {
         }
       }
 
-      // requestData를 생성하고 handleCompleteRequest를 호출
-      const addressData: DaumAddressData = {
-        address: state.prevFormData?.postAddress || '',
-        address_english: '',
-        address_type: 'J',
-        apartment: 'N',
-        auto_jibun_address: state.prevFormData?.postAddress || '',
-        auto_jibun_address_english: '',
-        auto_road_address: state.prevFormData?.postAddress || '',
-        auto_road_address_english: '',
-        bcode: state.prevFormData?.postAddressData?.bcode || '',
-        bname: state.prevFormData?.postAddress?.split(' ').slice(-1)[0] || '',
-        bname1: state.prevFormData?.postAddress?.split(' ')[1] || '',
-        bname1_english: '',
-        bname2: state.prevFormData?.postAddress?.split(' ')[2] || '',
-        bname2_english: '',
-        bname_english: '',
-        building_code: state.prevFormData?.postAddressData?.building_code || '',
-        building_name: state.prevFormData?.postAddressData?.building_name || '',
-        hname: '',
-        jibun_address: state.prevFormData?.postAddress || '',
-        jibun_address_english: '',
-        no_selected: 'N',
-        postcode: state.prevFormData?.postAddressData?.zonecode || '',
-        postcode1: state.prevFormData?.postAddressData?.zonecode?.slice(0, 3) || '',
-        postcode2: state.prevFormData?.postAddressData?.zonecode?.slice(3) || '',
-        postcode_seq: '',
-        query: state.prevFormData?.postAddress || '',
-        road_address: state.prevFormData?.postAddress || '',
-        road_address_english: '',
-        roadname: state.prevFormData?.postAddress?.split(' ').slice(-2).join(' ') || '',
-        roadname_code: state.prevFormData?.postAddressData?.roadname_code || '',
-        roadname_english: '',
-        sido: state.prevFormData?.postAddress?.split(' ')[0] || '',
-        sido_english: '',
-        sigungu: state.prevFormData?.postAddress?.split(' ')[1] || '',
-        sigungu_code: state.prevFormData?.postAddressData?.sigungu_code || '',
-        sigungu_english: '',
-        user_language_type: 'K',
-        user_selected_type: 'J',
-        zonecode: state.prevFormData?.postAddressData?.zonecode || '',
-      };
+      // 변경된 데이터만 포함하는 요청 객체 생성
+      const requestData: any = {};
 
-      // 최종 요청 데이터 생성
-      const requestData = {
-        post_title: state.prevFormData?.postTitle || '',
-        post_content: state.prevFormData?.postContent || '',
-        prefer_price: Number(state.prevFormData?.preferPrice) || 0,
-        post_address_data: addressData,
-        post_tags: state.prevFormData?.postTags || [],
-        main_image: finalMainImage || '',
-        detail_images: finalDetailImages || [],
-      };
+      // 이전 단계(Basic, Details)에서 변경된 데이터 추가
+      if (state.prevFormData) {
+        if (state.prevFormData.postTitle) {
+          requestData.post_title = state.prevFormData.postTitle;
+        }
 
+        if (state.prevFormData.postContent) {
+          requestData.post_content = state.prevFormData.postContent;
+        }
+
+        if (state.prevFormData.preferPrice) {
+          requestData.prefer_price = Number(state.prevFormData.preferPrice);
+        }
+
+        if (state.prevFormData.postAddressData) {
+          requestData.post_address_data = state.prevFormData.postAddressData;
+        }
+
+        if (state.prevFormData.postTags && state.prevFormData.postTags.length > 0) {
+          requestData.post_tags = state.prevFormData.postTags;
+        }
+      }
+
+      // 이미지가 변경되었는지 확인하고 변경된 경우에만 추가
+      if (hasImagesChanged()) {
+        if (finalMainImage !== initialImages.mainImage) {
+          requestData.main_image = finalMainImage || '';
+        }
+
+        // 상세 이미지 비교
+        const initialDetailImagesStr = JSON.stringify(initialImages.detailImages);
+        const finalDetailImagesStr = JSON.stringify(finalDetailImages);
+
+        if (initialDetailImagesStr !== finalDetailImagesStr) {
+          requestData.detail_images = finalDetailImages;
+        }
+      }
+
+      console.log('변경된 데이터만 서버로 전송:', requestData);
+
+      // 변경된 데이터가 없는 경우 처리
+      if (Object.keys(requestData).length === 0) {
+        console.log('변경된 데이터가 없습니다.');
+        showToast('변경된 내용이 없습니다.');
+        setState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+
+      // 변경된 데이터만 서버로 전송
       await handleCompleteRequest(requestData);
     } catch (error) {
       console.error('이미지 처리 중 오류:', error);
@@ -566,8 +640,15 @@ const EditStorageImages: React.FC = () => {
   // 완료 요청 핸들러
   const handleCompleteRequest = async (requestData: any) => {
     try {
+      console.log('저장할 데이터:', requestData);
       const response = await updateStorage(String(id), requestData);
+
       if (response.success) {
+        // 성공 시 로컬 스토리지 정리
+        localStorage.removeItem('storage_edit_basic');
+        localStorage.removeItem('storage_edit_details');
+        localStorage.removeItem('storage_edit_images_changed');
+
         showToast('보관소가 성공적으로 수정되었습니다!');
         openConfirmModal();
       } else {
