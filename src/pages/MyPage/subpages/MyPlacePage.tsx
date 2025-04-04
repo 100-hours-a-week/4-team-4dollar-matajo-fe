@@ -5,7 +5,7 @@ import BottomNavigation from '../../../components/layout/BottomNavigation';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/routes';
 import { getMyStorages } from '../../../services/api/modules/storage';
-import { getUserPlaces, PlaceItem } from '../../../services/api/modules/user';
+import { PlaceItem } from '../../../services/api/modules/user';
 import { useAuth } from '../../../contexts/auth/index';
 
 // 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능

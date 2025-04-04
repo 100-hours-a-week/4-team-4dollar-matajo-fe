@@ -11,10 +11,10 @@ import KeeperRegistrationModal from '../../components/modals/KeeperRegisteration
 import { useEffect } from 'react';
 import { isAuthenticated, isKeeper } from '../../utils/api/authUtils';
 import { checkKeeperRole } from '../../services/api/modules/keeper';
-import axios from '../../services/api/client';
 import { ROUTES } from '../../constants/routes';
 import { updateNickname } from '../../services/api/modules/user';
 import client from '../../services/api/client';
+import { API_PATHS } from '../../constants/api';
 //닉네임 변경
 // next/image와 react-icons/cg 대신 기본 이미지 태그 사용
 // import Image from 'next/image';
@@ -337,7 +337,7 @@ const MyPage: React.FC = () => {
     console.log('[중복 체크 요청 닉네임]', nickname.trim());
 
     try {
-      const res = await client.get('/api/users/nickname', {
+      const res = await client.get(API_PATHS.USER.NICKNAME, {
         params: { nickname: nickname.trim() },
         headers: {
           Authorization: `Bearer ${token}`,
@@ -651,15 +651,23 @@ const MyPage: React.FC = () => {
 
     // ✅ 닉네임 변경 PATCH 요청
     try {
-      const success = await client.patch(`/api/users/nickname?userId=${userId}`, {
+      const response = await client.patch(API_PATHS.USER.NICKNAME, {
         nickname: trimmed,
       });
 
-      if (success) {
-        setUserState(prev => ({
-          ...prev,
-          userName: trimmed,
-        }));
+      if (response.data.accessToken) {
+        // 로컬 스토리지의 accessToken 교체
+        localStorage.setItem('accessToken', response.data.accessToken);
+
+        // 새로운 토큰 디코딩하여 사용자 정보 업데이트
+        const decoded = decodeToken(response.data.accessToken);
+        if (decoded) {
+          setUserState(prev => ({
+            ...prev,
+            userName: decoded.nickname || trimmed, // 새로운 닉네임으로 업데이트
+          }));
+        }
+
         setIsEditing(false);
         setHelperText('');
         showToast('닉네임이 변경되었습니다.');

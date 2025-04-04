@@ -38,9 +38,6 @@ export const API_PATHS = {
     KEEPER_STATUS: '/api/auth/keeper-status',
   },
   USER: {
-    ME: '/api/users/me',
-    PROFILE: '/api/users/profile',
-    UPDATE: '/api/users/profile',
     REGISTER_AS_KEEPER: '/api/users/keeper',
     NICKNAME: '/api/users/nickname', // 명세서에 맞게 추가
     DELETE: '/api/users', // 명세서에 맞게 추가
