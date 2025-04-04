@@ -24,7 +24,7 @@ export const KAKAO_AUTH = {
   REST_API_KEY: process.env.REACT_APP_TEST2_KAKAO_REST_API_KEY,
   REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'https://matajo.store/auth/kakao',
   getLoginUrl: () => {
-    return `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_AUTH.REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
+    return `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.REACT_APP_TEST2_KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
   },
 };
 
@@ -89,6 +89,11 @@ export const API_PATHS = {
   IMAGE: {
     PRESIGNED_URL: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/temp-upload',
     MOVE_IMAGE: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/move-image',
+  },
+  FCM: {
+    REGISTER_TOKEN: '/api/fcm/token',
+    REFRESH_TOKEN: '/api/fcm/token/refresh',
+    DELETE_TOKEN: '/api/fcm/token',
   },
 };
 
