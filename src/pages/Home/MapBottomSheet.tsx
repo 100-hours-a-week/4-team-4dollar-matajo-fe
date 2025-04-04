@@ -4,7 +4,6 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import Modal from '../../components/common/Modal';
-// import { getLocationId } from '../../services/api/modules/place';
 import { LocationIdData, LocationIdResponse } from '../../services/api/modules/storage';
 import { LocalDeal } from '../../types/place.types';
 import { getRecentTrades, RecentTrade } from '../../services/api/modules/trades';
@@ -29,15 +28,13 @@ const THEME = {
   gray500: '#6F6F6F',
 };
 
-// 컨테이너 스타일
+// 스타일 정의
 const Container = styled.div`
   position: relative;
   width: 100%;
   height: 100vh;
   overflow: hidden;
 `;
-
-// 지도 영역
 const MapArea = styled.div`
   width: 100%;
   height: 100%;
@@ -46,15 +43,11 @@ const MapArea = styled.div`
   align-items: center;
   justify-content: center;
 `;
-
-// 지도 컨텐츠 텍스트
 const MapText = styled.p`
   color: ${THEME.gray500};
   font-size: 14px;
   font-family: 'Noto Sans KR';
 `;
-
-// 바텀 시트 스타일
 const BottomSheet = styled.div`
   position: absolute;
   width: 100%;
@@ -66,8 +59,6 @@ const BottomSheet = styled.div`
   overflow-y: auto;
   padding-bottom: 20px;
 `;
-
-// 드래그 핸들 컨테이너
 const DragHandleContainer = styled.div`
   width: 100%;
   display: flex;
@@ -76,52 +67,38 @@ const DragHandleContainer = styled.div`
   padding-bottom: 16px;
   cursor: grab;
 `;
-
-// 드래그 핸들
 const DragHandle = styled.div`
   width: 36px;
   height: 4px;
   background-color: ${THEME.gray400};
   border-radius: 2px;
 `;
-
-// 컨텐츠 컨테이너
 const ContentContainer = styled.div`
   padding: 0 20px;
 `;
-
-// 헤더 타이틀
 const HeaderTitle = styled.div`
   font-size: 16px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
   margin-bottom: 8px;
 `;
-
-// 위치 정보 컨테이너
 const LocationContainer = styled.div`
   display: flex;
   align-items: center;
   margin-top: 16px;
   margin-bottom: 4px;
 `;
-
-// 위치 아이콘
 const LocationIcon = styled.div`
   width: 20px;
   height: 20px;
   margin-right: 8px;
 `;
-
-// 위치 텍스트
 const LocationText = styled.span`
   color: ${THEME.darkText};
   font-size: 14px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
 `;
-
-// 위치 수정 버튼
 const EditLocationButton = styled.button`
   margin-left: auto;
   color: ${THEME.darkText};
@@ -132,15 +109,12 @@ const EditLocationButton = styled.button`
   border: none;
   cursor: pointer;
 `;
-
-// 구분선
 const Divider = styled.div`
   height: 1px;
   background-color: ${THEME.gray300};
   margin: 16px 0;
   opacity: 0.6;
 `;
-// 메뉴 컨테이너 - 가로 배치로 변경
 const MenuContainer = styled.div`
   display: flex;
   flex-direction: row;
@@ -148,8 +122,6 @@ const MenuContainer = styled.div`
   gap: 12px;
   margin-bottom: 16px;
 `;
-
-// 메뉴 아이템 - 너비 조정
 const MenuItem = styled.div`
   flex: 1;
   padding: 12px;
@@ -159,24 +131,18 @@ const MenuItem = styled.div`
   cursor: pointer;
   position: relative;
 `;
-
-// 메뉴 제목
 const MenuTitle = styled.div`
   font-size: 13px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   margin-bottom: 4px;
 `;
-
-// 메뉴 설명
 const MenuDescription = styled.div`
   font-size: 10px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
   color: ${THEME.gray500};
 `;
-
-// 메뉴 화살표
 const MenuArrow = styled.div`
   position: absolute;
   right: 8px;
@@ -185,16 +151,12 @@ const MenuArrow = styled.div`
   width: 8px;
   height: 12px;
 `;
-
-// 섹션 제목
 const SectionTitle = styled.div`
   font-size: 14px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
   margin-bottom: 4px;
 `;
-
-// 섹션 서브타이틀
 const SectionSubtitle = styled.div`
   font-size: 12px;
   font-family: 'Noto Sans KR';
@@ -202,16 +164,12 @@ const SectionSubtitle = styled.div`
   color: ${THEME.gray500};
   margin-bottom: 16px;
 `;
-
-// 특가 그리드
 const DiscountGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 20px;
 `;
-
-// 특가 아이템
 const DiscountItemBox = styled.div<{ hasImage?: boolean; image_url?: string }>`
   position: relative;
   background-color: ${props => (props.hasImage ? 'transparent' : THEME.gray100)};
@@ -224,8 +182,6 @@ const DiscountItemBox = styled.div<{ hasImage?: boolean; image_url?: string }>`
   background-size: cover;
   background-position: center;
 `;
-
-// 특가 태그
 const DiscountTag = styled.div`
   position: absolute;
   left: 8px;
@@ -238,8 +194,6 @@ const DiscountTag = styled.div`
   padding: 2px 6px;
   border-radius: 2px;
 `;
-
-// 지역 텍스트
 const AreaText = styled.div`
   position: absolute;
   left: 8px;
@@ -249,8 +203,6 @@ const AreaText = styled.div`
   font-family: 'Noto Sans KR';
   font-weight: 400;
 `;
-
-// 마타조 아이템
 const MatjoItem = styled.div`
   background-color: ${THEME.gray200};
   border-radius: 8px;
@@ -261,8 +213,6 @@ const MatjoItem = styled.div`
   justify-content: center;
   align-items: center;
 `;
-
-// 마타조 아이콘
 const MatjoIcon = styled.div`
   width: 60px;
   height: 60px;
@@ -272,23 +222,17 @@ const MatjoIcon = styled.div`
   background-position: center;
   margin-bottom: 8px;
 `;
-
-// 마타조 텍스트
 const MatjoText = styled.div`
   color: ${THEME.gray500};
   font-size: 14px;
   font-family: 'Noto Sans KR';
   font-weight: 700;
 `;
-
-// 아이템 리스트
 const ItemList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
 `;
-
-// 아이템 카드
 const ItemCard = styled.div`
   display: flex;
   border: 1px solid ${THEME.gray300};
@@ -296,8 +240,6 @@ const ItemCard = styled.div`
   padding: 12px;
   cursor: pointer;
 `;
-
-// 아이템 이미지
 const ItemImage = styled.div`
   width: 64px;
   height: 64px;
@@ -308,44 +250,32 @@ const ItemImage = styled.div`
   background-size: cover;
   background-position: center;
 `;
-
-// 아이템 정보
 const ItemInfo = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 `;
-
-// 아이템 이름
 const ItemName = styled.div`
   font-size: 14px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
 `;
-
-// 아이템 가격
 const ItemPrice = styled.div`
   display: flex;
   align-items: baseline;
 `;
-
-// 아이템 가격 텍스트
 const PriceText = styled.span`
   color: ${THEME.priceText};
   font-size: 14px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
 `;
-
-// 아이템 가격 단위
 const PriceUnit = styled.span`
   color: ${THEME.priceText};
   font-size: 12px;
   font-family: 'Noto Sans KR';
   font-weight: 400;
 `;
-
-// 아이템 태그
 const ItemTags = styled.div`
   font-size: 12px;
   font-family: 'Noto Sans KR';
@@ -387,22 +317,19 @@ interface MapBottomSheetProps {
   storageMarkers?: Marker[];
   onMarkerClick?: (markerId: string) => void;
   locationInfoId?: number;
+  fetchLocationId?: (address: string) => Promise<number | undefined>;
 }
 
-// KeeperRegistrationModal 컴포넌트
 export const KeeperRegistrationModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }> = ({ isOpen, onClose, onConfirm }) => {
   const navigate = useNavigate();
-
   const handleConfirm = () => {
-    // 보관인 등록 페이지로 이동
     navigate('/registration/step1');
     onClose();
   };
-
   return (
     <Modal
       isOpen={isOpen}
@@ -425,7 +352,6 @@ export const KeeperRegistrationModal: React.FC<{
   );
 };
 
-// 보관소 등록 핸들러
 export const handleRegisterStorage = (
   navigate: ReturnType<typeof useNavigate>,
   setShowKeeperModal: (show: boolean) => void,
@@ -434,12 +360,9 @@ export const handleRegisterStorage = (
     navigate('/login');
     return;
   }
-
   if (isKeeper()) {
-    // 보관인인 경우 보관소 등록 페이지로 이동
     navigate('/storages/register');
   } else {
-    // 일반 사용자인 경우 보관인 등록 모달 표시
     setShowKeeperModal(true);
   }
 };
@@ -456,15 +379,14 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   storageMarkers = [],
   onMarkerClick,
   locationInfoId: propLocationInfoId,
+  fetchLocationId, // index.tsx에서 전달받은 함수
 }) => {
   const navigate = useNavigate();
   const [showKeeperModal, setShowKeeperModal] = useState(false);
   const [sheetState, setSheetState] = useState<BottomSheetState>('half-expanded');
+  // 현재 위치 텍스트는 prop을 그대로 사용하거나, 필요시 내부 상태로 관리할 수 있음
   const [currentLocation, setCurrentLocation] = useState<string>(location);
-  const [currentUserLocation, setCurrentUserLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  // 최근 거래 내역은 내부에서 관리
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
   const [locationInfoId, setLocationInfoId] = useState<number | undefined>(
     propLocationInfoId ?? undefined,
@@ -475,26 +397,20 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   const startYRef = useRef<number>(0);
   const currentYRef = useRef<number>(0);
 
-  // 스냅포인트 정의 수정
   const snapPoints = {
-    closed: window.innerHeight * 0.85, // 화면의 85% 지점 (지도가 15% 보임)
-    'half-expanded': window.innerHeight * 0.5, // 화면의 50% 지점
-    full: window.innerHeight * 0.2, // 화면의 20% 지점 (지도가 80% 보임)
+    closed: window.innerHeight * 0.85,
+    'half-expanded': window.innerHeight * 0.5,
+    full: window.innerHeight * 0.2,
   };
 
-  // 스냅포인트 계산 함수 추가
   const calculateSnapPoint = (currentTop: number): BottomSheetState => {
     const viewportHeight = window.innerHeight;
     const currentPercentage = (currentTop / viewportHeight) * 100;
-
-    // 각 스냅포인트와의 거리 계산
     const distances = {
-      closed: Math.abs(currentPercentage - 85), // 85% 지점과의 거리
-      'half-expanded': Math.abs(currentPercentage - 50), // 50% 지점과의 거리
-      full: Math.abs(currentPercentage - 20), // 20% 지점과의 거리
+      closed: Math.abs(currentPercentage - 85),
+      'half-expanded': Math.abs(currentPercentage - 50),
+      full: Math.abs(currentPercentage - 20),
     };
-
-    // 가장 가까운 스냅포인트 찾기
     return Object.entries(distances).reduce((a, b) => (a[1] < b[1] ? a : b))[0] as BottomSheetState;
   };
 
@@ -504,7 +420,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     startYRef.current = clientY;
     currentYRef.current = bottomSheetRef.current?.offsetTop || 0;
-
     if ('touches' in e) {
       document.addEventListener('touchmove', handleDragMove as EventListener);
       document.addEventListener('touchend', handleDragEnd);
@@ -518,7 +433,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const delta = clientY - startYRef.current;
     const newY = currentYRef.current + delta;
-
     if (bottomSheetRef.current) {
       bottomSheetRef.current.style.transition = 'none';
       bottomSheetRef.current.style.top = `${Math.max(0, newY)}px`;
@@ -530,63 +444,38 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     document.removeEventListener('mouseup', handleDragEnd);
     document.removeEventListener('touchmove', handleDragMove as EventListener);
     document.removeEventListener('touchend', handleDragEnd);
-
     if (bottomSheetRef.current) {
       const currentTop = bottomSheetRef.current.offsetTop;
       const newState = calculateSnapPoint(currentTop);
       const targetY = snapPoints[newState];
-
       bottomSheetRef.current.style.transition = 'top 0.3s ease-out';
       bottomSheetRef.current.style.top = `${targetY}px`;
       setSheetState(newState);
     }
   };
 
-  // 컴포넌트 마운트 시 현재 위치 가져오기
-  useEffect(() => {
-    const getCurrentLocation = async () => {
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject);
-        });
+  // 이제 MapBottomSheet에서는 index.tsx에서 전달받은 값을 사용하므로,
+  // 현재 위치를 가져오는 별도의 useEffect는 제거합니다.
+  // (필요시 index.tsx에서 관리된 current location을 그대로 사용)
 
-        const { latitude, longitude } = position.coords;
-        setCurrentUserLocation({ latitude, longitude });
-
-        // 현재 위치 정보 설정
-        setCurrentLocation('현재 위치');
-        setLocationInfoId(0); // 현재 위치의 경우 기본값 0 사용
-      } catch (error) {
-        console.error('현재 위치 가져오기 실패:', error);
-        setCurrentLocation(defaultLocation || location);
-      }
-    };
-
-    getCurrentLocation();
-  }, [defaultLocation, location]);
-
-  // prop으로 받은 locationInfoId가 변경될 때 상태 업데이트
   useEffect(() => {
     if (propLocationInfoId !== locationInfoId) {
       setLocationInfoId(propLocationInfoId ?? undefined);
     }
   }, [propLocationInfoId]);
 
-  // location prop이 변경될 때 currentLocation 업데이트
   useEffect(() => {
     if (location !== currentLocation) {
       setCurrentLocation(location);
     }
   }, [location, currentLocation]);
 
-  // 최근 거래 내역 가져오기
   useEffect(() => {
     const fetchRecentTrades = async () => {
       if (locationInfoId === undefined) {
         console.log('locationInfoId가 없어서 거래 내역 조회를 건너뜁니다.');
         return;
       }
-
       try {
         const response = await getRecentTrades(locationInfoId);
         if (response.success && Array.isArray(response.data)) {
@@ -600,11 +489,9 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
         setRecentTrades([]);
       }
     };
-
     fetchRecentTrades();
   }, [locationInfoId]);
 
-  // 보관소 등록 핸들러
   const handleRegisterClick = () => {
     if (onRegisterStorage) {
       onRegisterStorage();
@@ -613,13 +500,11 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     }
   };
 
-  // 보관인 등록 확인 핸들러
   const handleKeeperConfirm = () => {
     setShowKeeperModal(false);
     navigate('/storages');
   };
 
-  // 게시판 이동 핸들러
   const handleGoToBoard = () => {
     if (onGoToBoard) {
       onGoToBoard();
@@ -628,12 +513,10 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     }
   };
 
-  // 아이템 상세 페이지로 이동
   const handleItemClick = (id: string): void => {
     navigate(`/storages/${id}`);
   };
 
-  // 지역 특가 아이템 클릭 핸들러
   const handleDiscountItemClick = (id: number): void => {
     if (onDiscountItemClick) {
       onDiscountItemClick(id.toString());
@@ -642,7 +525,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     }
   };
 
-  // 동네 수정 버튼 클릭 핸들러
   const handleEditLocation = () => {
     if (onEditLocation) {
       onEditLocation();
@@ -652,24 +534,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   return (
     <Container>
       <MapArea>
-        {/* 현재 위치 마커 */}
-        {currentUserLocation && (
-          <div
-            style={{
-              position: 'absolute',
-              left: `${currentUserLocation.latitude}px`,
-              top: `${currentUserLocation.longitude}px`,
-              width: '12px',
-              height: '12px',
-              backgroundColor: '#3A00E5',
-              borderRadius: '50%',
-              border: '2px solid white',
-              boxShadow: '0 0 4px rgba(0, 0, 0, 0.3)',
-            }}
-          />
-        )}
-
-        {/* 보관소 마커 */}
+        {/* 보관소 마커 표시 */}
         {storageMarkers.map(marker => (
           <div
             key={marker.id}
@@ -698,7 +563,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
           </div>
         ))}
       </MapArea>
-
       <BottomSheet
         ref={bottomSheetRef}
         style={{
@@ -714,7 +578,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
         >
           <DragHandle />
         </DragHandleContainer>
-
         <ContentContainer>
           <LocationContainer>
             <LocationIcon>
@@ -730,9 +593,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
             <LocationText>{currentLocation}</LocationText>
             <EditLocationButton onClick={handleEditLocation}>동네 수정</EditLocationButton>
           </LocationContainer>
-
           <Divider />
-
           <MenuContainer>
             <MenuItem onClick={handleRegisterClick}>
               <MenuTitle>보관장소 등록하기</MenuTitle>
@@ -745,9 +606,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
               <MenuArrow>›</MenuArrow>
             </MenuItem>
           </MenuContainer>
-
           <Divider />
-
           <SectionTitle>{currentLocation.split(' ')[1]} 지역 특가</SectionTitle>
           <DiscountGrid>
             {discountItems.length > 0 ? (
@@ -789,7 +648,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
               </>
             )}
           </DiscountGrid>
-
           <SectionTitle>{currentLocation.split(' ')[1]} 최근 거래 내역</SectionTitle>
           <ItemList>
             {recentTrades.length > 0 ? (
@@ -830,7 +688,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
           </ItemList>
         </ContentContainer>
       </BottomSheet>
-
       <KeeperRegistrationModal
         isOpen={showKeeperModal}
         onClose={() => setShowKeeperModal(false)}

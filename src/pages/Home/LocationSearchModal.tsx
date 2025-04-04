@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
-import { searchDong } from '../../services/api/modules/place';
-import MapBottomSheet, { handleRegisterStorage } from './MapBottomSheet';
-import client from '../../services/api/client';
-import { API_PATHS } from '../../constants/api';
+import { searchDong, getLocationInfo } from '../../services/api/modules/place';
 import { debounce } from 'lodash';
 
 // API 응답 타입 정의
@@ -17,7 +14,8 @@ export interface LocationIdData {
   id: number;
   latitude: number;
   longitude: number;
-  address?: string;
+  dong: string;
+  formattedAddress: string;
 }
 
 // API 응답 타입 수정
@@ -34,7 +32,18 @@ interface LocationIdResponse {
     id: number;
     latitude: number;
     longitude: number;
+    dong: string;
+    formattedAddress: string;
   }>;
+}
+
+// LocationItem 인터페이스 정의
+interface LocationItem {
+  formatted_address: string;
+  display_name: string;
+  latitude: string;
+  longitude: string;
+  location_id: number;
 }
 
 // 모달 오버레이 - 화면 전체를 덮는 반투명 배경
@@ -208,55 +217,17 @@ const LoadingText = styled.p`
   font-family: 'Noto Sans KR', sans-serif;
 `;
 
-// LocationInfo 인터페이스 수정
-interface LocationInfo {
-  formatted_address: string;
-  display_name: string;
-  latitude: string;
-  longitude: string;
-  location_id: number; // optional 제거
-}
-
-// 인터페이스 정의
+// 모달 프롭스 정의
 interface LocationSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectLocation: (
-    location: string,
+    address: string,
     latitude?: string,
     longitude?: string,
     locationId?: number,
   ) => void;
 }
-
-const getCurrentLocationData = async (): Promise<LocationInfo[]> => {
-  try {
-    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0,
-      });
-    });
-
-    const { latitude, longitude } = position.coords;
-    console.log('현재 위치 좌표:', latitude, longitude);
-
-    // 현재 위치의 위도/경도만 반환
-    return [
-      {
-        formatted_address: '현재 위치',
-        display_name: '현재 위치',
-        latitude: latitude.toString(),
-        longitude: longitude.toString(),
-        location_id: 0,
-      },
-    ];
-  } catch (error) {
-    console.error('현재 위치 정보 가져오기 실패:', error);
-    return [];
-  }
-};
 
 const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   isOpen,
@@ -264,155 +235,184 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   onSelectLocation,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<LocationInfo[]>([]);
+  const [searchResults, setSearchResults] = useState<LocationItem[]>([]);
+  const [recentLocations, setRecentLocations] = useState<LocationItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // 모달이 열릴 때 최근 위치 정보 로드
   useEffect(() => {
     if (isOpen) {
-      setLoading(true);
-      setError(null);
-
-      const initializeLocations = async () => {
-        try {
-          const savedLocations = localStorage.getItem('recentLocations');
-          let recentLocations: LocationInfo[] = [];
-
-          if (savedLocations) {
-            recentLocations = JSON.parse(savedLocations);
-          } else {
-            // 저장된 위치가 없으면 현재 위치 정보 가져오기
-            recentLocations = await getCurrentLocationData();
-          }
-
-          setSearchResults(recentLocations);
-        } catch (err) {
-          console.error('위치 정보 로드 오류:', err);
-          setError('위치 정보를 불러올 수 없습니다.');
-        } finally {
-          setLoading(false);
+      try {
+        // 저장된 최근 위치 정보 불러오기
+        const savedLocations = localStorage.getItem('recentLocations');
+        if (savedLocations) {
+          setRecentLocations(JSON.parse(savedLocations));
+          setSearchResults(JSON.parse(savedLocations));
+        } else {
+          setRecentLocations([]);
+          setSearchResults([]);
         }
-      };
 
-      initializeLocations();
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+        // 검색 입력란에 포커스
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        }, 100);
+      } catch (err) {
+        console.error('위치 정보 로드 오류:', err);
+        setError('위치 정보를 불러올 수 없습니다.');
+      }
     }
   }, [isOpen]);
 
-  const debouncedSearch = useCallback(
-    debounce(async (term: string) => {
-      if (!term.trim()) {
-        const savedLocations = localStorage.getItem('recentLocations');
-        setSearchResults(savedLocations ? JSON.parse(savedLocations) : []);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        // 동 검색 API 호출
-        const searchResponse = await searchDong(term);
-        console.log('동 검색 응답:', searchResponse);
-
-        if (Array.isArray(searchResponse) && searchResponse.length > 0) {
-          // API 응답에서 받은 주소 문자열을 그대로 표시
-          setSearchResults(
-            searchResponse.map(address => ({
-              formatted_address: address,
-              display_name: address,
-              latitude: '',
-              longitude: '',
-              location_id: 0,
-            })),
-          );
-        } else {
-          setSearchResults([]);
-        }
-      } catch (error) {
-        console.error('검색 오류:', error);
-        setError('검색 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    }, 300),
-    [],
-  );
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-
-    // 검색어가 2글자 이상일 때만 검색 실행
-    if (value.length >= 2) {
-      debouncedSearch(value);
-    } else if (value.length === 0) {
-      // 검색어가 없으면 최근 위치 표시
+  // 검색 함수
+  const handleSearch = async (term: string) => {
+    if (!term.trim()) {
       const savedLocations = localStorage.getItem('recentLocations');
       setSearchResults(savedLocations ? JSON.parse(savedLocations) : []);
+      return;
     }
-  };
 
-  const handleResultClick = async (location: LocationInfo) => {
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      // 현재 위치인 경우 좌표로 조회
-      const isCurrentLocation = location.formatted_address === '현재 위치';
+      const results = await searchDong(term);
 
-      if (!isCurrentLocation) {
-        // 선택된 주소의 좌표 정보 조회
-        const response = await client.get(API_PATHS.PLACE.LOCATIONS.INFO, {
-          params: { formattedAddress: location.formatted_address },
-        });
+      if (Array.isArray(results) && results.length > 0) {
+        // 주소 문자열을 LocationItem 형식으로 변환
+        const formattedResults = results.map(address => ({
+          formatted_address: address,
+          display_name: address,
+          latitude: '',
+          longitude: '',
+          location_id: 0,
+        }));
 
-        console.log('위치 정보 API 응답:', response.data);
-
-        // API 응답 형식 확인
-        if (
-          response.data?.success === true &&
-          response.data.data &&
-          response.data.data.length > 0
-        ) {
-          const locationData = response.data.data[0];
-          location.latitude = locationData.latitude.toString();
-          location.longitude = locationData.longitude.toString();
-          location.location_id = locationData.id;
-        } else {
-          console.error('API 응답에 위치 데이터가 없습니다:', response.data);
-          setError('위치 정보를 찾을 수 없습니다.');
-          setLoading(false);
-          return;
-        }
+        setSearchResults(formattedResults);
+      } else {
+        setSearchResults([]);
       }
-
-      console.log('선택된 위치 정보:', location);
-      saveRecentLocation(location);
-
-      // onSelectLocation 호출로 부모 컴포넌트에 위치 정보 전달
-      onSelectLocation(
-        location.formatted_address,
-        location.latitude,
-        location.longitude,
-        location.location_id,
-      );
-
-      onClose();
     } catch (error) {
-      console.error('위치 선택 처리 오류:', error);
-      setError('위치 정보를 가져오는데 실패했습니다.');
+      console.error('검색 오류:', error);
+      setError('검색 중 오류가 발생했습니다.');
+      setSearchResults([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveRecentLocation = (location: LocationInfo) => {
+  // 디바운스된 검색 함수
+  const debouncedSearch = useCallback(
+    debounce((term: string) => handleSearch(term), 300),
+    [],
+  );
+
+  // 검색어 변경 핸들러
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    if (value.length >= 2) {
+      debouncedSearch(value);
+    } else if (value.length === 0) {
+      // 입력값이 없으면 최근 검색 결과 표시
+      const savedLocations = localStorage.getItem('recentLocations');
+      setSearchResults(savedLocations ? JSON.parse(savedLocations) : []);
+    }
+  };
+
+  // 검색 결과 선택 핸들러
+  const handleResultClick = async (result: LocationItem) => {
+    setLoading(true);
+    try {
+      // 저장된 위치 정보가 있는지 확인
+      if (result.location_id && result.latitude && result.longitude) {
+        // 이미 완전한 정보가 있으면 바로 선택
+        saveRecentLocation(result);
+        onSelectLocation(
+          result.formatted_address,
+          result.latitude,
+          result.longitude,
+          result.location_id,
+        );
+        onClose();
+        return;
+      }
+
+      // 1. 위치 ID 조회
+      const locationResponse = await getLocationInfo(result.formatted_address);
+      console.log('위치 정보 조회 결과:', locationResponse);
+
+      let locationId;
+      let latitude;
+      let longitude;
+
+      if (locationResponse?.success && locationResponse.data?.length > 0) {
+        locationId = locationResponse.data[0].id;
+        latitude = locationResponse.data[0].latitude?.toString();
+        longitude = locationResponse.data[0].longitude?.toString();
+        console.log('위치 ID 및 좌표 정보:', { locationId, latitude, longitude });
+
+        // 최근 위치에 저장
+        const newLocation: LocationItem = {
+          formatted_address: result.formatted_address,
+          display_name: result.formatted_address,
+          latitude: latitude || '',
+          longitude: longitude || '',
+          location_id: locationId,
+        };
+        saveRecentLocation(newLocation);
+
+        // 2. 선택한 위치 정보 전달 (locationId 포함)
+        onSelectLocation(result.formatted_address, latitude, longitude, locationId);
+      } else {
+        // API 응답이 없거나 에러인 경우 기본 정보만 전달
+        onSelectLocation(result.formatted_address);
+      }
+
+      onClose();
+    } catch (error) {
+      console.error('위치 선택 중 오류 발생:', error);
+      // 에러가 발생해도 기본 정보는 전달
+      onSelectLocation(result.formatted_address);
+      onClose();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 최근 위치 ID 업데이트 함수
+  const updateRecentLocationId = (location: LocationItem) => {
     try {
       const savedLocations = localStorage.getItem('recentLocations');
-      let recentLocations: LocationInfo[] = savedLocations ? JSON.parse(savedLocations) : [];
+      if (!savedLocations) return;
+
+      let recentLocations: LocationItem[] = JSON.parse(savedLocations);
+
+      // 해당 위치 항목 찾아서 ID 업데이트
+      const updatedLocations = recentLocations.map(loc => {
+        if (loc.formatted_address === location.formatted_address) {
+          return { ...loc, location_id: location.location_id };
+        }
+        return loc;
+      });
+
+      localStorage.setItem('recentLocations', JSON.stringify(updatedLocations));
+      setRecentLocations(updatedLocations);
+    } catch (error) {
+      console.error('위치 ID 업데이트 오류:', error);
+    }
+  };
+
+  // 최근 위치 저장 함수
+  const saveRecentLocation = (location: LocationItem) => {
+    try {
+      const savedLocations = localStorage.getItem('recentLocations');
+      let recentLocations: LocationItem[] = savedLocations ? JSON.parse(savedLocations) : [];
 
       // 중복 제거
       recentLocations = recentLocations.filter(
@@ -422,12 +422,13 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
       // 새 위치를 배열 앞에 추가
       recentLocations.unshift(location);
 
-      // 최대 5개만 유지
-      if (recentLocations.length > 5) {
-        recentLocations = recentLocations.slice(0, 5);
+      // 최대 3개만 유지
+      if (recentLocations.length > 3) {
+        recentLocations = recentLocations.slice(0, 3);
       }
 
       localStorage.setItem('recentLocations', JSON.stringify(recentLocations));
+      setRecentLocations(recentLocations);
     } catch (error) {
       console.error('최근 위치 저장 오류:', error);
     }
@@ -439,6 +440,7 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
     }
   };
 
+  // 키 입력 핸들러
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       debouncedSearch(searchTerm);

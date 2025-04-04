@@ -3,11 +3,12 @@ import { API_PATHS } from '../../../constants/api';
 import axios from 'axios';
 export interface PostByLocation {
   post_id: number;
-  post_title: string;
-  post_address: string;
-  latitude: number;
-  longitude: number;
-  address: string;
+  title?: string; // API 응답에 title이 있을 수 있음
+  post_title?: string; // 기존 필드는 옵셔널로 변경
+  post_address?: string; // 기존 필드는 옵셔널로 변경
+  address: string; // 새로운 API 응답에서는 address 사용
+  latitude?: number;
+  longitude?: number;
   // 추가 필드가 있다면 여기에 추가
 }
 // 장소 타입 정의
