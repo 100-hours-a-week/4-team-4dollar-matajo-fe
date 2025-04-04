@@ -6,7 +6,7 @@ import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
 import { useAuth } from '../../hooks/auth';
-import { logout } from '../../utils/api/authUtils';
+import { logout, saveToken } from '../../utils/api/authUtils';
 import KeeperRegistrationModal from '../../components/modals/KeeperRegisterationModal';
 import { useEffect } from 'react';
 import { isAuthenticated, isKeeper } from '../../utils/api/authUtils';
@@ -654,13 +654,14 @@ const MyPage: React.FC = () => {
       const response = await client.patch(API_PATHS.USER.NICKNAME, {
         nickname: trimmed,
       });
+      console.log('response.data.data', response.data.data.access_token);
 
-      if (response.data.accessToken) {
+      if (response.data.data.access_token) {
         // 로컬 스토리지의 accessToken 교체
-        localStorage.setItem('accessToken', response.data.accessToken);
+        saveToken(response.data.data.access_token);
 
         // 새로운 토큰 디코딩하여 사용자 정보 업데이트
-        const decoded = decodeToken(response.data.accessToken);
+        const decoded = decodeToken(response.data.data.access_token);
         if (decoded) {
           setUserState(prev => ({
             ...prev,
