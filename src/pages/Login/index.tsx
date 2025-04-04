@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { KAKAO_AUTH } from '../../constants/api';
+import { isLoggedIn } from '../../utils/api/authUtils';
 
 // 스타일 컴포넌트
 const LoginContainer = styled.div`
@@ -90,8 +91,7 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     // 이미 로그인되어 있는 경우 메인 페이지로 리다이렉트
-    const token = localStorage.getItem('accessToken');
-    if (token) {
+    if (isLoggedIn()) {
       navigate('/main', { replace: true });
     }
   }, [navigate]);

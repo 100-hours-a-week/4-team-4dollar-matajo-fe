@@ -62,7 +62,7 @@ const KakaoCallback: React.FC = () => {
     };
 
     processKakaoLogin();
-  }, [location, navigate]);
+  }, [location]);
 
   // 로딩 상태 표시
   if (isLoading) {
