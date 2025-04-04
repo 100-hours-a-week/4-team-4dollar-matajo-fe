@@ -17,10 +17,10 @@ export interface ToastItem {
   duration?: number;
 }
 
-// 애니메이션 정의
+// 애니메이션 수정
 const slideIn = keyframes`
   from {
-    transform: translateY(100%);
+    transform: translateY(20px);
     opacity: 0;
   }
   to {
@@ -35,54 +35,59 @@ const slideOut = keyframes`
     opacity: 1;
   }
   to {
-    transform: translateY(100%);
+    transform: translateY(20px);
     opacity: 0;
   }
 `;
 
-// 토스트 컨테이너 스타일
+// 토스트 컨테이너 스타일 수정 - z-index와 위치 강화
 const ToastContainer = styled.div`
   position: fixed;
-  bottom: 70px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
+  bottom: 80px; /* 바닥으로부터 거리 증가 */
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  z-index: 9999; /* z-index 증가 */
   display: flex;
   flex-direction: column;
   align-items: center;
   max-width: 90%;
-  width: 375px;
+  width: 320px; /* 모바일 화면에 최적화된 넓이 */
+  pointer-events: none; /* 토스트가 클릭 이벤트를 방해하지 않도록 */
 `;
 
-// 토스트 메시지 스타일 (타입에 따른 색상 적용)
+// 토스트 메시지 스타일 수정 - 더 눈에 띄도록
 const ToastMessage = styled.div<{ type: ToastType; isExiting: boolean }>`
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   padding: 12px 16px;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); /* 그림자 강화 */
   display: flex;
   align-items: center;
-  min-width: 250px;
+  min-width: 200px;
   max-width: 100%;
+  pointer-events: auto; /* 개별 토스트는 클릭 가능하게 */
   animation: ${props => (props.isExiting ? slideOut : slideIn)} 0.3s ease-in-out;
 
   background-color: ${props => {
     switch (props.type) {
       case ToastType.SUCCESS:
-        return '#4CAF50';
+        return 'rgba(76, 175, 80, 0.95)'; /* 약간의 투명도 추가 */
       case ToastType.ERROR:
-        return '#F44336';
+        return 'rgba(244, 67, 54, 0.95)';
       case ToastType.WARNING:
-        return '#FF9800';
+        return 'rgba(255, 152, 0, 0.95)';
       case ToastType.INFO:
       default:
-        return '#5B59FD';
+        return 'rgba(91, 89, 253, 0.95)';
     }
   }};
 
   color: white;
   font-family: 'Noto Sans KR', sans-serif;
   font-size: 14px;
+  font-weight: 500; /* 텍스트 무게 증가 */
+  line-height: 1.4; /* 행간 개선 */
 `;
 
 // 토스트 아이콘 컴포넌트
@@ -163,7 +168,16 @@ const Toast: React.FC<{
   return (
     <ToastContainer>
       {toasts.map(toast => (
-        <ToastMessage key={toast.id} type={toast.type} isExiting={exiting[toast.id] || false}>
+        <ToastMessage
+          key={toast.id}
+          type={toast.type}
+          isExiting={exiting[toast.id] || false}
+          onClick={() => {
+            // 클릭 시 바로 닫히도록 설정
+            setExiting(prev => ({ ...prev, [toast.id]: true }));
+            setTimeout(() => removeToast(toast.id), 300);
+          }}
+        >
           <ToastIcon type={toast.type} />
           <ToastContent>{toast.message}</ToastContent>
         </ToastMessage>

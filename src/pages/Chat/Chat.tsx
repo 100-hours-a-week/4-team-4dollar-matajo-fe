@@ -483,14 +483,43 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 새 메시지 사운드 객체 생성
   const messageSound = useRef<HTMLAudioElement | null>(null);
 
-  // 사운드 초기화
   useEffect(() => {
-    try {
-      messageSound.current = new Audio('/notification.mp3');
-    } catch (error) {
-      console.error('사운드 초기화 오류:', error);
+    // 기존 오디오 객체가 있으면 제거
+    if (messageSound.current) {
+      messageSound.current.pause();
+      messageSound.current = null;
     }
-  }, []);
+
+    try {
+      // 새 오디오 객체 생성
+      messageSound.current = new Audio('/notification.mp3');
+
+      // iOS에서 더 안정적인 재생을 위한 설정
+      messageSound.current.preload = 'auto';
+
+      // 사용자 상호작용 이벤트에서 오디오 로드
+      const loadAudio = () => {
+        if (messageSound.current) {
+          messageSound.current.load();
+        }
+        // 한 번만 실행하도록 이벤트 리스너 제거
+        document.removeEventListener('click', loadAudio);
+      };
+
+      document.addEventListener('click', loadAudio);
+
+      // 컴포넌트 언마운트 시 오디오 정리
+      return () => {
+        if (messageSound.current) {
+          messageSound.current.pause();
+          messageSound.current = null;
+        }
+        document.removeEventListener('click', loadAudio);
+      };
+    } catch (error) {
+      console.error('오디오 초기화 오류:', error);
+    }
+  }, []); // 빈 의존성 배열
 
   // API 요청 헤더에 userId 추가
   useEffect(() => {
@@ -529,6 +558,9 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // FCM 설정 초기화
   useEffect(() => {
+    // FCM 서비스 가시성 리스너 설정
+    fcmService.setupVisibilityListener();
+
     // 현재 알림 권한 확인
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission);
@@ -541,35 +573,85 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         initializeFcm();
       }
     }
+
+    // FCM 메시지 이벤트 리스너 (컴포넌트 외부에서 발생한 FCM 이벤트 처리)
+    const handleFcmMessage = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const payload = customEvent.detail;
+
+      if (payload?.notification) {
+        const title = payload.notification.title || '';
+        const body = payload.notification.body || '';
+        const message = title ? `${title}: ${body}` : body;
+
+        if (message) {
+          showInfoToast(message, 5000);
+          playNotificationSound();
+        }
+      }
+    };
+
+    // DOM에 FCM 이벤트 리스너 등록
+    window.addEventListener('fcm-message', handleFcmMessage);
+
+    // 클린업 함수
+    return () => {
+      window.removeEventListener('fcm-message', handleFcmMessage);
+    };
+  }, []);
+
+  // 토스트 관련 디버깅 메시지 추가 (테스트용)
+  useEffect(() => {
+    // 토스트 시스템이 정상 작동하는지 확인하는 디버그 메시지
+    console.log('토스트 시스템 상태:', {
+      '토스트 개수': toasts.length,
+      '토스트 함수들': {
+        showInfoToast: typeof showInfoToast === 'function',
+        showSuccessToast: typeof showSuccessToast === 'function',
+        showErrorToast: typeof showErrorToast === 'function',
+      },
+    });
+
+    // 개발 중에만 채팅방 입장 시 테스트 토스트 표시 (실제 배포 시 제거)
+    if (process.env.NODE_ENV === 'development') {
+      // 약간의 지연 후 테스트 토스트 메시지 표시
+      const timer = setTimeout(() => {
+        showInfoToast('채팅방에 입장했습니다', 3000);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // FCM 초기화 함수
   const initializeFcm = async () => {
     try {
-      await fcmService.getAndRegisterToken();
+      // FCM 토큰 생성 및 등록
+      const token = await fcmService.getAndRegisterToken();
+      console.log('FCM token registered:', token);
 
-      // FCM 메시지 리스너 등록
+      // FCM 메시지 리스너 등록 - 토스트 메시지 연결
       fcmService.onMessage(payload => {
-        console.log('FCM message received in chat:', payload);
+        console.log('FCM message received in chat component:', payload);
 
-        // 현재 채팅방과 관련된 메시지인 경우 무시 (이미 웹소켓으로 받음)
+        // 현재 채팅방과 관련된 메시지인 경우 별도 처리
         if (payload.data && payload.data.roomId && parseInt(payload.data.roomId) === roomId) {
-          console.log('Ignoring FCM message for current chat room');
-          return;
+          console.log('Message for current room, handled by WebSocket');
+          return; // 현재 방 메시지는 WebSocket으로 처리하므로 무시
         }
 
-        // 토스트 메시지로 표시
-        if (payload.notification) {
-          showInfoToast(
-            payload.notification.title + ': ' + payload.notification.body,
-            5000, // 5초 동안 표시
-          );
-        } else if (payload.data && payload.data.message) {
-          showInfoToast(payload.data.message);
-        }
+        // 알림 정보 추출
+        const title = payload.notification?.title || '';
+        const body = payload.notification?.body || '';
+        const message = title ? `${title}: ${body}` : body;
 
-        // 사운드 재생 (선택사항)
-        playNotificationSound();
+        // 토스트 메시지 표시 (5초 동안)
+        if (message) {
+          showInfoToast(message, 5000);
+
+          // 알림 사운드 재생
+          playNotificationSound();
+        }
       });
 
       // 토큰 갱신 설정
@@ -595,11 +677,24 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     }
   };
 
-  // 알림 사운드 재생
+  // 재생 관련 문제를 방지하기 위해 사운드 재생 함수 개선
   const playNotificationSound = () => {
     try {
-      const audio = new Audio('/notification.mp3'); // 알림 사운드 파일 경로
-      audio.play().catch(e => console.log('오디오 재생 실패:', e));
+      // 이미 생성된 오디오 객체 사용
+      if (messageSound.current) {
+        // iOS에서 사용자 상호작용 없이 오디오 재생을 위해 초기화
+        messageSound.current.currentTime = 0;
+        messageSound.current.volume = 0.5;
+
+        const playPromise = messageSound.current.play();
+
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.warn('Audio play failed:', error);
+            // 자동 재생 정책으로 인한 오류는 무시 (사용자 상호작용 필요)
+          });
+        }
+      }
     } catch (error) {
       console.error('알림 사운드 재생 실패:', error);
     }
@@ -746,6 +841,32 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       fcmService.offMessage(() => {});
     };
   }, [roomId, currentUserId]);
+
+  // 메시지 수신 시 토스트 알림 표시 - 로직 추가
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+
+      // 방금 받은 메시지가 다른 사람이 보낸 것이고, 스크롤이 하단에 있지 않은 경우
+      if (
+        lastMessage.sender_id !== currentUserId &&
+        !isScrolledToBottom &&
+        !lastMessage.content.includes('사용자가 채팅방에 입장했습니다')
+      ) {
+        // 새 메시지 알림 토스트 표시
+        const senderName = lastMessage.sender_nickname || '상대방';
+        const messagePreview =
+          lastMessage.message_type === MessageType.IMAGE
+            ? '📷 이미지를 보냈습니다'
+            : lastMessage.content.length > 15
+              ? `${lastMessage.content.substring(0, 15)}...`
+              : lastMessage.content;
+
+        showInfoToast(`${senderName}: ${messagePreview}`, 3000);
+        playNotificationSound();
+      }
+    }
+  }, [messages, currentUserId, isScrolledToBottom]);
 
   // 메시지 로드 함수 수정
   const loadPreviousMessages = async () => {

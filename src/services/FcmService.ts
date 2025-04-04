@@ -198,6 +198,18 @@ class FcmService {
     if (!this.messaging) return;
 
     onMessage(this.messaging, (payload: FirebaseMessagePayload) => {
+      console.log('[FCM] 포그라운드 메시지 수신:', payload);
+
+      // 메시지가 수신되면 모바일에서 확인할 수 있도록 콘솔에 자세히 기록
+      if (payload.notification) {
+        console.log('[FCM] 알림 제목:', payload.notification.title);
+        console.log('[FCM] 알림 내용:', payload.notification.body);
+      }
+
+      if (payload.data) {
+        console.log('[FCM] 데이터:', payload.data);
+      }
+
       const message: MessagePayload = {
         notification: payload.notification
           ? {
@@ -208,34 +220,52 @@ class FcmService {
         data: payload.data,
       };
 
-      this.showNotification(message);
-      this.messageCallbacks.forEach(cb => cb(message));
+      this.notifyMessageCallbacks(message);
     });
   }
 
   /**
-   * 알림 표시 (사용자 설정에 따라)
-   * 기본 브라우저 Notification 대신 커스텀 토스트 메시지 사용
+   * 등록된 모든 메시지 콜백에 알림
    */
-  private showNotification(payload: MessagePayload): void {
-    // 기본 브라우저 Notification 생성 코드 제거
+  private notifyMessageCallbacks(message: MessagePayload): void {
+    // 콜백이 비어있으면 콘솔에 기록 (디버깅용)
+    if (this.messageCallbacks.length === 0) {
+      console.warn('[FCM] 등록된 메시지 콜백이 없습니다');
+    }
 
-    // 대신 모든 콜백에 메시지 전달
-    // onMessage 콜백에서 토스트 컴포넌트를 사용하도록 구현
-    this.messageCallbacks.forEach(cb => cb(payload));
-
-    // 콜백이 없는 경우에도 사용자가 이벤트를 구독할 수 있도록 커스텀 이벤트 발생
-    const event = new CustomEvent('fcm-notification', {
-      detail: payload,
+    // 각 콜백을 try-catch로 감싸서 실행 (한 콜백의 오류가 다른 콜백 실행을 방해하지 않도록)
+    this.messageCallbacks.forEach(callback => {
+      try {
+        callback(message);
+      } catch (error) {
+        console.error('[FCM] 메시지 콜백 실행 중 오류:', error);
+      }
     });
-    window.dispatchEvent(event);
+
+    // DOM 이벤트로도 발생시켜 다른 컴포넌트에서 사용 가능하게
+    try {
+      const event = new CustomEvent('fcm-message', {
+        detail: message,
+        bubbles: true,
+      });
+      window.dispatchEvent(event);
+    } catch (error) {
+      console.error('[FCM] 커스텀 이벤트 발생 중 오류:', error);
+    }
   }
 
   /**
-   * 포그라운드 메시지 콜백 등록
+   * 포그라운드 메시지 콜백 등록 - 안정성 개선
    */
-  public onMessage(callback: (payload: MessagePayload) => void): void {
-    this.messageCallbacks.push(callback);
+  public onMessage(callback: (payload: MessagePayload) => void): () => void {
+    // 이미 등록된 콜백인지 확인하여 중복 방지
+    const existingCallback = this.messageCallbacks.find(cb => cb === callback);
+    if (!existingCallback) {
+      this.messageCallbacks.push(callback);
+    }
+
+    // 콜백 제거 함수 반환 (React useEffect cleanup에 유용)
+    return () => this.offMessage(callback);
   }
 
   public offMessage(callback: (payload: MessagePayload) => void): void {
@@ -297,6 +327,33 @@ class FcmService {
     } catch (error) {
       console.error('checkAndUpdateToken error:', error);
     }
+  }
+
+  /**
+   * 백그라운드에서 앱으로 돌아왔을 때 Firebase 초기화 확인
+   */
+  public checkInitialization(): void {
+    if (document.visibilityState === 'visible' && !this.initialized && this.isSupported()) {
+      console.log('[FCM] 앱이 포그라운드로 돌아와 초기화 확인 중');
+      try {
+        this.app = initializeApp(firebaseConfig);
+        this.messaging = getMessaging(this.app);
+        this.initialized = true;
+        this.setupMessageListener();
+        console.log('[FCM] 앱 복귀 후 재초기화 완료');
+      } catch (error) {
+        console.error('[FCM] 앱 복귀 후 재초기화 실패:', error);
+      }
+    }
+  }
+
+  /**
+   * 앱 표시 상태 변경 이벤트 리스너 설정
+   */
+  public setupVisibilityListener(): void {
+    document.addEventListener('visibilitychange', () => {
+      this.checkInitialization();
+    });
   }
 
   private isSupported(): boolean {
