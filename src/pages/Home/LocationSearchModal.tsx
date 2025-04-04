@@ -329,22 +329,28 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
   const handleResultClick = async (result: LocationItem) => {
     setLoading(true);
     try {
+      // 주소에서 동/읍/리 단위까지만 추출
+      const addressParts = result.formatted_address.split(' ');
+      // 시/도, 시/군/구, 읍/면/동까지만 포함 (최대 3개 파트)
+      const shortAddress = addressParts.slice(0, Math.min(3, addressParts.length)).join(' ');
+
       // 저장된 위치 정보가 있는지 확인
       if (result.location_id && result.latitude && result.longitude) {
         // 이미 완전한 정보가 있으면 바로 선택
-        saveRecentLocation(result);
-        onSelectLocation(
-          result.formatted_address,
-          result.latitude,
-          result.longitude,
-          result.location_id,
-        );
+        // 단, 간소화된 주소 사용
+        const updatedResult = {
+          ...result,
+          formatted_address: shortAddress,
+          display_name: shortAddress,
+        };
+        saveRecentLocation(updatedResult);
+        onSelectLocation(shortAddress, result.latitude, result.longitude, result.location_id);
         onClose();
         return;
       }
 
       // 1. 위치 ID 조회
-      const locationResponse = await getLocationInfo(result.formatted_address);
+      const locationResponse = await getLocationInfo(shortAddress);
       console.log('위치 정보 조회 결과:', locationResponse);
 
       let locationId;
@@ -359,8 +365,8 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
 
         // 최근 위치에 저장
         const newLocation: LocationItem = {
-          formatted_address: result.formatted_address,
-          display_name: result.formatted_address,
+          formatted_address: shortAddress,
+          display_name: shortAddress,
           latitude: latitude || '',
           longitude: longitude || '',
           location_id: locationId,
@@ -368,17 +374,19 @@ const LocationSearchModal: React.FC<LocationSearchModalProps> = ({
         saveRecentLocation(newLocation);
 
         // 2. 선택한 위치 정보 전달 (locationId 포함)
-        onSelectLocation(result.formatted_address, latitude, longitude, locationId);
+        onSelectLocation(shortAddress, latitude, longitude, locationId);
       } else {
         // API 응답이 없거나 에러인 경우 기본 정보만 전달
-        onSelectLocation(result.formatted_address);
+        onSelectLocation(shortAddress);
       }
 
       onClose();
     } catch (error) {
       console.error('위치 선택 중 오류 발생:', error);
       // 에러가 발생해도 기본 정보는 전달
-      onSelectLocation(result.formatted_address);
+      const addressParts = result.formatted_address.split(' ');
+      const shortAddress = addressParts.slice(0, Math.min(3, addressParts.length)).join(' ');
+      onSelectLocation(shortAddress);
       onClose();
     } finally {
       setLoading(false);

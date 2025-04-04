@@ -73,6 +73,7 @@ interface KakaoMapProps {
   draggable?: boolean;
   zoomable?: boolean;
   onCenterChanged?: (lat: number, lng: number) => void;
+  onZoomChanged?: (level: number) => void;
   isLocationModalOpen?: boolean;
   showCurrentLocation?: boolean;
   onCurrentLocationClick?: () => void;
@@ -88,6 +89,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   draggable = true,
   zoomable = true,
   onCenterChanged,
+  onZoomChanged,
   isLocationModalOpen = false,
   showCurrentLocation = false,
   onCurrentLocationClick,
@@ -242,69 +244,51 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
   // 현재 위치로 이동하는 함수 - useCallback으로 메모이제이션
   const moveToUserLocation = useCallback(() => {
-    if (kakaoMap && currentUserLocation) {
-      // 현재 위치로 이동하고 약간 위로 조정
-      const currentLatLng = new window.kakao.maps.LatLng(
-        currentUserLocation.lat + 0.01, // 약간 위로 조정
-        currentUserLocation.lng,
-      );
-      kakaoMap.setCenter(currentLatLng);
+    // 항상 geolocation을 통해 최신 위치 정보를 받아옵니다.
+    if (navigator.geolocation) {
+      console.log('사용자 현재 위치 조회 시작');
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const userLat = position.coords.latitude;
+          const userLng = position.coords.longitude;
+          console.log('실시간 현재 위치 좌표:', { lat: userLat, lng: userLng });
+          setCurrentUserLocation({ lat: userLat, lng: userLng });
 
-      // 이동 후 중심 위치 변경 이벤트 발생
-      if (onCenterChanged) {
-        onCenterChanged(currentLatLng.getLat(), currentLatLng.getLng());
-      }
+          if (kakaoMap) {
+            // 정확한 사용자 위치로 이동 (추가 조정 없이)
+            const currentLatLng = new window.kakao.maps.LatLng(userLat, userLng);
+            kakaoMap.setCenter(currentLatLng);
+            kakaoMap.setLevel(3); // 현재 위치 버튼 클릭시 레벨 3으로 고정
+            console.log('실제 현재 위치로 이동 완료, 레벨 3으로 설정');
 
-      // 외부 콜백 호출
-      if (onCurrentLocationClick) {
-        onCurrentLocationClick();
-      }
-    } else {
-      // 위치 정보가 없을 경우 다시 요청
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          position => {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
-            setCurrentUserLocation({ lat: userLat, lng: userLng });
+            // 사용자 위치 마커 업데이트
+            addUserLocationMarker(kakaoMap, userLat, userLng);
 
-            if (kakaoMap) {
-              // 현재 위치로 이동하고 약간 위로 조정
-              const currentLatLng = new window.kakao.maps.LatLng(
-                userLat, // 약간 위로 조정
-                userLng,
-              );
-              kakaoMap.setCenter(currentLatLng);
-
-              addUserLocationMarker(kakaoMap, userLat, userLng);
-
-              // 이동 후 중심 위치 변경 이벤트 발생
-              if (onCenterChanged) {
-                onCenterChanged(currentLatLng.getLat(), currentLatLng.getLng());
-              }
-
-              // 외부 콜백 호출
-              if (onCurrentLocationClick) {
-                onCurrentLocationClick();
-              }
+            // 이동 후 중심 위치 변경 이벤트 발생
+            if (onCenterChanged) {
+              onCenterChanged(userLat, userLng);
             }
-          },
-          error => {
-            console.error('사용자 위치를 가져오는데 실패했습니다:', error);
-            alert('위치 정보를 가져올 수 없습니다. 위치 권한을 확인해주세요.');
-          },
-        );
-      } else {
-        alert('이 브라우저에서는 위치 정보를 지원하지 않습니다.');
-      }
+
+            // 외부 콜백 호출
+            if (onCurrentLocationClick) {
+              onCurrentLocationClick();
+            }
+          }
+        },
+        error => {
+          console.error('사용자 위치를 가져오는데 실패했습니다:', error);
+          alert('위치 정보를 가져올 수 없습니다. 위치 권한을 확인해주세요.');
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0,
+        },
+      );
+    } else {
+      alert('이 브라우저에서는 위치 정보를 지원하지 않습니다.');
     }
-  }, [
-    kakaoMap,
-    currentUserLocation,
-    onCenterChanged,
-    onCurrentLocationClick,
-    addUserLocationMarker,
-  ]);
+  }, [kakaoMap, onCenterChanged, onCurrentLocationClick, addUserLocationMarker]);
 
   // 중심 위치 변경 시 지도 업데이트
   useEffect(() => {
