@@ -115,7 +115,7 @@ const FilterContainer = styled.div`
 // 아이템 그리드 컨테이너
 const ItemGridContainer = styled.div`
   width: 100%;
-  max-width: 470px;
+  max-width: 480px;
   padding: 10px 15px 76px;
   display: grid;
   grid-template-columns: 1fr 1fr;
