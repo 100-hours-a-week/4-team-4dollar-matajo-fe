@@ -476,6 +476,8 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
   const [isAuthor, setIsAuthor] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
+  const lastRequestTimeRef = useRef<number>(0);
+  const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
 
   // 주소 검색 기능 추가
   const searchAddressToCoordinate = useCallback(
@@ -504,6 +506,12 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
   // API에서 보관소 상세 정보 로드
   useEffect(() => {
+    // 요청 간격 제한 확인
+    const now = Date.now();
+    if (now - lastRequestTimeRef.current < REQUEST_INTERVAL) {
+      return;
+    }
+    lastRequestTimeRef.current = now;
     const fetchStorageDetail = async () => {
       if (!id) {
         setError('보관소 ID가 제공되지 않았습니다.');

@@ -1,69 +1,17 @@
-// src/routes/PrivateRoute.tsx (Updated)
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { isAuthenticated, getUserRoleInToken } from '../utils/api/authUtils';
 import { useAuth, UserRole } from '../contexts/auth';
-// useAuth, UserRole 가져옴
 
 interface PrivateRouteProps {
   requiredRole?: UserRole;
 }
 
-/**
- * 인증된 사용자만 접근할 수 있는 Private Route 컴포넌트
- * requiredRole이 지정되면 해당 역할을 가진 사용자만 접근할 수 있음
- */
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
   const location = useLocation();
-  const { user, loading: userLoading } = useAuth(); // ✅ user & loading 상태 가져오기
+  const { user, loading, isAuthenticated } = useAuth(); // 통합된 인증 상태
 
-  const [authState, setAuthState] = useState<{
-    isChecking: boolean;
-    isAllowed: boolean;
-  }>({
-    isChecking: true,
-    isAllowed: false,
-  });
-
-  useEffect(() => {
-    const checkAuth = () => {
-      try {
-        console.log('인증 상태 확인 시작');
-
-        // 기본 인증 확인 (토큰 존재 및 유효성 검사)
-        if (!isAuthenticated()) {
-          console.log('사용자가 인증되지 않음');
-          setAuthState({ isChecking: false, isAllowed: false });
-          return;
-        }
-
-        // 역할 확인이 필요한 경우
-        if (requiredRole) {
-          console.log(`필요한 역할: ${requiredRole} 확인 중`);
-          const userRole = getUserRoleInToken()?.toUpperCase() ?? '';
-          console.log(`사용자 역할: ${userRole}`);
-
-          const hasRequiredRole = userRole === requiredRole.toString().toUpperCase();
-          console.log(`역할 일치 여부: ${hasRequiredRole}`);
-
-          setAuthState({ isChecking: false, isAllowed: hasRequiredRole });
-          return;
-        }
-
-        // 일반 인증된 사용자
-        console.log('인증된 사용자 - 접근 허용');
-        setAuthState({ isChecking: false, isAllowed: true });
-      } catch (error) {
-        console.error('인증 확인 중 오류 발생:', error);
-        setAuthState({ isChecking: false, isAllowed: false });
-      }
-    };
-
-    checkAuth();
-  }, [requiredRole, location.pathname]);
-
-  // ✅ 로딩 중에는 화면 렌더링하지 않음
-  if (authState.isChecking || userLoading) {
+  // 로딩 중 상태
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-screen flex-col">
         <img src="/tajo-logo.png" alt="Logo" className="w-20 h-20 mb-5" />
@@ -72,19 +20,16 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
     );
   }
 
-  // 접근 권한 확인
-  if (!authState.isAllowed) {
-    // 로그인이 안 된 경우 로그인 페이지로 리다이렉트
-    if (!isAuthenticated()) {
-      console.log('로그인 페이지로 리다이렉트');
-      // 로그인 후 돌아올 경로 저장
-      sessionStorage.setItem('returnPath', location.pathname);
-      return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-    }
+  // 인증되지 않은 경우 로그인 페이지로 리다이렉트
+  if (!isAuthenticated) {
+    sessionStorage.setItem('returnPath', location.pathname);
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
 
-    // 보관인 권한 필요한 페이지
+  // 필요한 역할 확인
+  if (requiredRole && user?.role !== requiredRole) {
+    // 보관인 권한이 필요한 경우
     if (requiredRole === UserRole.Keeper) {
-      console.log('보관인 권한이 필요한 페이지');
       return (
         <Navigate
           to="/mypage"
@@ -97,8 +42,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
       );
     }
 
-    // 기타 권한 오류
-    console.log('권한 부족으로 마이페이지로 리다이렉트');
+    // 기타 권한 부족 시
     return (
       <Navigate
         to="/mypage"
@@ -110,8 +54,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
     );
   }
 
-  // 인증 및 권한 확인 후 접근 허용
-  console.log('페이지 접근 허용');
+  // 모든 조건 통과 시 페이지 렌더링
   return <Outlet />;
 };
 

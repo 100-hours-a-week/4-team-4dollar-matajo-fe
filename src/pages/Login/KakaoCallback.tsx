@@ -1,5 +1,5 @@
 // src/pages/Login/KakaoCallback.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { kakaoLogin } from '../../services/api/modules/auth';
 import { saveToken } from '../../utils/api/authUtils';
@@ -13,8 +13,16 @@ const KakaoCallback: React.FC = () => {
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const lastRequestTimeRef = useRef<number>(0);
+  const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
 
   useEffect(() => {
+    // 요청 간격 제한 확인
+    const now = Date.now();
+    if (now - lastRequestTimeRef.current < REQUEST_INTERVAL) {
+      return;
+    }
+    lastRequestTimeRef.current = now;
     const processKakaoLogin = async () => {
       try {
         console.log('카카오 콜백 처리 시작');

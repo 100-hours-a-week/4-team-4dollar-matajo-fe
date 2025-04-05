@@ -112,7 +112,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   } | null>(null);
 
   const lastRequestTimeRef = useRef<number>(0);
-  const REQUEST_INTERVAL = 500; // 1초 간격으로 요청 제한
+  const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
 
   // 메모이제이션된 중심 좌표
   const memoizedCenter = useMemo(() => {
@@ -128,7 +128,6 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     // 요청 간격 제한 확인
     const now = Date.now();
     if (now - lastRequestTimeRef.current < REQUEST_INTERVAL) {
-      console.log('요청 간격이 너무 짧습니다. 대기 중...');
       return;
     }
     lastRequestTimeRef.current = now;

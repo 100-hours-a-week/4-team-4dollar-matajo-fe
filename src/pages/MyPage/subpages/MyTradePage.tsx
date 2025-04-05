@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { getMyTrades } from '../../../services/api/modules/trades';
@@ -158,8 +158,16 @@ const MyTrade: React.FC = () => {
   const [trades, setTrades] = useState<TradeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const lastRequestTimeRef = useRef<number>(0);
+  const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
 
   useEffect(() => {
+    // 요청 간격 제한 확인
+    const now = Date.now();
+    if (now - lastRequestTimeRef.current < REQUEST_INTERVAL) {
+      return;
+    }
+    lastRequestTimeRef.current = now;
     const fetchTrades = async () => {
       try {
         const response = await getMyTrades();
