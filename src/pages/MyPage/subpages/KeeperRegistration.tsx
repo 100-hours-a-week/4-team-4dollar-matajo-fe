@@ -23,7 +23,7 @@ const THEME = {
 const Container = styled.div`
   width: 100%;
   max-width: 480px;
-  min-height: calc(100vh - 50px);
+  max-height: calc(100vh - 100px);
   margin: 0 auto;
   position: relative;
   background: white;
@@ -130,8 +130,8 @@ const RequiredTag = styled.span`
 // 버튼 컨테이너
 const ButtonContainer = styled.div`
   width: 100%;
-  position: fixed;
-  bottom: 0;
+  position: relative;
+  top: 50px;
   left: 0;
   padding: 15px 0;
   background-color: white;

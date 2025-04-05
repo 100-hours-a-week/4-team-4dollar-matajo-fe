@@ -79,20 +79,14 @@ const routes: RouteObject[] = [
           {
             path: ROUTES.MYPAGE,
             element: <MyPage />,
-            children: [
-              // ✅ MainLayout 안쪽에 따로 추가
-              { path: '', element: <></> }, // 기본 마이페이지 내용
-              { path: 'mytrade', element: <MyTrade /> }, // → /mypage/mytrade
-              { path: 'mytrade/:id', element: <MyTrade /> }, // → /mypage/mytrade/:id
-              { path: 'keeper-registration', element: <KeeperRegistration /> }, // → /mypage/keeper-registration
-            ],
+            children: [{ path: ROUTES.MYTRADE, element: <MyTrade /> }],
           },
         ],
       },
     ],
   },
 
-  // 보관인 등록 라우트 (일반 사용자)
+  /* // 보관인 등록 라우트 (일반 사용자)
   {
     path: '/registration',
     element: <PrivateRoute />,
@@ -110,7 +104,7 @@ const routes: RouteObject[] = [
         element: <StorageRegistrationImages />,
       },
     ],
-  },
+  }, */
 
   // 보관소 등록 라우트 (보관인 전용)
   {

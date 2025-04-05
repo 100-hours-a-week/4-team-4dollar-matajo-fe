@@ -327,7 +327,7 @@ export const KeeperRegistrationModal: React.FC<{
 }> = ({ isOpen, onClose, onConfirm }) => {
   const navigate = useNavigate();
   const handleConfirm = () => {
-    navigate('/registration/step1');
+    navigate('/keeper-registration');
     onClose();
   };
   return (

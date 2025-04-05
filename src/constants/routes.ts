@@ -28,7 +28,6 @@ export const ROUTES = {
   // 마이페이지 관련
   MYPAGE: 'mypage',
   MYTRADE: 'mytrade',
-  MYTRADE_DETAIL: 'mytrade/:id',
   MYPLACE: 'myplace',
 
   // 보관인 등록
