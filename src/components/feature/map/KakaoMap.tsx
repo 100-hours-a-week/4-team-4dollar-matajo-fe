@@ -166,7 +166,6 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           const userLat = position.coords.latitude;
           const userLng = position.coords.longitude;
           setCurrentUserLocation({ lat: userLat, lng: userLng });
-          addUserLocationMarker(userLat, userLng);
         },
         error => {
           console.error('사용자 위치를 가져오는데 실패했습니다:', error);
@@ -219,7 +218,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       userLocationMarkerRef.current.setMap(null);
     }
 
-    // 사용자 위치 마커 이미지 설정 (보라색 별 아이콘)
+    // 사용자 위치 마커 이미지 설정
     const imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png';
     const imageSize = new window.kakao.maps.Size(24, 35);
     const imageOption = { offset: new window.kakao.maps.Point(12, 35) };
@@ -255,7 +254,6 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           kakaoMapRef.current.setLevel(3); // 현재 위치 버튼 클릭시 레벨 3으로 고정
 
           // 사용자 위치 마커 업데이트
-          addUserLocationMarker(userLat, userLng);
 
           // 이동 후 중심 위치 변경 이벤트 발생
           if (onCenterChanged) {
@@ -295,7 +293,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     (newStorageMarkers: Marker[]) => {
       if (!kakaoMapRef.current || !isMapInitialized) return;
 
-      // 유효한 좌표를 가진 마커만 필터링 - 더 엄격한 검증 추가
+      // 유효한 좌표를 가진 마커만 필터링
       const validMarkers = newStorageMarkers.filter(marker => {
         const lat = parseFloat(marker.latitude.toString());
         const lng = parseFloat(marker.longitude.toString());
