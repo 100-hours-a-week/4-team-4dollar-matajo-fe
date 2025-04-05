@@ -378,18 +378,43 @@ const HomePage: React.FC = () => {
           localStorage.setItem('currentLocationId', targetLocationId.toString());
         }
 
-        // 좌표 설정 - 입력받은 좌표 사용
-        if (latitude && longitude) {
-          setMapCenter({
-            lat: parseFloat(latitude),
-            lng: parseFloat(longitude),
-          });
+        if (targetLocationId) {
+          // 해당 위치의 게시글 데이터를 먼저 로드
+          const postsData = await getPostsByLocation(targetLocationId);
+
+          if (postsData && postsData.length > 0) {
+            // 첫 번째 게시글의 주소를 좌표로 변환
+            const coords = await convertAddressToCoords(postsData[0].address);
+
+            if (coords) {
+              // 게시글 위치보다 살짝 위로 이동 (더 넓은 시야 제공)
+              setMapCenter({
+                lat: coords.lat - 0.002, // 약간 위쪽으로 조정
+                lng: coords.lng,
+              });
+            } else {
+              // 좌표 변환 실패시 입력받은 좌표 사용
+              setMapCenter({
+                lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
+                lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
+              });
+            }
+          } else {
+            // 게시글이 없는 경우 입력받은 좌표 사용
+            setMapCenter({
+              lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
+              lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
+            });
+          }
         }
         // locationId 설정 후 자동으로 loadMapData 호출됨
       } catch (error) {
         console.error('위치 선택 처리 중 오류:', error);
         // 에러 발생시 기본 좌표 사용
-        setMapCenter(DEFAULT_COORDINATES);
+        setMapCenter({
+          lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
+          lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
+        });
       }
     },
     [fetchLocationId],
