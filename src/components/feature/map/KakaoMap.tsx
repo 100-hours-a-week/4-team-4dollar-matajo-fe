@@ -111,6 +111,9 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     lng: number;
   } | null>(null);
 
+  const lastRequestTimeRef = useRef<number>(0);
+  const REQUEST_INTERVAL = 500; // 1초 간격으로 요청 제한
+
   // 메모이제이션된 중심 좌표
   const memoizedCenter = useMemo(() => {
     return window.kakao && window.kakao.maps
@@ -121,6 +124,14 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   // 지도 초기화 - 최초 한 번만 실행
   useEffect(() => {
     if (!mapRef.current || !window.kakao?.maps || isMapInitialized) return;
+
+    // 요청 간격 제한 확인
+    const now = Date.now();
+    if (now - lastRequestTimeRef.current < REQUEST_INTERVAL) {
+      console.log('요청 간격이 너무 짧습니다. 대기 중...');
+      return;
+    }
+    lastRequestTimeRef.current = now;
 
     const options = {
       center: new window.kakao.maps.LatLng(center.lat, center.lng),
