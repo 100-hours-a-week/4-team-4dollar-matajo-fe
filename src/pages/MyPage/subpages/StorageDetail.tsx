@@ -49,11 +49,12 @@ const HighlightText = styled.span`
 
 const Container = styled.div`
   width: 100%;
-  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
+  max-width: 480px;
+  height: calc(100vh - 120px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
-  overflow-x: auto;
+  overflow-x: hidden;
   padding-bottom: 40px;
   padding-top: 10px;
 `;
@@ -322,9 +323,9 @@ const Dot = styled.div<{ isActive: boolean }>`
 const ScrollToTopButton = styled.div`
   width: 59px;
   height: 55px;
-  position: fixed;
-  left: 310px;
-  bottom: 90px;
+  position: sticky;
+  left: 390px;
+  bottom: 0;
   opacity: 0.8;
   cursor: pointer;
   z-index: 99;
@@ -475,6 +476,8 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
   const [isAuthor, setIsAuthor] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
+  const lastRequestTimeRef = useRef<number>(0);
+  const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
 
   // 주소 검색 기능 추가
   const searchAddressToCoordinate = useCallback(
@@ -503,6 +506,12 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
   // API에서 보관소 상세 정보 로드
   useEffect(() => {
+    // 요청 간격 제한 확인
+    const now = Date.now();
+    if (now - lastRequestTimeRef.current < REQUEST_INTERVAL) {
+      return;
+    }
+    lastRequestTimeRef.current = now;
     const fetchStorageDetail = async () => {
       if (!id) {
         setError('보관소 ID가 제공되지 않았습니다.');
@@ -1240,6 +1249,11 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                 </KeeperInfo>
               </KeeperCard>
             </KeeperSection>
+            {/* 스크롤 상단 이동 버튼 */}
+            <ScrollToTopButton onClick={handleScrollToTop}>
+              <ScrollTopIconSVG />
+            </ScrollToTopButton>
+            <BottomNavigation activeTab="보관소" />
           </ContentContainer>
         ) : (
           <div
@@ -1257,12 +1271,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
         {/* 토스트 메시지 */}
         <Toast visible={showToast}>{toastMessage}</Toast>
       </Container>
-
-      {/* 스크롤 상단 이동 버튼 */}
-      <ScrollToTopButton onClick={handleScrollToTop}>
-        <ScrollTopIconSVG />
-      </ScrollToTopButton>
-      <BottomNavigation activeTab="보관소" />
     </>
   );
 };

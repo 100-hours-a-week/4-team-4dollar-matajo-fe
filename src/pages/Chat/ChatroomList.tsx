@@ -4,10 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import Modal from '../../components/common/Modal';
-import ChatService, { ChatRoomResponseDto } from '../../services/ChatService';
+import ChatService, {
+  ChatRoomResponseDto,
+  ChatMessageResponseDto,
+} from '../../services/ChatService';
 import axios from 'axios';
 import moment from 'moment-timezone';
 import { getUserId } from '../../utils/formatting/decodeJWT';
+import FcmService from '../../services/FcmService';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -27,7 +31,8 @@ const THEME = {
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 100%;
-  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
+  max-width: 480px;
+  height: calc(100vh - 120px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
@@ -293,7 +298,13 @@ const ChatroomList: React.FC = () => {
 
       const chatRooms = await chatService.loadChatRooms();
       console.log('로드된 채팅방 목록:', chatRooms);
-      setChatrooms(chatRooms);
+
+      // lastMessageTime을 기준으로 정렬
+      const sortedChatRooms = chatRooms.sort((a, b) => {
+        return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+      });
+
+      setChatrooms(sortedChatRooms);
     } catch (err) {
       console.error('채팅방 목록 로드 실패:', err);
       setError('채팅방 목록을 불러오는 데 실패했습니다. 네트워크 연결을 확인해주세요.');
@@ -302,6 +313,76 @@ const ChatroomList: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // 새로운 채팅방 처리
+  const handleNewChatroom = (newChatroom: ChatMessageResponseDto) => {
+    const convertedChatroom: ChatRoomResponseDto = {
+      chatRoomId: newChatroom.room_id,
+      keeperStatus: false,
+      userNickname: newChatroom.sender_nickname,
+      postMainImage: '',
+      lastMessage: newChatroom.content,
+      lastMessageTime: newChatroom.created_at,
+      unreadCount: 0,
+      postAddress: '',
+    };
+
+    setChatrooms(prevChatrooms => {
+      // 중복 체크 후 새로운 채팅방 추가
+      const existingRoom = prevChatrooms.find(
+        room => room.chatRoomId === convertedChatroom.chatRoomId,
+      );
+      if (existingRoom) {
+        // 기존 채팅방이 있다면 마지막 메시지와 시간을 업데이트
+        const updatedRooms = prevChatrooms.map(room =>
+          room.chatRoomId === existingRoom.chatRoomId
+            ? {
+                ...room,
+                lastMessage: convertedChatroom.lastMessage,
+                lastMessageTime: convertedChatroom.lastMessageTime,
+                unreadCount: room.unreadCount + 1,
+              }
+            : room,
+        );
+
+        // 정렬된 목록 반환
+        return updatedRooms.sort(
+          (a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime(),
+        );
+      } else {
+        // 새로운 채팅방 추가 후 정렬
+        return [...prevChatrooms, { ...convertedChatroom, unreadCount: 1 }].sort(
+          (a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime(),
+        );
+      }
+    });
+  };
+
+  // WebSocket 구독 및 메시지 수신 처리
+  useEffect(() => {
+    const subscriptions: (() => void)[] = [];
+
+    // 채팅방 목록을 구독하여 새로운 메시지를 수신
+    chatrooms.forEach(chatroom => {
+      const unsubscribe = chatService.subscribeToChatRoom(chatroom.chatRoomId, handleNewChatroom);
+      subscriptions.push(() => unsubscribe);
+    });
+
+    // FCM 메시지 수신 처리
+    const handleFcmMessage = (payload: any) => {
+      const newChatroom = payload.data; // 데이터 구조에 맞게 수정 필요
+      handleNewChatroom(newChatroom);
+    };
+
+    const fcmService = FcmService.getInstance();
+    const unsubscribeFcm = fcmService.onMessage(handleFcmMessage);
+
+    // 컴포넌트 언마운트 시 구독 해제
+    return () => {
+      subscriptions.forEach(unsubscribe => unsubscribe());
+      unsubscribeFcm(); // FCM 리스너 해제
+    };
+  }, [chatrooms]); // chatrooms가 변경될 때마다 구독 설정
 
   // 컴포넌트 마운트 시 채팅방 목록 로드
   useEffect(() => {
@@ -319,7 +400,27 @@ const ChatroomList: React.FC = () => {
   const handleChatroomClick = (roomId: number) => {
     if (!isLongPress) {
       console.log(`채팅방 ${roomId} 클릭됨`);
-      navigate(`/chat/${roomId}`);
+
+      // 기존 구독 해지
+      chatrooms.forEach(chatroom => {
+        chatService.unsubscribeFromChatRoom(chatroom.chatRoomId);
+      });
+
+      // 선택한 채팅방만 구독
+      chatService
+        .subscribeToChatRoom(roomId, handleNewChatroom)
+        .then(() => {
+          // 클릭한 채팅방의 unreadCount만 0으로 초기화
+          setChatrooms(prevChatrooms =>
+            prevChatrooms.map(room =>
+              room.chatRoomId === roomId ? { ...room, unreadCount: 0 } : room,
+            ),
+          );
+          navigate(`/chat/${roomId}`);
+        })
+        .catch(err => {
+          console.error('채팅방 구독 실패:', err);
+        });
     }
     // 롱 프레스 상태 초기화
     setIsLongPress(false);

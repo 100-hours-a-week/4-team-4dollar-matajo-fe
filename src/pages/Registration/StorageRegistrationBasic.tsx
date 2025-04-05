@@ -26,7 +26,7 @@ const THEME = {
 // 전체 페이지 레이아웃 컨테이너
 const RegistrationContainer = styled.div`
   width: 100%;
-  max-width: 375px;
+  max-width: 480px;
   min-height: 100vh;
   margin: 0 auto;
   background-color: #f5f5ff;
@@ -36,12 +36,16 @@ const RegistrationContainer = styled.div`
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 375px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
   position: relative;
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 136px; /* 하단 네비게이션 높이만큼 마진 */
+  padding-bottom: 170px; /* 하단 네비게이션 높이만큼 마진 */
   padding-top: 47px; /* 헤더 높이만큼 패딩 */
 `;
 
@@ -196,7 +200,6 @@ const NextButton = styled.button`
   width: 349px;
   height: 47px;
   position: absolute;
-  left: 13px;
   bottom: 90px;
   background: ${THEME.primary};
   border-radius: 15px;

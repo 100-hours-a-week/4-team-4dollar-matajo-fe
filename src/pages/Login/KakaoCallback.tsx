@@ -1,5 +1,5 @@
 // src/pages/Login/KakaoCallback.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { kakaoLogin } from '../../services/api/modules/auth';
 import { saveToken } from '../../utils/api/authUtils';
@@ -13,8 +13,16 @@ const KakaoCallback: React.FC = () => {
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const lastRequestTimeRef = useRef<number>(0);
+  const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
 
   useEffect(() => {
+    // 요청 간격 제한 확인
+    const now = Date.now();
+    if (now - lastRequestTimeRef.current < REQUEST_INTERVAL) {
+      return;
+    }
+    lastRequestTimeRef.current = now;
     const processKakaoLogin = async () => {
       try {
         console.log('카카오 콜백 처리 시작');
@@ -78,8 +86,8 @@ const KakaoCallback: React.FC = () => {
   // 오류 상태 표시
   if (error) {
     return (
-      <div className="flex justify-center items-center h-screen flex-col">
-        <img src="/tajo-logo.png" alt="Logo" className="w-20 h-20 mb-5" />
+      <div className="min-h-screen flex flex-col justify-center items-center text-center px-4">
+        <img src="/tajo-logo.png" alt="Logo" className="w-40 h-40 mb-5" />
         <div className="text-red-500 text-center max-w-xs">
           <div className="font-bold mb-2">로그인 오류</div>
           <div>{error}</div>

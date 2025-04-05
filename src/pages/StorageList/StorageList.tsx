@@ -26,6 +26,7 @@ const THEME = {
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 100%;
+  max-width: 480px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -58,8 +59,8 @@ const SearchInput = styled.div`
 
 // 돋보기 아이콘
 const SearchIcon = styled.div`
-  width: 30px;
-  height: 30px;
+  width: 20px;
+  height: 40px;
   position: absolute;
   right: 15px;
   top: 50%;
@@ -95,6 +96,7 @@ const FilterTag = styled.div<{ isActive: boolean }>`
 // 필터 스크롤 컨테이너
 const FilterContainer = styled.div`
   width: 100%;
+  max-width: 480px;
   height: 40px;
   overflow-x: auto;
   justify-content: center;
@@ -103,7 +105,7 @@ const FilterContainer = styled.div`
   &::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Edge */
   }
-  padding: 5px 0;
+  padding: 5px 10px;
   margin-left: 20px;
   margin-bottom: 15px;
   display: flex;

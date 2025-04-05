@@ -34,7 +34,11 @@ const RegistrationContainer = styled.div`
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 375px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   position: relative;
   background: white;
   overflow-y: auto;

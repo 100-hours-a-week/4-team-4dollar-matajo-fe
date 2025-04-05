@@ -36,8 +36,9 @@ const RegistrationContainer = styled.div`
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 375px;
-  height: calc(100vh - 166px);
+  width: 100%;
+  max-width: 480px;
+  height: calc(100vh - 70px);
   position: relative;
   background: white;
   overflow-y: auto;

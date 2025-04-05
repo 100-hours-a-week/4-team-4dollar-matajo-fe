@@ -306,8 +306,13 @@ const KeeperRegistration: React.FC = () => {
   const openTermsPage = (termType: 'privacy' | 'terms', e: React.MouseEvent) => {
     e.stopPropagation(); // 부모 요소 클릭 이벤트 방지
 
-    // 약관 페이지로 이동하거나 모달로 표시 (미구현)
-    showToast(`약관 내용은 준비 중입니다.`);
+    // 실제 환경에서는 아래 URL을 실제 노션 페이지 URL로 변경
+    const urls = {
+      privacy: 'https://matajo.notion.site/1b578008bf58804ab45cc23edd811165',
+      terms: 'https://matajo.notion.site/1b578008bf588075a59cda2817f60ed4',
+    };
+
+    window.open(urls[termType], '_blank');
   };
 
   // 보관소 작성 페이지로 이동
@@ -498,7 +503,7 @@ const KeeperRegistration: React.FC = () => {
         {/* 이용약관 동의 */}
         <TermItem onClick={() => handleSingleAgree('terms')}>
           <CheckboxCircle checked={termsAgreed.terms} />
-          <TermLabel>
+          <TermLabel onClick={e => openTermsPage('terms', e)}>
             <TermText>보관인 이용약관 동의</TermText>
             <RequiredTag>(필수)</RequiredTag>
           </TermLabel>
@@ -507,7 +512,7 @@ const KeeperRegistration: React.FC = () => {
         {/* 개인정보 처리방침 동의 */}
         <TermItem onClick={() => handleSingleAgree('privacy')}>
           <CheckboxCircle checked={termsAgreed.privacy} />
-          <TermLabel>
+          <TermLabel onClick={e => openTermsPage('privacy', e)}>
             <TermText>개인정보 처리방침 동의</TermText>
             <RequiredTag>(필수)</RequiredTag>
           </TermLabel>

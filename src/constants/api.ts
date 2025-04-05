@@ -21,10 +21,10 @@ export const API_URL = process.env.REACT_APP_API_URL || 'https://api.matajo.stor
 export const API_BASE_URL = API_BACKEND_URL; // 이전 코드와의 호환성을 위해 추가
 
 export const KAKAO_AUTH = {
-  REST_API_KEY: process.env.REACT_APP_TEST2_KAKAO_REST_API_KEY,
+  REST_API_KEY: process.env.REACT_APP_BIZ_KAKAO_REST_API_KEY,
   REDIRECT_URI: process.env.REACT_APP_KAKAO_REDIRECT_URI || 'https://matajo.store/auth/kakao',
   getLoginUrl: () => {
-    return `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.REACT_APP_TEST2_KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
+    return `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.REACT_APP_BIZ_KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_AUTH.REDIRECT_URI)}&response_type=code`;
   },
 };
 
@@ -71,7 +71,7 @@ export const API_PATHS = {
     TRADE_INFO: '/api/trades',
     UPLOAD_IMAGE: '/api/chats/image',
     READ: '/api/chats/:roomId/read',
-    LEAVE: '/api/chat/:roomId',
+    LEAVE: '/api/chats/:roomId',
     DETAIL: '/api/chats/:roomId',
   },
   KEEPER: {
@@ -89,6 +89,11 @@ export const API_PATHS = {
   IMAGE: {
     PRESIGNED_URL: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/temp-upload',
     MOVE_IMAGE: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/move-image',
+  },
+  FCM: {
+    REGISTER_TOKEN: '/api/fcm/token',
+    REFRESH_TOKEN: '/api/fcm/token/refresh',
+    DELETE_TOKEN: '/api/fcm/token',
   },
 };
 
