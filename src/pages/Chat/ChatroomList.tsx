@@ -285,6 +285,24 @@ const ChatroomList: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleUnreadCountUpdate = (event: CustomEvent) => {
+      console.log('🔔 Unread Count Update in ChatroomList:', event.detail);
+
+      const { roomId, unreadCount } = event.detail;
+
+      setChatrooms(prevRooms =>
+        prevRooms.map(room => (room.chatRoomId === roomId ? { ...room, unreadCount } : room)),
+      );
+    };
+
+    window.addEventListener('unread-count-update', handleUnreadCountUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('unread-count-update', handleUnreadCountUpdate as EventListener);
+    };
+  }, []);
+
   // 채팅방 목록 불러오기
   const loadChatrooms = async () => {
     try {
@@ -313,6 +331,52 @@ const ChatroomList: React.FC = () => {
         clearTimeout(longPressTimeoutRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const chatService = ChatService.getInstance();
+
+    const connectWebSocket = async () => {
+      try {
+        await chatService.connect();
+        console.log('채팅방 목록 페이지에서 WebSocket 연결 성공');
+
+        // 이벤트 리스너 추가
+        const handleUnreadCountUpdate = (event: CustomEvent) => {
+          console.log('🚨 UnreadCount 이벤트 수신:', event.detail);
+
+          const { roomId, unreadCount } = event.detail;
+
+          setChatrooms(prevRooms => {
+            const updatedRooms = prevRooms.map(room =>
+              room.chatRoomId === roomId ? { ...room, unreadCount } : room,
+            );
+
+            console.log('업데이트된 채팅방 목록:', updatedRooms);
+            return updatedRooms;
+          });
+        };
+
+        window.addEventListener('unread-count-update', handleUnreadCountUpdate as EventListener);
+
+        // 구독 추가
+        chatService.subscribeToUnreadChannel(message => {
+          console.log('🌐 Unread Channel 메시지 수신:', message);
+        });
+
+        return () => {
+          window.removeEventListener(
+            'unread-count-update',
+            handleUnreadCountUpdate as EventListener,
+          );
+          chatService.disconnect();
+        };
+      } catch (error) {
+        console.error('WebSocket 연결 실패:', error);
+      }
+    };
+
+    connectWebSocket();
   }, []);
 
   // 채팅방 클릭 핸들러

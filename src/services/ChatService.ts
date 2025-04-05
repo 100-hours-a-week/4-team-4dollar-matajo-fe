@@ -376,6 +376,20 @@ class ChatService {
       }
     }
 
+    // 안읽은 메시지 개수 업데이트를 위한 로직
+    if (data.type === 'UNREAD_COUNT_UPDATE') {
+      const event = new CustomEvent('unread-count-update', {
+        detail: {
+          roomId: data.roomId,
+          unreadCount: data.unreadCount,
+        },
+      });
+      window.dispatchEvent(event);
+
+      // 이벤트만 발생시키고 반환하지 않음
+      return null as any;
+    }
+
     return {
       message_id: data.messageId || data.message_id,
       room_id: data.roomId || data.room_id,
@@ -755,6 +769,22 @@ class ChatService {
   public removeErrorListener(callback: (error: string) => void): void {
     this.errorCallbacks = this.errorCallbacks.filter(cb => cb !== callback);
   }
-}
 
+  public subscribeToUnreadChannel(callback: (message: any) => void): void {
+    if (!this.isConnected()) {
+      console.error('WebSocket이 연결되지 않았습니다.');
+      return;
+    }
+
+    const subscription = this.stompClient?.subscribe('/topic/chat/unread', (message: IMessage) => {
+      try {
+        const parsedMessage = JSON.parse(message.body);
+        console.log('Unread Channel 메시지 수신:', parsedMessage);
+        callback(parsedMessage);
+      } catch (error) {
+        console.error('Unread Channel 메시지 파싱 에러:', error);
+      }
+    });
+  }
+}
 export default ChatService;

@@ -449,6 +449,8 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 이미지 입력 참조
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // 채팅방 상세 정보 상태 추가
   const [chatRoomDetail, setChatRoomDetail] = useState<{
     keeper_id: number;
@@ -1264,6 +1266,26 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       window.removeEventListener('focusout', handleBlur);
     };
   }, []);
+
+  // 기존 useEffect에 추가
+  useEffect(() => {
+    // 안읽은 메시지 개수 업데이트 이벤트 리스너
+    const handleUnreadCountUpdate = (event: CustomEvent) => {
+      const { roomId: updatedRoomId, userId, unreadCount: newUnreadCount } = event.detail;
+
+      // 현재 채팅방의 안읽은 메시지 개수 업데이트
+      if (updatedRoomId === roomId) {
+        setUnreadCount(newUnreadCount);
+        console.log('Unread count updated:', newUnreadCount);
+      }
+    };
+
+    window.addEventListener('unread-count-update', handleUnreadCountUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('unread-count-update', handleUnreadCountUpdate as EventListener);
+    };
+  }, [roomId]);
 
   // InputContainer 스타일 동적 적용
   const inputContainerStyle = {
