@@ -25,7 +25,7 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 100%;
+  width: 480px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -58,8 +58,8 @@ const SearchInput = styled.div`
 
 // 돋보기 아이콘
 const SearchIcon = styled.div`
-  width: 30px;
-  height: 30px;
+  width: 20px;
+  height: 40px;
   position: absolute;
   right: 15px;
   top: 50%;
@@ -113,7 +113,7 @@ const FilterContainer = styled.div`
 // 아이템 그리드 컨테이너
 const ItemGridContainer = styled.div`
   width: 100%;
-  max-width: 480px;
+  max-width: 470px;
   padding: 10px 15px 76px;
   display: grid;
   grid-template-columns: 1fr 1fr;

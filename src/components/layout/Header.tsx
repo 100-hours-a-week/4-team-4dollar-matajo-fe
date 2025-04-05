@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 
 const HeaderContainer = styled.div`
-  width: 375px;
+  width: 480px;
   height: 47px;
   position: fixed;
   left: 50%;

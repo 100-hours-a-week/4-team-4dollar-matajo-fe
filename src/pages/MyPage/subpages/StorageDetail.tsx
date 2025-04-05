@@ -48,7 +48,7 @@ const HighlightText = styled.span`
 `;
 
 const Container = styled.div`
-  width: 100%;
+  width: 480px;
   height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
@@ -322,9 +322,9 @@ const Dot = styled.div<{ isActive: boolean }>`
 const ScrollToTopButton = styled.div`
   width: 59px;
   height: 55px;
-  position: fixed;
-  left: 310px;
-  bottom: 90px;
+  position: sticky;
+  left: 390px;
+  bottom: 0;
   opacity: 0.8;
   cursor: pointer;
   z-index: 99;
@@ -1240,6 +1240,11 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                 </KeeperInfo>
               </KeeperCard>
             </KeeperSection>
+            {/* 스크롤 상단 이동 버튼 */}
+            <ScrollToTopButton onClick={handleScrollToTop}>
+              <ScrollTopIconSVG />
+            </ScrollToTopButton>
+            <BottomNavigation activeTab="보관소" />
           </ContentContainer>
         ) : (
           <div
@@ -1257,12 +1262,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
         {/* 토스트 메시지 */}
         <Toast visible={showToast}>{toastMessage}</Toast>
       </Container>
-
-      {/* 스크롤 상단 이동 버튼 */}
-      <ScrollToTopButton onClick={handleScrollToTop}>
-        <ScrollTopIconSVG />
-      </ScrollToTopButton>
-      <BottomNavigation activeTab="보관소" />
     </>
   );
 };

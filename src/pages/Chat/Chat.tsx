@@ -28,9 +28,9 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 100%;
-  max-width: 375px;
-  height: calc(100vh - 166px);
+  width: 480px;
+  max-width: 480px;
+  height: calc(100vh - 130px);
   position: relative;
   background: ${THEME.background};
   overflow: auto;
@@ -191,7 +191,7 @@ const ConfirmButton = styled.button`
   cursor: pointer;
   z-index: 10;
 
-  @media (max-width: 375px) {
+  @media (max-width: 480px) {
     right: 10px; // 모바일 환경에서 위치 조정
   }
 `;
@@ -211,7 +211,7 @@ const InputContainer = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
-  max-width: 375px;
+  max-width: 480px;
   height: 60px;
   background: white;
   padding: 10px;
@@ -1266,9 +1266,11 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   }, []);
 
   // InputContainer 스타일 동적 적용
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
   const inputContainerStyle = {
-    bottom: keyboardHeight,
-    transition: 'bottom 0.3s ease',
+    bottom: isMobile ? keyboardHeight : 0,
+    transition: isMobile ? 'bottom 0.3s ease' : 'none',
   };
 
   return (
