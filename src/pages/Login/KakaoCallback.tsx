@@ -78,8 +78,8 @@ const KakaoCallback: React.FC = () => {
   // 오류 상태 표시
   if (error) {
     return (
-      <div className="flex justify-center items-center h-screen flex-col">
-        <img src="/tajo-logo.png" alt="Logo" className="w-20 h-20 mb-5" />
+      <div className="min-h-screen flex flex-col justify-center items-center text-center px-4">
+        <img src="/tajo-logo.png" alt="Logo" className="w-40 h-40 mb-5" />
         <div className="text-red-500 text-center max-w-xs">
           <div className="font-bold mb-2">로그인 오류</div>
           <div>{error}</div>

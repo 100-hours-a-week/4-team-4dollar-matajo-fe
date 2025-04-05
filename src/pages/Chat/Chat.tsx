@@ -28,11 +28,12 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 100%;
-  max-width: 375px;
-  height: calc(100vh - 166px);
+  width: 480px;
+  max-width: 480px;
+  height: calc(100vh - 130px);
   position: relative;
   background: ${THEME.background};
+  overflow: auto;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -45,8 +46,12 @@ const ChatContainer = styled.div`
   padding-left: 24px;
   padding-right: 24px;
   padding-top: 96px; // 헤더 높이
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 96px; // 헤더 높이
   padding-bottom: 60px; // 입력창 높이
   overflow-y: auto;
+  overflow-x: auto;
   overflow-x: auto;
   display: flex;
   flex-direction: column;
@@ -191,7 +196,7 @@ const ConfirmButton = styled.button`
   cursor: pointer;
   z-index: 10;
 
-  @media (max-width: 375px) {
+  @media (max-width: 480px) {
     right: 10px; // 모바일 환경에서 위치 조정
   }
 `;
@@ -211,7 +216,7 @@ const InputContainer = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
-  max-width: 375px;
+  max-width: 480px;
   height: 60px;
   background: white;
   padding: 10px;
