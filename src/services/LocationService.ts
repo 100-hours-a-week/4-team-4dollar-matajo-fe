@@ -1,5 +1,4 @@
 // src/services/LocationService.ts
-import { LocationIdResponse } from './api/modules/place';
 import { getLocationInfo } from './api/modules/place';
 
 export interface LocationInfo {
