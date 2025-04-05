@@ -47,8 +47,9 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 375px;
-  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
+  width: 100%;
+  max-width: 480px;
+  height: calc(100vh - 70px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
@@ -268,7 +269,6 @@ const CompleteButton = styled.button`
   width: 349px;
   height: 47px;
   position: relative;
-  left: 13px;
   margin-top: 30px;
   background: ${THEME.primary};
   border-radius: 15px;

@@ -198,7 +198,8 @@ const BadgeText = styled.div`
 
 // 컨테이너 컴포넌트 통합
 const Container = styled.div`
-  width: 480px;
+  width: 100%;
+  max-width: 480px;
   display: flex;
   flex-direction: column;
   align-items: center;

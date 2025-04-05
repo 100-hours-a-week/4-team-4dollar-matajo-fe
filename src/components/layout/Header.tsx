@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 
 const HeaderContainer = styled.div`
-  width: 480px;
+  width: 100%;
+  max-width: 480px;
   height: 47px;
   position: fixed;
   left: 50%;
@@ -62,7 +63,7 @@ const OptionDot = styled.div`
 // 드롭다운 메뉴 스타일
 const DropdownContainer = styled.div<{ isVisible: boolean }>`
   width: 190px;
-  height: 101px;
+  height: 114px;
   position: absolute;
   top: 50px;
   right: 5px;

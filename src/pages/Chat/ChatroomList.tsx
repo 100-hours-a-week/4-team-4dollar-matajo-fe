@@ -30,8 +30,9 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 480px;
-  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
+  width: 100%;
+  max-width: 480px;
+  height: calc(100vh - 120px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;

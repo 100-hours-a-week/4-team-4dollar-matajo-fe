@@ -28,9 +28,9 @@ const THEME = {
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 480px;
+  width: 100%;
   max-width: 480px;
-  height: calc(100vh - 130px);
+  height: calc(100vh - 100px);
   position: relative;
   background: ${THEME.background};
   overflow: auto;

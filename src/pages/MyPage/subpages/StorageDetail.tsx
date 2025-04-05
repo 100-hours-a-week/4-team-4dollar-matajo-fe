@@ -48,12 +48,13 @@ const HighlightText = styled.span`
 `;
 
 const Container = styled.div`
-  width: 480px;
-  height: calc(100vh - 166px); /* 네비게이션 바 높이 제외 */
+  width: 100%;
+  max-width: 480px;
+  height: calc(100vh - 120px); /* 네비게이션 바 높이 제외 */
   position: relative;
   background: white;
   overflow-y: auto;
-  overflow-x: auto;
+  overflow-x: hidden;
   padding-bottom: 40px;
   padding-top: 10px;
 `;
@@ -880,7 +881,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
       onBack();
     } else {
       // 보관소 목록으로 이동 (기본값)
-      navigate(-1);
+      navigate('/storages');
     }
   };
 

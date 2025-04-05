@@ -45,7 +45,9 @@ const RegistrationContainer = styled.div`
 
 // 컨테이너 컴포넌트
 const Container = styled.div`
-  width: 375px;
+  width: 100%;
+  max-width: 480px;
+  height: calc(100vh - 70px);
   position: relative;
   background: white;
   overflow-y: auto;
@@ -256,9 +258,7 @@ const DeleteButton = styled.button`
 const CompleteButton = styled.button`
   width: 349px;
   height: 47px;
-  position: absolute;
-  left: 13px;
-  bottom: 90px;
+  position: relative;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;
