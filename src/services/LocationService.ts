@@ -1,5 +1,4 @@
 // src/services/LocationService.ts
-import { LocationIdResponse } from './api/modules/place';
 import { getLocationInfo } from './api/modules/place';
 
 export interface LocationInfo {
@@ -111,64 +110,45 @@ class LocationService {
 
   // 현재 위치 가져오기
   public async getCurrentLocation(): Promise<LocationInfo | null> {
-    // 1. 먼저 브라우저의 Geolocation API를 사용하여 실제 위치를 가져옵니다.
-    if (navigator.geolocation) {
-      try {
-        // Promise로 Geolocation API 래핑
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            position => resolve(position),
-            error => reject(error),
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 },
-          );
-        });
+    return new Promise<LocationInfo | null>((resolve, reject) => {
+      // 현재 위치를 가져오기 위해 Geolocation API 사용
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async position => {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
 
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
+            // 좌표를 주소로 변환하는 함수 호출
+            const addressResult = await this.convertCoordsToAddress(userLat, userLng);
+            if (addressResult) {
+              const locationInfo: LocationInfo = {
+                formatted_address: addressResult.shortAddress,
+                display_name: addressResult.shortAddress,
+                latitude: userLat.toString(),
+                longitude: userLng.toString(),
+              };
 
-        // 좌표를 주소로 변환
-        const addressInfo = await this.convertCoordsToAddress(userLat, userLng);
+              // 현재 위치 및 최근 위치 목록 업데이트
+              this.setCurrentLocation(locationInfo);
+              this.addRecentLocation(locationInfo);
 
-        if (addressInfo) {
-          const locationInfo: LocationInfo = {
-            formatted_address: addressInfo.shortAddress,
-            display_name: addressInfo.shortAddress,
-            latitude: userLat.toString(),
-            longitude: userLng.toString(),
-          };
-
-          // 현재 위치 및 최근 위치 목록 업데이트
-          this.setCurrentLocation(locationInfo);
-          this.addRecentLocation(locationInfo);
-
-          return locationInfo;
-        }
-      } catch (error) {
-        console.warn('실제 위치 정보를 가져오는데 실패했습니다:', error);
-        // 실패 시 아래 기존 로직으로 진행
+              resolve(locationInfo);
+            } else {
+              console.error('주소 변환 실패');
+              resolve(null);
+            }
+          },
+          error => {
+            console.warn('위치 정보를 가져오는 중 오류 발생:', error);
+            resolve(null); // 오류 발생 시 null 반환
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+        );
+      } else {
+        console.error('Geolocation API를 지원하지 않는 브라우저입니다.');
+        resolve(null);
       }
-    }
-
-    // 2. 실제 위치를 가져오는데 실패한 경우, 기존 로직으로 진행
-    if (this.currentLocation) {
-      return this.currentLocation;
-    }
-
-    // 최근 위치가 있으면 첫 번째 위치 사용
-    if (this.recentLocations.length > 0) {
-      this.currentLocation = this.recentLocations[0];
-      return this.currentLocation;
-    }
-
-    // 기본 위치 사용
-    this.currentLocation = {
-      formatted_address: DEFAULT_LOCATION,
-      display_name: DEFAULT_LOCATION.split(' ').pop() || '',
-      latitude: DEFAULT_COORDINATES.lat.toString(),
-      longitude: DEFAULT_COORDINATES.lng.toString(),
-    };
-
-    return this.currentLocation;
+    });
   }
 
   // 좌표를 주소로 변환하는 함수

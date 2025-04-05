@@ -5,7 +5,7 @@ import Header from '../../components/layout/Header';
 import TradeConfirmModal, { TradeData } from './TradeConfirmModal';
 import ChatService, { ChatMessageResponseDto, MessageType } from '../../services/ChatService';
 import { API_BACKEND_URL, API_PATHS } from '../../constants/api';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import moment from 'moment-timezone';
 import client from '../../services/api/client';
 import { uploadImage } from '../../services/api/modules/image';
@@ -30,10 +30,10 @@ const THEME = {
 const Container = styled.div`
   width: 100%;
   max-width: 375px;
-  height: 100vh;
+  height: calc(100vh - 166px);
   position: relative;
   background: ${THEME.background};
-  overflow: hidden;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   margin: 0 auto;
@@ -42,10 +42,12 @@ const Container = styled.div`
 // 채팅 영역 - 스타일 수정
 const ChatContainer = styled.div`
   flex: 1;
-  padding: 10px 24px;
-  padding-top: 90px; // 헤더 높이
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 96px; // 헤더 높이
   padding-bottom: 60px; // 입력창 높이
   overflow-y: auto;
+  overflow-x: auto;
   display: flex;
   flex-direction: column;
   -webkit-overflow-scrolling: touch; // iOS 스크롤 부드럽게
@@ -176,7 +178,7 @@ const MessageNickname = styled.div`
 const ConfirmButton = styled.button`
   width: 94px;
   height: 35px;
-  position: fixed;
+  position: absolute;
   right: 10px; // 변경: 우측 기준으로 변경
   left: auto; // 변경: left 제거
   top: 60px;
@@ -1142,9 +1144,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       if (!roomId) return;
 
       try {
-        const response = await client.get(`/api/chats/${roomId}`);
+        const response = await client.get(
+          `${API_PATHS.CHAT.DETAIL.replace(':roomId', roomId.toString())}`,
+        );
         if (response.data.success) {
           setChatRoomDetail(response.data.data);
+          console.log('채팅방 상세 정보:', response.data.data);
         }
       } catch (error) {
         console.error('채팅방 상세 정보 로드 실패:', error);
@@ -1201,6 +1206,10 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           }
         }
       } catch (error) {
+        if (error instanceof AxiosError && error.response?.status === 403) {
+          console.log('잘못된 접근입니다!!!');
+          navigate('/chat/list');
+        }
         console.error('마지막 접속 시간 확인 실패:', error);
       }
     };
@@ -1257,9 +1266,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   }, []);
 
   // InputContainer 스타일 동적 적용
+  //const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isMobile = window.innerWidth < 500;
+
   const inputContainerStyle = {
-    bottom: keyboardHeight,
-    transition: 'bottom 0.3s ease',
+    bottom: isMobile ? keyboardHeight : 0,
+    transition: isMobile ? 'bottom 0.3s ease' : 'none',
   };
 
   return (
