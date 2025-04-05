@@ -880,7 +880,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
       onBack();
     } else {
       // 보관소 목록으로 이동 (기본값)
-      navigate('/storages');
+      navigate(-1);
     }
   };
 

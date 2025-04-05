@@ -795,6 +795,7 @@ const EditStorageImages: React.FC = () => {
   // 모달 취소 핸들러
   const handleConfirmCancel = () => {
     setState(prev => ({ ...prev, isConfirmModalOpen: false }));
+    navigate(`/`);
   };
 
   // 모달 확인 핸들러
