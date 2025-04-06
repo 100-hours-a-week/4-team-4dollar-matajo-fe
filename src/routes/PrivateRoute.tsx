@@ -22,6 +22,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRole }) => {
 
   // 인증되지 않은 경우 로그인 페이지로 리다이렉트
   if (!isAuthenticated) {
+    console.log('여기 들어오면 안돼!!!!!!!!!!!!!!!!');
     sessionStorage.setItem('returnPath', location.pathname);
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }

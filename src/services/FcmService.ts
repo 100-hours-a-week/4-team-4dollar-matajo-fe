@@ -84,9 +84,12 @@ class FcmService {
    */
   public async requestPermissionByUserGesture(): Promise<boolean> {
     try {
+      // 브라우저 기본 알림 권한 요청 다이얼로그 표시
       const permission = await Notification.requestPermission();
+      console.log('Notification permission:', permission);
       return permission === 'granted';
-    } catch {
+    } catch (error) {
+      console.error('Failed to request notification permission:', error);
       return false;
     }
   }

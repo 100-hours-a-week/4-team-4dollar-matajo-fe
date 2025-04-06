@@ -404,7 +404,9 @@ const Registration3: React.FC = () => {
     if (savedData) {
       try {
         const parsedData: StorageData = JSON.parse(savedData);
-        if (parsedData.mainImage) setMainImageData(parsedData.mainImage);
+        if (parsedData.mainImage) {
+          setMainImageData(parsedData.mainImage);
+        }
         if (parsedData.detailImages) setDetailImageData(parsedData.detailImages);
       } catch (error) {
         console.error('Error parsing saved data:', error);
