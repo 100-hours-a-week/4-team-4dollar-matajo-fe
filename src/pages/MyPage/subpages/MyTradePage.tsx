@@ -191,9 +191,10 @@ const MyTrade: React.FC = () => {
     fetchTrades();
   }, [navigate]);
 
-  const handleTradeItemClick = (tradeId: number) => {
+  // 이 기능은 현재 사용하지 않음
+  /* const handleTradeItemClick = (tradeId: number) => {
     navigate(`/${ROUTES.MYPAGE}/${ROUTES.MYTRADE}/${tradeId}`);
-  };
+  }; */
 
   if (loading) {
     return (
@@ -215,7 +216,7 @@ const MyTrade: React.FC = () => {
     <Container>
       <div style={{ marginBottom: '20px' }}>
         {trades.map(trade => (
-          <TradeCard key={trade.trade_id} onClick={() => handleTradeItemClick(trade.trade_id)}>
+          <TradeCard key={trade.trade_id}>
             <div>
               <TradeStatus>{trade.keeper_status ? '맡아줬어요' : '보관했어요'}</TradeStatus>
               <div>

@@ -577,7 +577,7 @@ const ChatroomList: React.FC = () => {
   return (
     <>
       {/* 상단 헤더 */}
-      <Header title="채팅 리스트" showBackButton={true} onBack={() => navigate('/')} />
+      <Header title="채팅 리스트" />
 
       <Container>
         {/* 에러 메시지 표시 */}

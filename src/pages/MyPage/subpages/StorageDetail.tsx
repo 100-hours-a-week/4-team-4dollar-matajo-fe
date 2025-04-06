@@ -65,7 +65,7 @@ const ContentContainer = styled.div`
 `;
 
 const ImageContainer = styled.div`
-  width: 375px;
+  width: 100%;
   height: 260px;
   position: relative;
   background: #eeeeee;
@@ -154,8 +154,9 @@ const UnitText = styled.span`
 
 const ChatButton = styled.div`
   width: 94px;
-  height: 24px;
-  padding: 8px 0;
+  height: 32px;
+  padding: 3px 0;
+  margin-top: 4px;
   position: relative;
   background: ${THEME.primaryTransparent};
   border-radius: 10px;
@@ -245,7 +246,7 @@ const KeeperSection = styled.div`
 `;
 
 const KeeperCard = styled.div`
-  width: 90%;
+  width: 100%;
   height: 50px;
   border-radius: 10px;
   border: 1px #cfcffe solid;
