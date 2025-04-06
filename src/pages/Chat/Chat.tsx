@@ -10,6 +10,7 @@ import moment from 'moment-timezone';
 import client from '../../services/api/client';
 import { uploadImage } from '../../services/api/modules/image';
 import FcmService from '../../services/FcmService';
+import Toast from '../../components/common/Toast';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -452,6 +453,20 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 새 메시지 사운드 객체 생성
   const messageSound = useRef<HTMLAudioElement | null>(null);
 
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+
+  // 토스트 메시지 표시 함수
+  const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
   useEffect(() => {
     // 기존 오디오 객체가 있으면 제거
     if (messageSound.current) {
@@ -874,7 +889,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       }
     } catch (error) {
       console.error('메시지 전송 실패:', error);
-      setError('메시지 전송에 실패했습니다. 네트워크 연결을 확인해주세요.');
+      showToastMessage('메시지 전송에 실패했습니다. 네트워크 연결을 확인해주세요.', 'error');
     }
   };
 
@@ -1327,6 +1342,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={handleTradeConfirm}
         chatroomId={roomId || 0}
+      />
+      <Toast
+        message={toastMessage}
+        visible={showToast}
+        onClose={() => setShowToast(false)}
+        type={toastType}
       />
     </Container>
   );

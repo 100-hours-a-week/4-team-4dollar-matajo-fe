@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -6,8 +6,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 const ToastContainer = styled(motion.div)`
   position: fixed;
   bottom: 100px; /* 네비게이션 바 위에 표시 */
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  width: fit-content;
   background-color: rgba(0, 0, 0, 0.8);
   color: white;
   padding: 10px 20px;
@@ -15,7 +18,10 @@ const ToastContainer = styled(motion.div)`
   z-index: 1000;
   display: flex;
   align-items: center;
-  max-width: 300px;
+  justify-content: center;
+  min-width: 250px;
+  max-width: 80%;
+  text-align: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 `;
 
@@ -25,6 +31,7 @@ const ToastText = styled.div`
   font-family: 'Noto Sans KR';
   font-weight: 500;
   text-align: center;
+  width: 100%;
   word-break: break-word;
 `;
 
@@ -54,20 +61,42 @@ const Toast: React.FC<ToastProps> = ({
   onClose,
   type = 'success',
 }) => {
+  // 토스트 상태 관리
+  const [toastMessage, setMessage] = useState(message);
+  const [toastVisible, setVisible] = useState(visible);
+  const [toastType, setType] = useState(type);
+
   // 토스트 자동 닫기
   useEffect(() => {
-    if (visible && onClose) {
+    if (toastVisible && onClose) {
       const timer = setTimeout(() => {
         onClose();
       }, duration);
 
       return () => clearTimeout(timer);
     }
-  }, [visible, duration, onClose]);
+  }, [toastVisible, duration, onClose]);
+
+  // SHOW_TOAST 이벤트 리스너
+  useEffect(() => {
+    const handleShowToast = (event: Event) => {
+      const customEvent = event as CustomEvent; // Event를 CustomEvent로 캐스팅
+      const { message, type } = customEvent.detail;
+      setMessage(message);
+      setVisible(true);
+      setType(type);
+    };
+
+    window.addEventListener('SHOW_TOAST', handleShowToast);
+
+    return () => {
+      window.removeEventListener('SHOW_TOAST', handleShowToast);
+    };
+  }, []);
 
   return (
     <AnimatePresence>
-      {visible && (
+      {toastVisible && (
         <ToastContainer
           initial="hidden"
           animate="visible"
@@ -75,7 +104,7 @@ const Toast: React.FC<ToastProps> = ({
           variants={toastVariants}
           transition={{ duration: 0.3 }}
         >
-          <ToastText>{message}</ToastText>
+          <ToastText>{toastMessage}</ToastText>
         </ToastContainer>
       )}
     </AnimatePresence>

@@ -7,6 +7,7 @@ import Modal from '../../components/common/Modal';
 import { LocationIdData, LocationIdResponse } from '../../services/api/modules/storage';
 import { LocalDeal } from '../../types/place.types';
 import { getRecentTrades, RecentTrade } from '../../services/api/modules/trades';
+import { checkAndRefreshToken } from '../../utils/api/authUtils';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -352,14 +353,22 @@ export const KeeperRegistrationModal: React.FC<{
   );
 };
 
-export const handleRegisterStorage = (
+export const handleRegisterStorage = async (
   navigate: ReturnType<typeof useNavigate>,
   setShowKeeperModal: (show: boolean) => void,
-): void => {
+): Promise<void> => {
+  const isTokenValid = await checkAndRefreshToken();
+  if (!isTokenValid) {
+    console.log('맵바텀시트!!!');
+    navigate('/login', { replace: true });
+    return;
+  }
+
   if (!isLoggedIn()) {
     navigate('/login');
     return;
   }
+
   if (isKeeper()) {
     navigate('/storages/register');
   } else {

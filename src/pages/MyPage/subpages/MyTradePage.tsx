@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { getMyTrades } from '../../../services/api/modules/trades';
 import { TradeItem } from '../../../services/api/modules/trades';
 import { ROUTES } from '../../../constants/routes';
+import { checkAndRefreshToken } from '../../../utils/api/authUtils';
 
 const Container = styled.div`
   width: 100%;
@@ -168,18 +169,31 @@ const MyTrade: React.FC = () => {
       return;
     }
     lastRequestTimeRef.current = now;
+
     const fetchTrades = async () => {
       try {
+        // 토큰 재발급 시도
+        const isTokenValid = await checkAndRefreshToken();
+
+        // 토큰이 유효하지 않으면 로그인 페이지로 리다이렉트
+        if (!isTokenValid) {
+          setError('로그인이 필요합니다. 다시 로그인해주세요.');
+          navigate('/login', { replace: true });
+          return;
+        }
+
         const response = await getMyTrades();
         setTrades(response || []);
       } catch (err: any) {
         console.error('거래 내역 조회 실패:', err);
+
+        // 기존 에러 처리 로직 유지
         if (
           err.message === '인증 토큰이 없습니다.' ||
           err.message === '인증이 만료되었습니다. 다시 로그인해주세요.'
         ) {
           setError('로그인이 필요합니다. 다시 로그인해주세요.');
-          navigate('/login');
+          navigate('/login', { replace: true });
         } else {
           setError('거래 내역을 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.');
         }
@@ -191,10 +205,9 @@ const MyTrade: React.FC = () => {
     fetchTrades();
   }, [navigate]);
 
-  // 이 기능은 현재 사용하지 않음
-  /* const handleTradeItemClick = (tradeId: number) => {
+  const handleTradeItemClick = (tradeId: number) => {
     navigate(`/${ROUTES.MYPAGE}/${ROUTES.MYTRADE}/${tradeId}`);
-  }; */
+  };
 
   if (loading) {
     return (
@@ -216,7 +229,7 @@ const MyTrade: React.FC = () => {
     <Container>
       <div style={{ marginBottom: '20px' }}>
         {trades.map(trade => (
-          <TradeCard key={trade.trade_id}>
+          <TradeCard key={trade.trade_id} onClick={() => handleTradeItemClick(trade.trade_id)}>
             <div>
               <TradeStatus>{trade.keeper_status ? '맡아줬어요' : '보관했어요'}</TradeStatus>
               <div>

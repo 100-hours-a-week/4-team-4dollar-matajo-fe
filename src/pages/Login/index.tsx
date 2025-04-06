@@ -56,23 +56,6 @@ const KakaoButton = styled.button`
   }
 `;
 
-const KakaoText = styled.span`
-  font-size: 16px;
-  font-weight: bold;
-  color: #000000;
-  font-family: 'Noto Sans KR', sans-serif;
-`;
-
-const KakaoIcon = styled.div`
-  width: 24px;
-  height: 24px;
-  background-image: url('https://cdn.icon-icons.com/icons2/2699/PNG/512/kakaotalk_logo_icon_168557.png');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  margin-right: 8px;
-`;
-
 const LoginInfoText = styled.p`
   font-size: 14px;
   color: #666;
@@ -117,9 +100,15 @@ const Login: React.FC = () => {
       <Logo />
       <Title>마타조에 오신 것을 환영합니다!</Title>
 
-      <KakaoButton onClick={handleKakaoLogin}>
-        <KakaoIcon />
-        <KakaoText>카카오로 시작하기</KakaoText>
+      <KakaoButton
+        onClick={handleKakaoLogin}
+        style={{ background: 'none', border: 'none', padding: 0 }}
+      >
+        <img
+          src="/kakao-login-medium-wide.png"
+          alt="Kakao Login"
+          style={{ width: '100%', height: 'auto' }}
+        />
       </KakaoButton>
 
       <LoginInfoText>
