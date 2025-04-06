@@ -55,8 +55,8 @@ const Title = styled.span`
 `;
 
 const TradeCard = styled.div`
-  width: 293px;
-  height: 95px;
+  width: 90%;
+  height: 120px;
   background: rgba(217, 217, 217, 0);
   border-radius: 10px;
   border: 1px #e0e0e0 solid;
@@ -65,6 +65,7 @@ const TradeCard = styled.div`
   position: relative;
   margin-left: auto;
   margin-right: auto;
+  cursor: default;
 `;
 
 const TradeTitle = styled.span`
@@ -205,10 +206,6 @@ const MyTrade: React.FC = () => {
     fetchTrades();
   }, [navigate]);
 
-  const handleTradeItemClick = (tradeId: number) => {
-    navigate(`/${ROUTES.MYPAGE}/${ROUTES.MYTRADE}/${tradeId}`);
-  };
-
   if (loading) {
     return (
       <Container>
@@ -229,7 +226,7 @@ const MyTrade: React.FC = () => {
     <Container>
       <div style={{ marginBottom: '20px' }}>
         {trades.map(trade => (
-          <TradeCard key={trade.trade_id} onClick={() => handleTradeItemClick(trade.trade_id)}>
+          <TradeCard key={trade.trade_id}>
             <div>
               <TradeStatus>{trade.keeper_status ? '맡아줬어요' : '보관했어요'}</TradeStatus>
               <div>

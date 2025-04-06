@@ -39,14 +39,14 @@ const Container = styled.div`
 
 // 장소 카드 스타일
 const PlaceCard = styled.div`
-  width: 326px;
-  height: 80px;
-  margin: 10px auto;
+  width: 90%;
+  height: 100px;
+  margin: 6px auto;
   background: rgba(217, 217, 217, 0);
   border-radius: 10px;
   border: 1px ${THEME.borderColor} solid;
   position: relative;
-  padding: 15px;
+  padding: 12px;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -75,7 +75,7 @@ const PlaceTitle = styled.div`
   font-family: 'Noto Sans KR';
   font-weight: 700;
   letter-spacing: 0.02px;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 `;
 
 // 장소 주소
@@ -101,7 +101,7 @@ const VisibilityTag = styled.div<{ isPublic: boolean }>`
   font-size: 12px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 `;
 
 // 화살표 아이콘
