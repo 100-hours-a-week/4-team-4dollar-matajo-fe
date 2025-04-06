@@ -1305,6 +1305,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           value={inputMessage}
           onChange={e => setInputMessage(e.target.value)}
           onKeyPress={handleKeyPress}
+          maxLength={500}
         />
 
         <SendButton onClick={handleSendMessage}>
