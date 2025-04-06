@@ -52,7 +52,7 @@ const Container = styled.div`
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 136px;
+  padding-bottom: 116px;
   padding-top: 47px;
 `;
 
@@ -92,18 +92,8 @@ const ProgressText = styled.span`
 
 // 폼 컨테이너
 const FormContainer = styled.div`
-  padding: 0 10px;
-  margin-top: 30px;
-`;
-
-// 입력 필드 레이블
-const InputLabel = styled.div`
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-family: 'Noto Sans KR';
-  font-weight: 700;
-  letter-spacing: 0.01px;
-  color: ${THEME.grayText};
+  padding: 0 25px;
+  margin-top: 20px;
 `;
 
 // 필수 표시 (*)
@@ -256,9 +246,11 @@ const DeleteButton = styled.button`
 
 // 완료 버튼
 const CompleteButton = styled.button`
-  width: 349px;
+  width: 325px;
   height: 47px;
   position: relative;
+  margin-top: 30px;
+  margin-left: 25px;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;

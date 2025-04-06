@@ -13,6 +13,7 @@ import {
 import { transformStorageDetail } from '../../../utils/dataTransformers';
 import ChatService from '../../../services/ChatService';
 import axios from 'axios';
+import Toast from '../../../components/common/Toast';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -65,7 +66,7 @@ const ContentContainer = styled.div`
 `;
 
 const ImageContainer = styled.div`
-  width: 375px;
+  width: 100%;
   height: 260px;
   position: relative;
   background: #eeeeee;
@@ -154,8 +155,9 @@ const UnitText = styled.span`
 
 const ChatButton = styled.div`
   width: 94px;
-  height: 24px;
-  padding: 8px 0;
+  height: 32px;
+  padding: 3px 0;
+  margin-top: 4px;
   position: relative;
   background: ${THEME.primaryTransparent};
   border-radius: 10px;
@@ -245,7 +247,7 @@ const KeeperSection = styled.div`
 `;
 
 const KeeperCard = styled.div`
-  width: 90%;
+  width: 100%;
   height: 50px;
   border-radius: 10px;
   border: 1px #cfcffe solid;
@@ -357,23 +359,6 @@ const ScrollTopIconSVG = () => (
   </svg>
 );
 
-// Toast 메시지 스타일 컴포넌트 추가 (Container 바로 아래에 추가)
-const Toast = styled.div<{ visible: boolean }>`
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  opacity: ${props => (props.visible ? 1 : 0)};
-  transition: opacity 0.3s ease;
-  z-index: 1000;
-  white-space: nowrap;
-`;
-
 // 드롭다운 메뉴 스타일 컴포넌트 추가
 const DropdownMenu = styled.div`
   width: 83px;
@@ -473,6 +458,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
   const [isAuthor, setIsAuthor] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
@@ -572,8 +558,9 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
   }, [id, searchAddressToCoordinate]);
 
   // 토스트 메시지 표시 함수
-  const showToastMessage = (message: string) => {
+  const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToastMessage(message);
+    setToastType(type);
     setShowToast(true);
     setTimeout(() => {
       setShowToast(false);
@@ -603,11 +590,11 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
         // 채팅방으로 이동
         navigate(`/chat/${response.data.id}`);
       } else {
-        showToastMessage('채팅방 생성에 실패했습니다.');
+        showToastMessage('채팅방 생성에 실패했습니다.', 'error');
       }
     } catch (error) {
       console.error('채팅방 생성 실패:', error);
-      showToastMessage('채팅방 생성에 실패했습니다. 다시 시도해주세요.');
+      showToastMessage('채팅방 생성에 실패했습니다. 다시 시도해주세요.', 'error');
     }
   };
 
@@ -930,7 +917,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
         showToastMessage(isHidden ? '보관소가 공개되었습니다.' : '보관소가 비공개되었습니다.');
       } else {
         console.warn('공개/비공개 전환 성공 응답 구조 확인:', response?.data);
-        showToastMessage('공개/비공개 전환에 실패했습니다.');
+        showToastMessage('공개/비공개 전환에 실패했습니다.', 'error');
       }
     } catch (error) {
       // 로딩 상태 비활성화
@@ -954,7 +941,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
         }
       }
 
-      showToastMessage(errorMessage);
+      showToastMessage(errorMessage, 'error');
     }
   };
 
@@ -1268,8 +1255,13 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
           </div>
         )}
 
-        {/* 토스트 메시지 */}
-        <Toast visible={showToast}>{toastMessage}</Toast>
+        {/* Toast 컴포넌트 추가 */}
+        <Toast
+          message={toastMessage}
+          visible={showToast}
+          onClose={() => setShowToast(false)}
+          type={toastType}
+        />
       </Container>
     </>
   );

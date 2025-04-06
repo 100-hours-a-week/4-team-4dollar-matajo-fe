@@ -10,6 +10,7 @@ import moment from 'moment-timezone';
 import client from '../../services/api/client';
 import { uploadImage } from '../../services/api/modules/image';
 import FcmService from '../../services/FcmService';
+import Toast from '../../components/common/Toast';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -30,7 +31,7 @@ const THEME = {
 const Container = styled.div`
   width: 100%;
   max-width: 480px;
-  height: calc(100vh - 100px);
+  height: calc(100vh - 30px);
   position: relative;
   background: ${THEME.background};
   overflow: auto;
@@ -373,32 +374,6 @@ const ReadStatus = styled.div`
   text-align: right;
 `;
 
-// 알림 권한 요청 컴포넌트
-const NotificationPermissionBanner = styled.div`
-  position: fixed;
-  top: 50px;
-  left: 0;
-  right: 0;
-  background-color: rgba(91, 89, 253, 0.9);
-  color: white;
-  text-align: center;
-  padding: 8px;
-  font-size: 12px;
-  z-index: 11;
-`;
-
-const PermissionButton = styled.button`
-  background-color: white;
-  color: ${THEME.primary};
-  border: none;
-  border-radius: 4px;
-  padding: 4px 8px;
-  margin-left: 8px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: bold;
-`;
-
 interface ChatProps {
   onBack?: () => void;
 }
@@ -475,15 +450,22 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 스크롤 위치 상태 추가
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
 
-  // 알림 권한 상태 추가
-  const [notificationPermission, setNotificationPermission] =
-    useState<NotificationPermission | null>(null);
-
-  // 알림 배너 표시 여부
-  const [showNotificationBanner, setShowNotificationBanner] = useState(false);
-
   // 새 메시지 사운드 객체 생성
   const messageSound = useRef<HTMLAudioElement | null>(null);
+
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+
+  // 토스트 메시지 표시 함수
+  const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
 
   useEffect(() => {
     // 기존 오디오 객체가 있으면 제거
@@ -563,19 +545,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     // FCM 서비스 가시성 리스너 설정
     fcmService.setupVisibilityListener();
 
-    // 현재 알림 권한 확인
-    if ('Notification' in window) {
-      setNotificationPermission(Notification.permission);
-
-      // 알림 권한이 'default'인 경우 배너 표시
-      if (Notification.permission === 'default') {
-        setShowNotificationBanner(true);
-      } else if (Notification.permission === 'granted') {
-        // 권한이 이미 있는 경우 FCM 토큰 등록
-        initializeFcm();
-      }
-    }
-
     // FCM 메시지 이벤트 리스너 (컴포넌트 외부에서 발생한 FCM 이벤트 처리)
     const handleFcmMessage = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -600,58 +569,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       window.removeEventListener('fcm-message', handleFcmMessage);
     };
   }, []);
-
-  // FCM 초기화 함수
-  const initializeFcm = async () => {
-    try {
-      // FCM 토큰 생성 및 등록
-      const token = await fcmService.getAndRegisterToken();
-      console.log('FCM token registered:', token);
-
-      // FCM 메시지 리스너 등록 - 토스트 메시지 연결
-      fcmService.onMessage(payload => {
-        try {
-          const title = payload.notification?.title || '';
-          const body = payload.notification?.body || '';
-          const message = title ? `${title}: ${body}` : body;
-
-          if (message) {
-            // 디버깅용 로그 추가
-            console.log('토스트 메시지 호출 시도:', message);
-
-            // 메시지 길이 제한
-            const trimmedMessage = message.length > 50 ? message.substring(0, 50) + '...' : message;
-
-            // 알림 사운드 재생
-            playNotificationSound();
-          }
-        } catch (error) {
-          console.error('토스트 메시지 호출 중 오류:', error);
-        }
-      });
-
-      // 토큰 갱신 설정
-      fcmService.setupTokenRefresh();
-    } catch (error) {
-      console.error('FCM initialization error:', error);
-    }
-  };
-
-  // 알림 권한 요청 처리
-  const handleRequestPermission = async () => {
-    try {
-      const permission = await fcmService.requestPermissionByUserGesture();
-      setNotificationPermission(permission ? 'granted' : 'denied');
-      setShowNotificationBanner(false);
-
-      if (permission) {
-        // 권한 획득 후 FCM 초기화
-        initializeFcm();
-      }
-    } catch (error) {
-      console.error('Permission request error:', error);
-    }
-  };
 
   // 재생 관련 문제를 방지하기 위해 사운드 재생 함수 개선
   const playNotificationSound = () => {
@@ -972,7 +889,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       }
     } catch (error) {
       console.error('메시지 전송 실패:', error);
-      setError('메시지 전송에 실패했습니다. 네트워크 연결을 확인해주세요.');
+      showToastMessage('메시지 전송에 실패했습니다. 네트워크 연결을 확인해주세요.', 'error');
     }
   };
 
@@ -1289,14 +1206,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         {isConnected ? '연결됨' : '연결 끊김'}
       </ConnectionStatus>
 
-      {/* 알림 권한 요청 배너 */}
-      {showNotificationBanner && (
-        <NotificationPermissionBanner>
-          실시간 메시지 알림을 받으시겠습니까?
-          <PermissionButton onClick={handleRequestPermission}>허용</PermissionButton>
-        </NotificationPermissionBanner>
-      )}
-
       {/* 확정하기 버튼 - 보관인일 때만 표시 */}
       {isKeeper() && (
         <ConfirmButton onClick={handleConfirm}>
@@ -1433,6 +1342,12 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={handleTradeConfirm}
         chatroomId={roomId || 0}
+      />
+      <Toast
+        message={toastMessage}
+        visible={showToast}
+        onClose={() => setShowToast(false)}
+        type={toastType}
       />
     </Container>
   );

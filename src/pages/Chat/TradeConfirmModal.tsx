@@ -103,7 +103,7 @@ const HelperText = styled.div`
 
 // 입력 필드
 const Input = styled.input`
-  width: 280px;
+  width: 260px;
   height: 24px;
   border-radius: 15px;
   border: 0.5px solid ${THEME.primary};
@@ -147,7 +147,7 @@ const DateInputContainer = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 10px 30px;
+  margin: 10px 5px;
 `;
 
 // 스타일된 DatePicker 컨테이너
@@ -174,6 +174,7 @@ const StyledDatePickerContainer = styled.div`
     color: ${THEME.textDark};
     font-family: 'Noto Sans KR';
     box-sizing: border-box;
+    text-align: center;
 
     &:focus {
       outline: none;
@@ -329,7 +330,7 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
   const [showToast, setShowToast] = useState<boolean>(false);
 
   // 카테고리 목록
-  const itemTypes = ['냉장', '냉동', '상온', '귀중품'];
+  const itemTypes = ['식물', '전자기기', '가전', '스포츠', '식품', '의류', '서적', '취미', '가구'];
 
   // 토스트 메시지 표시 함수
   const displayToast = (message: string) => {
@@ -467,7 +468,7 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
           />
           {itemNameError && <HelperText>{itemNameError}</HelperText>}
 
-          <Label>물품 종류</Label>
+          <Label>물품 유형</Label>
           <TagContainer>
             {itemTypes.map(type => (
               <TagButton

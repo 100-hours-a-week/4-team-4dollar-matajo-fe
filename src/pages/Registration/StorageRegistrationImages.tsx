@@ -266,10 +266,11 @@ const DeleteImageButton = styled.button`
 
 // 완료 버튼
 const CompleteButton = styled.button`
-  width: 349px;
+  width: 325px;
   height: 47px;
   position: relative;
   margin-top: 30px;
+  margin-left: 25px;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;
@@ -404,8 +405,14 @@ const Registration3: React.FC = () => {
     if (savedData) {
       try {
         const parsedData: StorageData = JSON.parse(savedData);
-        if (parsedData.mainImage) setMainImageData(parsedData.mainImage);
-        if (parsedData.detailImages) setDetailImageData(parsedData.detailImages);
+        if (parsedData.mainImage) {
+          setMainImageData(parsedData.mainImage);
+          setMainImage(parsedData.mainImage.image_url);
+        }
+        if (parsedData.detailImages) {
+          setDetailImageData(parsedData.detailImages);
+          setDetailImages(parsedData.detailImages.map(img => img.image_url));
+        }
       } catch (error) {
         console.error('Error parsing saved data:', error);
       }

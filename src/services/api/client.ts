@@ -1,11 +1,10 @@
 // src/services/api/client.ts
 import axios from 'axios';
 import { API_BACKEND_URL } from '../../constants/api';
+import { checkAndRefreshToken } from '../../utils/api/authUtils';
 
-// 디버그용 로그
 console.log('API 클라이언트 초기화: API_BACKEND_URL =', API_BACKEND_URL);
 
-// baseURL에서 중복 슬래시 제거
 const baseURL = API_BACKEND_URL.replace(/\/+$/, '');
 
 const client = axios.create({
@@ -14,34 +13,50 @@ const client = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true,
-  timeout: 30000, // 30초
+  timeout: 30000,
   maxBodyLength: Infinity,
   maxContentLength: Infinity,
 });
 
-// 요청 인터셉터 설정
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+const onRefreshed = (token: string) => {
+  refreshSubscribers.forEach(callback => callback(token));
+  refreshSubscribers = [];
+};
+
+const addSubscriber = (callback: (token: string) => void) => {
+  refreshSubscribers.push(callback);
+};
+
 client.interceptors.request.use(
   config => {
     const token = localStorage.getItem('accessToken');
+
+    // 더 자세한 토큰 로깅
+    console.group('🔐 API 요청 전 토큰 상태');
+    console.log('토큰 존재 여부:', !!token);
+    console.log('요청 URL:', `${config.baseURL || ''}${config.url || ''}`);
+    console.log('요청 메서드:', config.method?.toUpperCase() || 'UNKNOWN');
     if (token) {
-      console.log('API 요청에 토큰 추가:', token.substring(0, 10) + '...');
+      console.log('토큰 일부:', token.substring(0, 10) + '...');
+    }
+    console.groupEnd();
+
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.log('API 요청에 토큰 없음');
     }
 
-    // URL 정규화만 유지
+    // URL 정규화
     if (config.url) {
       config.url = config.url.replace(/([^:]\/)\/+/g, '$1');
     }
 
-    // 요청 디버깅을 위한 로그
-    console.log(`API 요청: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
-
     return config;
   },
   error => {
-    console.error('API 요청 전 오류 발생:', error);
+    console.error('🚨 API 요청 전 오류:', error);
     return Promise.reject(error);
   },
 );
@@ -52,56 +67,49 @@ client.interceptors.response.use(
     const originalRequest = error.config;
 
     // 401 에러이고 재시도하지 않은 요청인 경우
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      originalRequest.url !== '/auth/login' &&
+      originalRequest.url !== '/auth/refresh'
+    ) {
       originalRequest._retry = true;
 
       try {
-        console.log('🔐 토큰 재발급 시도', {
-          url: originalRequest.url,
-          method: originalRequest.method,
-        });
+        // checkAndRefreshToken 함수 사용
+        const isTokenValid = await checkAndRefreshToken();
 
-        const response = await client.post(
-          '/auth/refresh',
-          {},
-          {
-            withCredentials: true,
-          },
-        );
-
-        console.log('✅ 토큰 재발급 응답:', response.data);
-
-        if (response.data.data?.access_token) {
-          const newAccessToken = response.data.data.access_token;
-
-          localStorage.setItem('accessToken', newAccessToken);
-
-          // 원래 요청의 헤더 업데이트
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-          // 인증 상태 변경 이벤트
-          window.dispatchEvent(new CustomEvent('AUTH_STATE_CHANGED'));
-
-          console.log('🔁 원본 요청 재시도');
+        if (isTokenValid) {
+          // 새 토큰으로 원래 요청 재시도
           return client(originalRequest);
+        } else {
+          // 토큰 재발급 실패 시 로그인 페이지로 리다이렉트
+          localStorage.removeItem('accessToken');
+          window.location.href = '/login';
+          return Promise.reject(error);
         }
       } catch (refreshError) {
-        console.error('🚫 토큰 재발급 실패:', refreshError);
-
-        // 명시적 로그아웃 처리
+        console.error('토큰 재발급 실패:', refreshError);
         localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-
-        // 인증 상태 변경 이벤트
-        window.dispatchEvent(new CustomEvent('AUTH_STATE_CHANGED'));
-
-        // 로그인 페이지로 리다이렉트
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 100);
-
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       }
+    }
+
+    // 429 에러 처리
+    if (error.response?.status === 429) {
+      // 토스트 메시지 표시
+      const toastEvent = new CustomEvent('SHOW_TOAST', {
+        detail: {
+          message: '요청이 너무 많습니다. 1분 후에 다시 시도해 주세요.',
+          type: 'error', // 또는 'info', 'success' 등
+        },
+      });
+      window.dispatchEvent(toastEvent);
+
+      // 요청 재시도 없이 에러 반환
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);

@@ -62,7 +62,7 @@ const SearchIcon = styled.div`
   width: 20px;
   height: 40px;
   position: absolute;
-  right: 15px;
+  right: 20px;
   top: 50%;
   transform: translateY(-50%);
   text-align: center;
@@ -80,11 +80,12 @@ const FilterTag = styled.div<{ isActive: boolean }>`
   justify-content: center;
   align-items: center;
   height: 28px;
-  padding: 0 15px;
-  margin-right: 5px;
+  padding: 0 12px;
+  margin: 0 3px;
   border-radius: 30px;
   background: ${props => (props.isActive ? THEME.primaryAlpha : 'transparent')};
-  border: ${props => (props.isActive ? 'none' : `1px ${THEME.primaryLight} solid`)};
+  border: ${props =>
+    props.isActive ? `1px ${THEME.primaryLight} solid` : `1px ${THEME.primaryLight} solid`};
   color: ${props => (props.isActive ? THEME.white : THEME.lightGrayText)};
   font-size: 12px;
   font-family: 'Noto Sans KR';
@@ -97,9 +98,8 @@ const FilterTag = styled.div<{ isActive: boolean }>`
 const FilterContainer = styled.div`
   width: 100%;
   max-width: 480px;
-  height: 40px;
+  min-height: 40px;
   overflow-x: auto;
-  justify-content: center;
   white-space: nowrap;
   scrollbar-width: none; /* Firefox */
   &::-webkit-scrollbar {
@@ -107,6 +107,7 @@ const FilterContainer = styled.div`
   }
   padding: 5px 10px;
   margin-left: 20px;
+  margin-right: 20px;
   margin-bottom: 15px;
   display: flex;
   align-items: center;

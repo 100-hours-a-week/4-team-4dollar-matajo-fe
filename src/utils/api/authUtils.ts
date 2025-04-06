@@ -1,6 +1,7 @@
 // src/utils/api/authUtils.ts
 import { decodeJWT } from '../formatting/decodeJWT';
 import { UserRole } from '../../contexts/auth';
+import client from '../../services/api/client';
 
 /**
  * 로컬 스토리지에서 토큰을 가져오는 함수
@@ -162,5 +163,37 @@ export const getNicknameFromToken = (): string | null => {
   } catch (error) {
     console.error('닉네임 추출 오류:', error);
     return null;
+  }
+};
+
+export const checkAndRefreshToken = async (): Promise<boolean> => {
+  try {
+    // 토큰이 없으면 바로 false 반환
+    const token = getToken();
+    if (!token) return false;
+
+    // 토큰 디코딩 시도
+    const decoded = decodeJWT(token);
+    if (!decoded) return false;
+
+    // 토큰이 곧 만료되거나 이미 만료된 경우 재발급 시도
+    const now = Math.floor(Date.now() / 1000);
+    if (decoded.exp <= now) {
+      console.log('토큰 만료, 재발급 시도');
+      const response = await client.post('/auth/refresh', {}, { withCredentials: true });
+
+      if (response.data.data?.access_token) {
+        const newAccessToken = response.data.data.access_token;
+        saveToken(newAccessToken);
+        return true;
+      }
+
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('토큰 재발급 중 오류:', error);
+    return false;
   }
 };

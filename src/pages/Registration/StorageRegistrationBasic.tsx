@@ -41,11 +41,12 @@ const Container = styled.div`
   align-items: center;
   width: 100%;
   max-width: 480px;
+  height: calc(100vh - 70px);
   position: relative;
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 170px; /* 하단 네비게이션 높이만큼 마진 */
+  padding-bottom: 70px; /* 하단 네비게이션 높이만큼 마진 */
   padding-top: 47px; /* 헤더 높이만큼 패딩 */
 `;
 
@@ -140,9 +141,11 @@ const InputField = styled.input<{
 
 // 주소 검색 버튼
 const AddressSearchButton = styled.div`
-  position: absolute;
-  right: 25px;
-  margin-top: -58px;
+  position: relative;
+  right: 5px;
+  margin-top: -56px;
+  margin-bottom: 20px;
+  margin-left: auto;
   width: 30px;
   height: 30px;
   display: flex;
@@ -198,9 +201,9 @@ const TextArea = styled.textarea<{ isError?: boolean; isFocused?: boolean }>`
 // 다음 버튼
 const NextButton = styled.button`
   width: 349px;
-  height: 47px;
-  position: absolute;
-  bottom: 90px;
+  min-height: 47px;
+  position: relative;
+  bottom: 0px;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;

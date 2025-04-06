@@ -24,7 +24,7 @@ const THEME = {
 // 전체 페이지 레이아웃 컨테이너
 const RegistrationContainer = styled.div`
   width: 100%;
-  max-width: 375px;
+  max-width: 480px;
   min-height: 100vh;
   margin: 0 auto;
   background-color: #f5f5ff;
@@ -37,13 +37,15 @@ const Container = styled.div`
   width: 100%;
   max-width: 480px;
   display: flex;
+
+  height: calc(100vh - 70px);
   flex-direction: column;
   align-items: center;
   position: relative;
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 136px;
+  padding-bottom: 70px;
   padding-top: 47px;
 `;
 
@@ -178,10 +180,9 @@ const TextArea = styled.textarea<{ isError?: boolean; isFocused?: boolean }>`
 // 다음 버튼
 const NextButton = styled.button`
   width: 349px;
-  height: 47px;
-  position: absolute;
-  left: 13px;
-  bottom: 90px;
+  min-height: 47px;
+  position: relative;
+  bottom: 0px;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;
@@ -227,9 +228,11 @@ const LoadingSpinner = styled.div`
 
 // 주소 검색 버튼
 const AddressSearchButton = styled.div`
-  position: absolute;
-  right: 25px;
-  margin-top: -58px;
+  position: relative;
+  right: 5px;
+  margin-top: -56px;
+  margin-bottom: 20px;
+  margin-left: auto;
   width: 30px;
   height: 30px;
   display: flex;
