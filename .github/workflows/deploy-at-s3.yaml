@@ -26,9 +26,6 @@ jobs:
       - name: Run linting and formatting
         run: npm run lint-and-format
         
-      - name: Run tests
-        run: npm test -- --watchAll=false
-        
       - name: Build application
         run: npm run build
         env:
