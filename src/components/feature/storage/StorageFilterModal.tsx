@@ -119,7 +119,7 @@ const TagButton = styled.button<{ isSelected: boolean }>`
   border: 0.5px solid ${props => (props.isSelected ? THEME.primary : THEME.tagBorder)};
   background: ${props => (props.isSelected ? THEME.tagActive : 'transparent')};
   color: ${props => (props.isSelected ? 'white' : THEME.textGray)};
-  font-size: 16px;
+  font-size: 13px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
   line-height: 19.21px;
