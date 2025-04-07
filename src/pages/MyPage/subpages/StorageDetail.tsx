@@ -236,7 +236,7 @@ const LocationText = styled.div`
 
 const MapContainer = styled.div`
   width: 100%;
-  height: 125px;
+  height: 200px;
   border-radius: 5px;
   overflow: hidden;
   margin-bottom: 15px;
