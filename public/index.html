@@ -9,6 +9,18 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>MATAJO</title>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-KS2M9GWCTQ"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-KS2M9GWCTQ', {
+        'stream_id': '10495133511',
+        'stream_name': '마타조',
+        'stream_url': 'https://matajo.store'
+      });
+    </script>
     <!-- 카카오맵 API 스크립트를 미리 로드 -->
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=476c06a05cf0e8f335c9880cf114e90e&libraries=services"></script>
   </head>
