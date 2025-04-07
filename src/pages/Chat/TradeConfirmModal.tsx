@@ -495,7 +495,7 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
               const newValue = e.target.value;
               setItemName(newValue);
 
-              if (newValue.length > 15) {
+              if (newValue.length >= 15) {
                 setItemNameError('보관할 물품은 최대 15글자까지 입력 가능합니다.');
               } else {
                 setItemNameError('');
