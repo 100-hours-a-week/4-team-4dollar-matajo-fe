@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // 토스트 컨테이너
 const ToastContainer = styled(motion.div)`
   position: fixed;
-  bottom: 100px; /* 네비게이션 바 위에 표시 */
+  top: 20px; /* 상단에서 20px 떨어진 위치 */
   left: 0;
   right: 0;
   margin-left: auto;
@@ -15,7 +15,7 @@ const ToastContainer = styled(motion.div)`
   color: white;
   padding: 10px 20px;
   border-radius: 8px;
-  z-index: 1000;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -37,9 +37,9 @@ const ToastText = styled.div`
 
 // 토스트 애니메이션 변수
 const toastVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: -20 },
   visible: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 20 },
+  exit: { opacity: 0, y: -20 },
 };
 
 // 프롭스 타입 정의
@@ -66,10 +66,20 @@ const Toast: React.FC<ToastProps> = ({
   const [toastVisible, setVisible] = useState(visible);
   const [toastType, setType] = useState(type);
 
+  // props 변경 감지
+  useEffect(() => {
+    console.log('Toast props 변경:', { message, visible, type });
+    setMessage(message);
+    setVisible(visible);
+    setType(type);
+  }, [message, visible, type]);
+
   // 토스트 자동 닫기
   useEffect(() => {
     if (toastVisible && onClose) {
+      console.log('토스트 타이머 시작');
       const timer = setTimeout(() => {
+        console.log('토스트 타이머 종료');
         onClose();
       }, duration);
 

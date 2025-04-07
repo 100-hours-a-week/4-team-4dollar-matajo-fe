@@ -531,9 +531,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
               console.warn('주소를 좌표로 변환 실패:', response.data.data.post_address);
               setToastMessage('장소 위치를 검색할 수 없습니다.');
               setShowToast(true);
-              setTimeout(() => {
-                setShowToast(false);
-              }, 3000);
             }
           }
 
@@ -557,15 +554,25 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     fetchStorageDetail();
   }, [id, searchAddressToCoordinate]);
 
-  // 토스트 메시지 표시 함수
+  // 토스트 메시지 표시 함수 수정
   const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    console.log('토스트 메시지 표시 시도:', { message, type });
     setToastMessage(message);
     setToastType(type);
     setShowToast(true);
-    setTimeout(() => {
+
+    const timer = setTimeout(() => {
+      console.log('토스트 타이머 실행');
       setShowToast(false);
     }, 3000);
+
+    return () => clearTimeout(timer);
   };
+
+  // 토스트 상태 변경 추적
+  useEffect(() => {
+    console.log('토스트 상태 변경:', { showToast, toastMessage, toastType });
+  }, [showToast, toastMessage, toastType]);
 
   // 채팅하기 버튼 클릭 핸들러 수정
   const handleChatClick = async () => {
@@ -574,7 +581,8 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     try {
       // 작성자와 현재 사용자가 같은지 확인 (editable 값으로 판단)
       if (storageDetail.editable) {
-        showToastMessage('본인의 장소에는 채팅을 생성할 수 없습니다.');
+        console.log('자신의 게시글 채팅 시도 - 토스트 표시');
+        showToastMessage('본인의 장소에는 채팅을 생성할 수 없습니다.', 'info');
         return;
       }
 
@@ -1254,15 +1262,15 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
             <div>보관소 정보가 없습니다.</div>
           </div>
         )}
-
-        {/* Toast 컴포넌트 추가 */}
-        <Toast
-          message={toastMessage}
-          visible={showToast}
-          onClose={() => setShowToast(false)}
-          type={toastType}
-        />
       </Container>
+
+      {/* Toast 컴포넌트를 Container 밖으로 이동 */}
+      <Toast
+        message={toastMessage}
+        visible={showToast}
+        onClose={() => setShowToast(false)}
+        type={toastType}
+      />
     </>
   );
 };
