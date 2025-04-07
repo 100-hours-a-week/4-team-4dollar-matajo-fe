@@ -580,11 +580,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // 채팅방 컴포넌트에서 연결 상태 관리 개선
   useEffect(() => {
-    if (!roomId) {
-      console.error('roomId가 필요합니다');
-      handleBack();
-      return;
-    }
+    if (!roomId) return;
 
     setError(null);
     setRoomTitle(`채팅방 ${roomId}`);
@@ -602,16 +598,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         setIsConnected(true);
         setError(null);
         console.log('채팅 서버 연결됨');
-
-        // 메시지 읽음 상태 업데이트
-        try {
-          if (roomId) {
-            await chatService.markMessagesAsRead(roomId, currentUserId);
-            console.log('메시지 읽음 처리 완료');
-          }
-        } catch (error) {
-          console.error('메시지 읽음 처리 실패:', error);
-        }
 
         // 메시지 구독
         console.log('채팅방 구독 시도 중...');
@@ -641,17 +627,43 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
             const newMessages = [...prev, message];
             // WebSocket으로 받은 메시지도 savedMessages에 저장
             setSavedMessages(newMessages);
+
+            // 상대방이 보낸 메시지이고 읽지 않은 경우에만 읽음 처리
+            if (message.sender_id !== currentUserId && !message.read_status) {
+              chatService.markMessagesAsRead(roomId, currentUserId).catch(e => {
+                console.error('읽음 처리 실패:', e);
+              });
+            }
+
             return newMessages;
           });
-
-          // 상대방이 보낸 메시지인 경우 읽음 처리
-          if (message.sender_id !== currentUserId) {
-            // 메시지 읽음 처리
-            chatService.markMessagesAsRead(roomId, currentUserId).catch(e => {
-              console.error('읽음 처리 실패:', e);
-            });
-          }
         });
+
+        // 읽음 상태 구독 로직
+        const handleReadStatusUpdate = (data: any) => {
+          console.log('읽음 상태 업데이트:', data);
+
+          setMessages(prevMessages =>
+            prevMessages.map(msg => {
+              if (data.messageIds && data.messageIds.includes(msg.message_id)) {
+                return { ...msg, read_status: true };
+              }
+              return msg;
+            }),
+          );
+        };
+
+        const readStatusSubscriptionId = `read-status-${roomId}`;
+
+        try {
+          const readStatusSubscription = chatService.subscribeToReadStatus(
+            roomId,
+            handleReadStatusUpdate,
+          );
+          chatService.addSubscription(readStatusSubscriptionId, readStatusSubscription);
+        } catch (error) {
+          console.error('읽음 상태 구독 실패:', error);
+        }
 
         console.log('채팅방 구독 성공');
       } catch (error) {
@@ -1305,7 +1317,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
           value={inputMessage}
           onChange={e => setInputMessage(e.target.value)}
           onKeyPress={handleKeyPress}
-          maxLength={500}
         />
 
         <SendButton onClick={handleSendMessage}>
