@@ -43,12 +43,12 @@ export interface MyTradesResponse {
 
 // 최근 거래 내역 인터페이스
 export interface RecentTrade {
-  category: string;
   main_image: string;
   product_name: string;
-  storage_period: number;
+  category: string;
   trade_date: string;
   trade_price: number;
+  storage_period: number;
 }
 
 export interface RecentTradesResponse {
@@ -119,10 +119,21 @@ export const getMyTrades = async (): Promise<TradeItem[]> => {
  */
 export const getRecentTrades = async (locationInfoId: number): Promise<RecentTradesResponse> => {
   try {
+    if (!locationInfoId || locationInfoId === -1) {
+      console.warn('유효하지 않은 locationInfoId:', locationInfoId);
+      return {
+        success: false,
+        message: 'Invalid locationInfoId',
+        data: [],
+      };
+    }
+
     console.log('getRecentTrades 호출 - locationInfoId:', locationInfoId);
     const response = await client.get(API_PATHS.TRADES.RECENT_BY_LOCATION, {
       params: { locationInfoId },
     });
+    console.log('API 요청 URL:', API_PATHS.TRADES.RECENT_BY_LOCATION);
+    console.log('API 요청 파라미터:', { locationInfoId });
     console.log('API 응답 데이터:', response.data);
     return response.data;
   } catch (error) {

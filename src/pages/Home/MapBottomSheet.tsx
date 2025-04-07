@@ -393,10 +393,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   const navigate = useNavigate();
   const [showKeeperModal, setShowKeeperModal] = useState(false);
   const [sheetState, setSheetState] = useState<BottomSheetState>('half-expanded');
-  // 현재 위치 텍스트는 prop을 그대로 사용하거나, 필요시 내부 상태로 관리할 수 있음
   const [currentLocation, setCurrentLocation] = useState<string>(location);
-  // 최근 거래 내역은 내부에서 관리
-  const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
   const [locationInfoId, setLocationInfoId] = useState<number>(propLocationInfoId ?? -1);
 
   const bottomSheetRef = useRef<HTMLDivElement>(null);
@@ -465,7 +462,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     if (location !== currentLocation) {
       setCurrentLocation(location);
 
-      // 위치가 변경되었을 때 해당 위치의 데이터를 가져오기 위해
       // locationInfoId가 없거나 위치 변경 시 fetchLocationId 호출
       if (fetchLocationId && !propLocationInfoId) {
         console.log('위치 변경으로 위치 ID 조회 시작:', location);
@@ -482,30 +478,6 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
       }
     }
   }, [location, currentLocation, fetchLocationId, propLocationInfoId]);
-
-  useEffect(() => {
-    const fetchRecentTrades = async () => {
-      try {
-        if (locationInfoId === -1) {
-          console.warn('locationInfoId가 -1이어서 최근 거래 내역을 가져올 수 없습니다.');
-          setRecentTrades([]);
-          return;
-        }
-
-        const response = await getRecentTrades(locationInfoId);
-        if (response.success && Array.isArray(response.data)) {
-          setRecentTrades(response.data);
-        } else {
-          console.warn('거래 내역 응답 형식 오류:', response);
-          setRecentTrades([]);
-        }
-      } catch (error) {
-        console.error('최근 거래 내역 가져오기 실패:', error);
-        setRecentTrades([]);
-      }
-    };
-    fetchRecentTrades();
-  }, [locationInfoId]);
 
   const handleRegisterClick = () => {
     if (onRegisterStorage) {
@@ -665,25 +637,21 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
           </DiscountGrid>
           <SectionTitle>{currentLocation.split(' ')[1]} 최근 거래 내역</SectionTitle>
           <ItemList>
-            {recentTrades.length > 0 ? (
-              recentTrades.map((trade, index) => (
+            {recentItems.length > 0 ? (
+              recentItems.map((trade, index) => (
                 <ItemCard key={index}>
                   <ItemImage
                     style={{
-                      backgroundImage: trade.main_image ? `url(${trade.main_image})` : 'none',
+                      backgroundImage: trade.imageUrl ? `url(${trade.imageUrl})` : 'none',
                     }}
                   />
                   <ItemInfo>
-                    <ItemName>{trade.product_name}</ItemName>
+                    <ItemName>{trade.name}</ItemName>
                     <ItemPrice>
-                      <PriceText>
-                        {trade.trade_price ? trade.trade_price.toLocaleString() : '-'}원
-                      </PriceText>
+                      <PriceText>{trade.price ? trade.price.toLocaleString() : '-'}원</PriceText>
                       <PriceUnit> /일</PriceUnit>
                     </ItemPrice>
-                    <ItemTags>
-                      {trade.category} | {trade.storage_period}일
-                    </ItemTags>
+                    <ItemTags>{trade.post_tags.join(' | ')}</ItemTags>
                   </ItemInfo>
                 </ItemCard>
               ))
