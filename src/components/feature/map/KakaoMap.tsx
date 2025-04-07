@@ -263,13 +263,13 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           setCurrentUserLocation({ lat: userLat, lng: userLng });
 
           // 정확한 사용자 위치로 이동 (마커가 BottomSheet에 가려지지 않도록 위로 조정)
-          const currentLatLng = new window.kakao.maps.LatLng(userLat - 0.002, userLng);
+          const currentLatLng = new window.kakao.maps.LatLng(userLat + 0.002, userLng);
           kakaoMapRef.current.setCenter(currentLatLng);
           kakaoMapRef.current.setLevel(3); // 현재 위치 버튼 클릭시 레벨 3으로 고정
 
           // 이동 후 중심 위치 변경 이벤트 발생
           if (onCenterChanged) {
-            onCenterChanged(userLat - 0.002, userLng);
+            onCenterChanged(userLat + 0.002, userLng);
           }
 
           // 외부 콜백 호출

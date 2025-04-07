@@ -319,7 +319,7 @@ const HomePage: React.FC = () => {
 
                 // 지도 중심을 현재 위치보다 약간 위로 설정
                 setMapCenter({
-                  lat: lat - 0.002, // 약 400m 위로 조정
+                  lat: lat + 0.002, // 약 400m 위로 조정
                   lng: lng,
                 });
 
@@ -430,25 +430,48 @@ const HomePage: React.FC = () => {
         setLocation(address);
         setIsLocationModalOpen(false);
 
-        // 입력받은 좌표로 지도 중심 이동
-        setMapCenter({
-          lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
-          lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
-        });
-
         // 위치 ID 설정 및 데이터 로드
-        if (newLocationId) {
-          setLocationId(newLocationId);
-          localStorage.setItem('currentLocationId', newLocationId.toString());
+        let targetLocationId = newLocationId;
+        if (!targetLocationId) {
+          targetLocationId = await fetchLocationId(address);
         } else {
-          const targetLocationId = await fetchLocationId(address, true); // skipMapCenter를 true로 설정
-          if (targetLocationId) {
-            setLocationId(targetLocationId);
-            localStorage.setItem('currentLocationId', targetLocationId.toString());
+          setLocationId(targetLocationId);
+          localStorage.setItem('currentLocationId', targetLocationId.toString());
+        }
+
+        if (targetLocationId) {
+          // 해당 위치의 게시글 데이터를 먼저 로드
+          const postsData = await getPostsByLocation(targetLocationId);
+
+          if (postsData && postsData.length > 0) {
+            // 첫 번째 게시글의 주소를 좌표로 변환
+            const coords = await convertAddressToCoords(postsData[0].address);
+
+            if (coords) {
+              // 게시글 위치보다 살짝 위로 이동 (더 넓은 시야 제공)
+              setMapCenter({
+                lat: coords.lat + 0.002, // 약간 위쪽으로 조정
+                lng: coords.lng,
+              });
+            } else {
+              // 좌표 변환 실패시 입력받은 좌표 사용
+              setMapCenter({
+                lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
+                lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
+              });
+            }
+          } else {
+            // 게시글이 없는 경우 입력받은 좌표 사용
+            setMapCenter({
+              lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
+              lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
+            });
           }
         }
+        // locationId 설정 후 자동으로 loadMapData 호출됨
       } catch (error) {
         console.error('위치 선택 처리 중 오류:', error);
+        // 에러 발생시 기본 좌표 사용
         setMapCenter({
           lat: latitude ? parseFloat(latitude) : DEFAULT_COORDINATES.lat,
           lng: longitude ? parseFloat(longitude) : DEFAULT_COORDINATES.lng,
@@ -475,7 +498,7 @@ const HomePage: React.FC = () => {
 
             // 지도 중심을 현재 위치보다 약간 위로 설정 (마커가 BottomSheet에 가려지지 않도록)
             setMapCenter({
-              lat: lat - 0.002, // 약 400m 위로 조정
+              lat: lat + 0.002, // 약 400m 위로 조정
               lng: lng,
             });
 
@@ -530,6 +553,7 @@ const HomePage: React.FC = () => {
   const handleCurrentLocationClick = useCallback(async () => {
     try {
       setLoading(true);
+      updateUserLocation();
       setMapLevel(3); // 줌 레벨만 설정
     } catch (error) {
       console.error('위치 이동 중 오류:', error);
