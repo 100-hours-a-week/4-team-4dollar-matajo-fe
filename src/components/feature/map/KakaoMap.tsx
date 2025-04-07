@@ -78,7 +78,9 @@ interface KakaoMapProps {
   showCurrentLocation?: boolean;
   onCurrentLocationClick?: () => void;
   detailMode?: boolean;
-  locationInfoId?: string; // 위치 정보 ID 추가
+  locationInfoId?: string;
+  userLocation?: { lat: number; lng: number } | null; // 현재 위치 좌표
+  userLocationMarkerImage?: string; // 현재 위치 마커 이미지 URL
 }
 
 const KakaoMap: React.FC<KakaoMapProps> = ({
@@ -95,6 +97,8 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   onCurrentLocationClick,
   detailMode = false,
   locationInfoId,
+  userLocation,
+  userLocationMarkerImage,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const kakaoMapRef = useRef<any>(null);
@@ -506,6 +510,52 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
       }
     }
   }, [isLocationModalOpen, draggable, zoomable, detailMode, isMapInitialized]);
+
+  // 현재 위치 마커 업데이트 함수
+  const updateUserLocationMarker = useCallback(() => {
+    if (!kakaoMapRef.current || !userLocation) return;
+
+    // 기존 현재 위치 마커 제거
+    if (userLocationMarkerRef.current) {
+      userLocationMarkerRef.current.setMap(null);
+    }
+
+    // 현재 위치 마커 이미지 설정
+    let markerImage;
+    if (userLocationMarkerImage) {
+      const imageSize = new window.kakao.maps.Size(36, 36); // 이미지 크기를 36x36으로 설정
+      const imageOption = {
+        offset: new window.kakao.maps.Point(18, 18), // 이미지 중심점을 이미지 크기의 절반으로 설정
+        shape: 'circle', // 마커 모양을 원형으로 설정 (선택사항)
+        spriteOrigin: new window.kakao.maps.Point(0, 0), // 스프라이트 이미지의 시작점
+        spriteSize: new window.kakao.maps.Size(36, 36), // 스프라이트 이미지의 전체 크기
+      };
+
+      markerImage = new window.kakao.maps.MarkerImage(
+        userLocationMarkerImage,
+        imageSize,
+        imageOption,
+      );
+    }
+
+    // 현재 위치 마커 생성
+    const position = new window.kakao.maps.LatLng(userLocation.lat, userLocation.lng);
+    const marker = new window.kakao.maps.Marker({
+      position,
+      map: kakaoMapRef.current,
+      image: markerImage,
+      zIndex: 10, // 다른 마커보다 위에 표시
+    });
+
+    userLocationMarkerRef.current = marker;
+  }, [userLocation, userLocationMarkerImage]);
+
+  // 현재 위치 마커 업데이트 effect
+  useEffect(() => {
+    if (isMapInitialized) {
+      updateUserLocationMarker();
+    }
+  }, [isMapInitialized, updateUserLocationMarker]);
 
   return (
     <>

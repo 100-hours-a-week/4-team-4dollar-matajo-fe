@@ -122,6 +122,8 @@ const HomePage: React.FC = () => {
   const [mapCenter, setMapCenter] = useState({ lat: 37.5665, lng: 126.978 });
   const [mapLevel, setMapLevel] = useState(3);
 
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
   // 위치 정보 ID 조회 함수
   const fetchLocationId = useCallback(async (address: string) => {
     try {
@@ -433,47 +435,49 @@ const HomePage: React.FC = () => {
     [fetchLocationId],
   );
 
-  // 현재 위치 클릭 핸들러 로직 최적화
+  // 현재 위치 정보 업데이트 함수
+  const updateUserLocation = useCallback(async () => {
+    try {
+      const locationInfo = await locationService.getCurrentLocation();
+      if (locationInfo) {
+        setUserLocation({
+          lat: parseFloat(locationInfo.latitude),
+          lng: parseFloat(locationInfo.longitude),
+        });
+      }
+    } catch (error) {
+      console.error('현재 위치 정보 업데이트 실패:', error);
+    }
+  }, []);
+
+  // 컴포넌트 마운트 시 현재 위치 정보 가져오기
+  useEffect(() => {
+    updateUserLocation();
+  }, [updateUserLocation]);
+
+  // handleCurrentLocationClick 함수 수정
   const handleCurrentLocationClick = useCallback(async () => {
     try {
       setLoading(true);
+      await updateUserLocation();
 
-      // 개선된 LocationService.getCurrentLocation() 사용
+      if (userLocation) {
+        setMapCenter(userLocation);
+        setMapLevel(3);
+      }
+
       const locationInfo = await locationService.getCurrentLocation();
-
-      if (locationInfo && locationInfo.formatted_address) {
-        // 주소 상태 업데이트
+      if (locationInfo?.formatted_address) {
         setLocation(locationInfo.formatted_address);
-
-        // 지도 중심 좌표 설정
-        const lat = parseFloat(locationInfo.latitude);
-        const lng = parseFloat(locationInfo.longitude);
-
-        if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-          setMapCenter({ lat, lng });
-          setMapLevel(3);
-        }
-
-        // 위치 ID 조회하여 locationId 업데이트
         await fetchLocationId(locationInfo.formatted_address);
-        // locationId가 업데이트되면 useEffect가 자동으로 loadMapData()를 호출함
-      } else {
-        // 기본 위치 정보 사용
-        setLocation(DEFAULT_LOCATION);
-        setMapCenter(DEFAULT_COORDINATES);
-        await fetchLocationId(DEFAULT_LOCATION);
       }
     } catch (error) {
       console.error('위치 이동 중 오류:', error);
       setError('위치 정보를 갱신하는 중 오류가 발생했습니다');
-      // 기본 위치 정보 사용
-      setLocation(DEFAULT_LOCATION);
-      setMapCenter(DEFAULT_COORDINATES);
-      await fetchLocationId(DEFAULT_LOCATION);
     } finally {
       setLoading(false);
     }
-  }, [fetchLocationId]);
+  }, [fetchLocationId, userLocation]);
 
   const handleMarkerClick = (markerId: string) => {
     navigate(`/storages/${markerId}`);
@@ -580,6 +584,8 @@ const HomePage: React.FC = () => {
           showCurrentLocation={true}
           onCurrentLocationClick={handleCurrentLocationClick}
           locationInfoId={locationId?.toString()}
+          userLocation={userLocation}
+          userLocationMarkerImage="/current-location-marker.png" // 현재 위치 마커 이미지
         />
       </MapWrapper>
 
