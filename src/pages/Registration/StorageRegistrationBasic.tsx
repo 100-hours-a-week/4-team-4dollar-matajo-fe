@@ -13,7 +13,7 @@ import { ROUTES } from '../../constants/routes';
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#5E5CFD',
+  primary: '#280081',
   background: '#F5F5FF',
   lightGray: '#EFEFEF',
   darkText: '#464646',

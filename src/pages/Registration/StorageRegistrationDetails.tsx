@@ -8,7 +8,7 @@ import { DaumAddressData } from '../../services/KakaoMapService';
 
 const RegistrationContainer = styled.div`
   width: 100%;
-  max-width: 375px;
+  max-width: 480px;
   min-height: 100vh;
   margin: 0 auto;
   background-color: #f5f5ff;
@@ -18,7 +18,7 @@ const RegistrationContainer = styled.div`
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#5E5CFD',
+  primary: '#280081',
   background: '#F5F5FF',
   lightGray: '#EFEFEF',
   darkText: '#464646',
@@ -91,8 +91,11 @@ const SectionTitle = styled.h3`
 const OptionGroupContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
-  margin: 0 15px;
+  width: 100%;
+  max-width: 350px;
+  margin: 0 auto;
   gap: 10px;
+  justify-content: flex-start;
 `;
 
 // 옵션 버튼 (위치 선택)
@@ -149,8 +152,8 @@ const NextButton = styled.button`
   width: 349px;
   height: 47px;
   position: relative;
-  left: 13px;
-  margin-top: 30px;
+  margin: 30px auto;
+  display: block;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;

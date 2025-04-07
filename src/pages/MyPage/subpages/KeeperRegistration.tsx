@@ -29,6 +29,7 @@ const Container = styled.div`
   background: white;
   padding-top: 30px; /* 헤더 높이만큼 패딩 */
   padding-bottom: 120px; /* 버튼 높이만큼 패딩 */
+  min-height: 100vh;
 `;
 
 // 페이지 타이틀

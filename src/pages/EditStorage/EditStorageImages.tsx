@@ -21,7 +21,7 @@ import {
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#5E5CFD',
+  primary: '#280081',
   background: '#F5F5FF',
   lightGray: '#EFEFEF',
   darkText: '#464646',
@@ -35,7 +35,7 @@ const THEME = {
 // 전체 페이지 레이아웃 컨테이너
 const RegistrationContainer = styled.div`
   width: 100%;
-  max-width: 375px;
+  max-width: 480px;
   min-height: 100vh;
   margin: 0 auto;
   background-color: #f5f5ff;
@@ -92,7 +92,7 @@ const ProgressText = styled.span`
 
 // 폼 컨테이너
 const FormContainer = styled.div`
-  padding: 0 25px;
+  padding: 0 40px;
   margin-top: 20px;
 `;
 
@@ -107,7 +107,7 @@ const RequiredMark = styled.span`
 
 // 이미지 업로드 영역 (대표 이미지)
 const MainImageUploadArea = styled.div`
-  width: 320px;
+  width: 400px;
   height: 200px;
   background: ${THEME.lightGray};
   border-radius: 5px;
@@ -122,7 +122,7 @@ const MainImageUploadArea = styled.div`
 
 // 이미지 업로드 영역 (추가 이미지)
 const DetailImageUploadArea = styled.div`
-  width: 320px;
+  width: 400px;
   height: 154px;
   background: ${THEME.lightGray};
   border-radius: 5px;
@@ -246,11 +246,11 @@ const DeleteButton = styled.button`
 
 // 완료 버튼
 const CompleteButton = styled.button`
-  width: 325px;
+  width: 400px;
   height: 47px;
   position: relative;
   margin-top: 30px;
-  margin-left: 25px;
+  margin-left: 40px;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;
@@ -353,6 +353,8 @@ interface InitialImages {
   mainImage: string | null;
   detailImages: string[];
 }
+
+const MAX_SINGLE_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const EditStorageImages: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -515,6 +517,12 @@ const EditStorageImages: React.FC = () => {
       return;
     }
 
+    // 메인 이미지 필수 체크
+    if (!state.mainImage) {
+      showToast('대표 이미지는 필수입니다.');
+      return;
+    }
+
     setState(prev => ({ ...prev, isLoading: true }));
 
     try {
@@ -544,26 +552,22 @@ const EditStorageImages: React.FC = () => {
           if (state.mainImageData) {
             // 이동된 메인 이미지 URL을 사용
             finalMainImage = moveResponse.data.moved_images[0].image_url;
+          }
 
-            // 상세 이미지 처리 시작 인덱스 조정
-            const detailImgStartIndex = state.mainImageData ? 1 : 0;
+          // 상세 이미지 처리
+          if (state.detailImagesData.length > 0) {
+            // 이동된 상세 이미지 URL들을 매핑
+            const newDetailImageUrls = moveResponse.data.moved_images
+              .slice(state.mainImageData ? 1 : 0)
+              .map(img => img.image_url);
 
-            // 새로 업로드된 상세 이미지가 있다면
-            if (state.detailImagesData.length > 0) {
-              // 이동된 상세 이미지 URL들을 매핑
-              const newDetailImageUrls = moveResponse.data.moved_images
-                .slice(detailImgStartIndex)
-                .map(img => img.image_url);
-
-              // 기존 상세 이미지(변경되지 않은)와 새 상세 이미지 병합
-              // 여기서는 mainImage가 변경되고 detailImages도 변경된 경우
-              finalDetailImages = newDetailImageUrls;
-            }
-          } else if (state.detailImagesData.length > 0) {
-            // 메인 이미지는 변경되지 않았고 상세 이미지만 변경된 경우
-            const newDetailImageUrls = moveResponse.data.moved_images.map(img => img.image_url);
-
-            finalDetailImages = newDetailImageUrls;
+            // 기존 상세 이미지와 새 상세 이미지 병합
+            finalDetailImages = [
+              ...state.detailImages.filter(
+                img => !state.detailImagesData.some(data => data.image_url === img),
+              ),
+              ...newDetailImageUrls,
+            ];
           }
         }
       }
@@ -655,7 +659,7 @@ const EditStorageImages: React.FC = () => {
   };
 
   // 토스트 메시지 표시 함수
-  const showToast = (message: string) => {
+  const showToast = (message: string, type: string = 'success') => {
     setState(prev => ({ ...prev, toastMessage: message, toastVisible: true }));
     setTimeout(() => setState(prev => ({ ...prev, toastVisible: false })), 3000);
   };
@@ -700,6 +704,18 @@ const EditStorageImages: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 파일 형식 검사
+    const validImageTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/heic', 'image/webp'];
+    if (!validImageTypes.includes(file.type)) {
+      showToast('PNG, JPG, JPEG, HEIC, WEBP 형식의 이미지만 가능합니다.', 'error');
+      return;
+    }
+
+    if (file.size > MAX_SINGLE_FILE_SIZE) {
+      showToast('10MB 이하의 이미지만 가능합니다.', 'error');
+      return;
+    }
+
     try {
       // presigned URL 요청
       const presignedUrlResponse = await getPresignedUrl(file.name, file.type, 'post');
@@ -733,12 +749,35 @@ const EditStorageImages: React.FC = () => {
     const remainingSlots = 4 - state.detailImages.length;
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
+    if (filesToProcess.length === 0) {
+      showToast('최대 4장까지만 업로드 가능합니다.');
+      return;
+    }
+
     try {
       const newImagesData: ImageData[] = [];
       const newImages: string[] = [];
       const newFiles: File[] = [];
 
       for (const file of filesToProcess) {
+        // 파일 형식 검사
+        const validImageTypes = [
+          'image/png',
+          'image/jpg',
+          'image/jpeg',
+          'image/heic',
+          'image/webp',
+        ];
+        if (!validImageTypes.includes(file.type)) {
+          showToast('PNG, JPG, JPEG, HEIC, WEBP 형식의 이미지만 가능합니다.', 'error');
+          continue;
+        }
+
+        if (file.size > MAX_SINGLE_FILE_SIZE) {
+          showToast('10MB 이하의 이미지만 가능합니다.', 'error');
+          continue;
+        }
+
         // presigned URL 요청
         const presignedUrlResponse = await getPresignedUrl(file.name, file.type, 'post');
 
@@ -756,14 +795,15 @@ const EditStorageImages: React.FC = () => {
         newFiles.push(file);
       }
 
-      setState(prev => ({
-        ...prev,
-        detailImages: [...prev.detailImages, ...newImages],
-        detailImagesData: [...prev.detailImagesData, ...newImagesData],
-        detailImagesFile: [...prev.detailImagesFile, ...newFiles],
-      }));
-
-      console.log('서브이미지 업로드 완료');
+      if (newImages.length > 0) {
+        setState(prev => ({
+          ...prev,
+          detailImages: [...prev.detailImages, ...newImages],
+          detailImagesData: [...prev.detailImagesData, ...newImagesData],
+          detailImagesFile: [...prev.detailImagesFile, ...newFiles],
+        }));
+        console.log('서브이미지 업로드 완료');
+      }
     } catch (error) {
       console.error('이미지 업로드 실패:', error);
       showToast('이미지 업로드에 실패했습니다.');
@@ -772,15 +812,18 @@ const EditStorageImages: React.FC = () => {
 
   // 메인 이미지 삭제 핸들러
   const handleMainImageDelete = () => {
-    setState(prev => ({ ...prev, mainImage: null, mainImageFile: null }));
+    setState(prev => ({ ...prev, mainImage: null, mainImageFile: null, mainImageData: null }));
     console.log('메인이미지 삭제 완료');
   };
 
   // 상세 이미지 삭제 핸들러
   const handleDetailImageDelete = (index: number) => {
-    const newDetails = state.detailImages.filter((_, i) => i !== index);
-    const newFiles = state.detailImagesFile.filter((_, i) => i !== index);
-    setState(prev => ({ ...prev, detailImages: newDetails, detailImagesFile: newFiles }));
+    setState(prev => ({
+      ...prev,
+      detailImages: prev.detailImages.filter((_, i) => i !== index),
+      detailImagesData: prev.detailImagesData.filter((_, i) => i !== index),
+      detailImagesFile: prev.detailImagesFile.filter((_, i) => i !== index),
+    }));
     console.log('서브이미지 삭제 완료');
   };
 
@@ -842,7 +885,7 @@ const EditStorageImages: React.FC = () => {
               type="file"
               ref={mainImageInputRef}
               onChange={handleMainImageChange}
-              accept="image/*"
+              accept="image/png,image/jpg,image/jpeg,image/heic,image/webp"
               style={{ display: 'none' }}
             />
 
@@ -894,7 +937,7 @@ const EditStorageImages: React.FC = () => {
               type="file"
               ref={detailImagesInputRef}
               onChange={handleDetailImagesChange}
-              accept="image/*"
+              accept="image/png,image/jpg,image/jpeg,image/heic,image/webp"
               multiple
               style={{ display: 'none' }}
             />

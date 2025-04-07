@@ -89,9 +89,11 @@ export interface StorageRegistrationRequest {
 
 // 보관소 등록 응답 인터페이스
 export interface StorageRegistrationResponse {
-  id: string;
   success: boolean;
-  message?: string;
+  message: string;
+  data: {
+    post_id: number;
+  };
 }
 
 // 보관소 수정 요청 인터페이스
