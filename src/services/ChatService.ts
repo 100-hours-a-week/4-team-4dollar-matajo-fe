@@ -618,7 +618,7 @@ class ChatService {
   //     });
   // }
 
-  // 이미지 업로드
+  /* // 이미지 업로드
   public uploadImage(file: File): Promise<string> {
     const formData = new FormData();
     formData.append('chatImage', file);
@@ -636,7 +636,7 @@ class ChatService {
         }
         throw new Error(response.data.message || '이미지 업로드에 실패했습니다');
       });
-  }
+  } */
 
   // WebSocket을 통한 메시지 읽음 상태 업데이트
   public markMessagesAsReadViaWebSocket(roomId: number, userId: number): Promise<boolean> {

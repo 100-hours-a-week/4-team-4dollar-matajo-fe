@@ -10,6 +10,7 @@ import moment from 'moment-timezone';
 import client from '../../services/api/client';
 import { uploadImage } from '../../services/api/modules/image';
 import FcmService from '../../services/FcmService';
+import Toast from '../../components/common/Toast';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -117,7 +118,7 @@ const MessageBubbleBase = styled.div`
 
 // 상대방 메시지 버블
 const ReceivedMessageBubble = styled(MessageBubbleBase)`
-  background: ${THEME.primary};
+  background: #2f234a;
   color: white;
 `;
 
@@ -187,7 +188,7 @@ const ConfirmButton = styled.button`
   right: 10px; // 변경: 우측 기준으로 변경
   left: auto; // 변경: left 제거
   top: 60px;
-  background: rgba(56, 53, 252, 0.8);
+  background: #280081;
   border-radius: 10px;
   border: none;
   display: flex;
@@ -327,8 +328,10 @@ const UploadStatus = styled.div<{ visible: boolean }>`
 
 // 연결 상태 표시
 const ConnectionStatus = styled.div<{ connected: boolean }>`
-  position: fixed;
-  top: 47px;
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  top: 0;
   left: 0;
   right: 0;
   background-color: ${props => (props.connected ? 'green' : 'red')};
@@ -421,6 +424,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // 에러 상태
   const [error, setError] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
 
   // 채팅 컨테이너 참조
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -446,8 +450,8 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 키보드 높이 상태 추가
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  // 스크롤 위치 상태 추가
-  const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
+  // 스크롤 상태 관리
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   // 새 메시지 사운드 객체 생성
   const messageSound = useRef<HTMLAudioElement | null>(null);
@@ -740,7 +744,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       // 방금 받은 메시지가 다른 사람이 보낸 것이고, 스크롤이 하단에 있지 않은 경우
       if (
         lastMessage.sender_id !== currentUserId &&
-        !isScrolledToBottom &&
+        !isAtBottom &&
         !lastMessage.content.includes('사용자가 채팅방에 입장했습니다')
       ) {
         // 새 메시지 알림 토스트 표시
@@ -755,7 +759,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         playNotificationSound();
       }
     }
-  }, [messages, currentUserId, isScrolledToBottom]);
+  }, [messages, currentUserId, isAtBottom]);
 
   // 메시지 로드 함수 수정
   const loadPreviousMessages = async () => {
@@ -799,8 +803,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   const handleScroll = () => {
     if (chatContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-      const isBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
-      setIsScrolledToBottom(isBottom);
+      setIsAtBottom(Math.abs(scrollHeight - scrollTop - clientHeight) < 10);
     }
   };
 
@@ -817,30 +820,36 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   useEffect(() => {
     const scrollToBottom = () => {
       if (chatContainerRef.current) {
-        const container = chatContainerRef.current;
-        container.scrollTo({
-          top: container.scrollHeight,
+        chatContainerRef.current.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
           behavior: 'smooth',
         });
       }
     };
 
     // 메시지가 변경될 때마다 스크롤 (하단에 있을 때만)
-    if (isScrolledToBottom) {
+    if (isAtBottom) {
       scrollToBottom();
     }
-  }, [messages, isScrolledToBottom]);
+  }, [messages, isAtBottom]);
+
+  // 스크롤을 최하단으로 이동시키는 함수 정의
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   // 새 메시지 수신 시 스크롤다운
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.sender_id === currentUserId) {
-      // 내가 보낸 메시지인 경우 항상 스크롤다운
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTo({
-          top: chatContainerRef.current.scrollHeight,
-          behavior: 'smooth',
-        });
+    if (lastMessage) {
+      // 하단에 있을때 스크롤 다운운
+      if (isAtBottom) {
+        scrollToBottom();
       }
     }
   }, [messages, currentUserId]);
@@ -879,10 +888,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
       // 메시지 전송 후 강제로 스크롤다운
       if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTo({
-          top: chatContainerRef.current.scrollHeight,
-          behavior: 'smooth',
-        });
+        scrollToBottom();
       }
     } catch (error) {
       console.error('메시지 전송 실패:', error);
@@ -936,11 +942,11 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     const file = files[0];
 
     // 이미지 확장자 및 크기 검사
-    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/webp'];
     const maxFileSize = 10 * 1024 * 1024; // 10MB 제한
 
     if (!validImageTypes.includes(file.type)) {
-      setError('JPEG, PNG, GIF, WEBP 형식의 이미지만 업로드 가능합니다.');
+      setError('JPEG, JPG, PNG, HEIC, WEBP 형식의 이미지만 업로드 가능합니다.');
       return;
     }
 
@@ -1193,6 +1199,19 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
     transition: isMobile ? 'bottom 0.3s ease' : 'none',
   };
 
+  // 에러 메시지 표시를 위한 useEffect
+  useEffect(() => {
+    if (error) {
+      setShowToast(true);
+      const timer = setTimeout(() => {
+        setShowToast(false);
+        setError(null); // 에러 메시지 초기화
+      }, 3000); // 3초 후에 토스트 메시지 사라짐
+
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   return (
     <Container>
       {/* 상단 헤더 */}
@@ -1214,19 +1233,16 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       <ChatContainer
         ref={chatContainerRef}
         style={{
-          paddingBottom: isScrolledToBottom ? '60px' : '20px',
+          paddingBottom: isAtBottom ? '60px' : '20px',
         }}
       >
-        {error && (
-          <ErrorMessage>
-            {error}
-            {!isConnected && (
-              <div>
-                <RetryButton onClick={handleReconnect}>다시 연결</RetryButton>
-              </div>
-            )}
-          </ErrorMessage>
-        )}
+        {/* 에러 메시지 토스트 */}
+        <Toast
+          message={error || ''}
+          visible={showToast}
+          type="error"
+          onClose={() => setShowToast(false)}
+        />
 
         {groupedMessages.map((item, index) => {
           if ('isDateHeader' in item) {
@@ -1265,10 +1281,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
                 </TimeReadGroup>
                 <SentMessageBubble>
                   {message.message_type === MessageType.IMAGE ? (
-                    <ImageMessage
-                      src={`${message.content.startsWith('http') ? '' : API_BACKEND_URL}${message.content}`}
-                      alt="첨부된 이미지"
-                    />
+                    <ImageMessage src={message.content} alt="첨부된 이미지" />
                   ) : (
                     <MessageContent>{message.content}</MessageContent>
                   )}
@@ -1284,10 +1297,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
                   <MessageNickname>{message.sender_nickname}</MessageNickname>
                 )}
                 {message.message_type === MessageType.IMAGE ? (
-                  <ImageMessage
-                    src={`${message.content.startsWith('http') ? '' : API_BACKEND_URL}${message.content}`}
-                    alt="첨부된 이미지"
-                  />
+                  <ImageMessage src={message.content} alt="첨부된 이미지" />
                 ) : (
                   <MessageContent>{message.content}</MessageContent>
                 )}
