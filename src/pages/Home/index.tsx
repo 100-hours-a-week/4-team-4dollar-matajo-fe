@@ -13,6 +13,7 @@ import LocationService, {
   DEFAULT_LOCATION,
 } from '../../services/LocationService';
 import { getPostsByLocation, getLocalDeals } from '../../services/api/modules/place';
+import { getRecentTrades } from '../../services/api/modules/trades';
 import { getLocationPosts, LocationPost } from '../../services/api/modules/storage';
 import { Marker } from './MapBottomSheet';
 import LocationSearchModal from './LocationSearchModal';
@@ -215,7 +216,7 @@ const HomePage: React.FC = () => {
       const [postsResponse, dealsResponse, tradesResponse] = await Promise.all([
         getPostsByLocation(locationId),
         getLocalDeals(locationId),
-        client.get(API_PATHS.TRADES.RECENT_BY_LOCATION),
+        getRecentTrades(locationId),
       ]);
 
       // 1. 게시글 데이터 처리
@@ -257,17 +258,18 @@ const HomePage: React.FC = () => {
       }
 
       // 3. 최근 거래내역 처리
-      if (tradesResponse.data.success) {
-        const trades = tradesResponse.data.data.map((trade: any) => ({
-          id: trade.id,
-          name: trade.productName,
-          price: trade.tradePrice,
-          post_tags: [trade.category, `${trade.storagePeriod}일`],
-          imageUrl: trade.mainImage,
+      if (tradesResponse.success && Array.isArray(tradesResponse.data)) {
+        const trades = tradesResponse.data.map(trade => ({
+          id: trade.trade_date, // unique key로 trade_date 사용
+          name: trade.product_name,
+          price: trade.trade_price,
+          post_tags: [trade.category, `${trade.storage_period}일`],
+          imageUrl: trade.main_image,
           location: location.split(' ')[1] || ' ',
         }));
         setRecentItems(trades);
       } else {
+        console.warn('거래 내역 응답 형식 오류:', tradesResponse);
         setRecentItems([]);
       }
     } catch (error) {
