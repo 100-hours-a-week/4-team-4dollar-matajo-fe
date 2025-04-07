@@ -522,7 +522,19 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
             <PriceInput
               type="number"
               value={price}
-              onChange={e => setPrice(e.target.value)}
+              onChange={e => {
+                const inputRaw = e.target.value;
+                let newValue = inputRaw.replace(/\D/g, '');
+
+                if (newValue.length > 7) {
+                  setPriceError('가격은 최대 7자리까지 입력 가능합니다.');
+                } else {
+                  setPriceError('');
+                }
+
+                newValue = newValue.slice(0, 7);
+                setPrice(newValue);
+              }}
               placeholder="가격을 입력해주세요"
             />
             <WonText>원</WonText>
