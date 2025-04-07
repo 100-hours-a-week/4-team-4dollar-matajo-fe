@@ -321,6 +321,7 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
   const [itemNameError, setItemNameError] = useState<string>('');
   const [dateError, setDateError] = useState<string>('');
   const [priceError, setPriceError] = useState<string>('');
+  const [itemTypeError, setItemTypeError] = useState<string>('');
 
   // 로딩 상태
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -330,7 +331,18 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
   const [showToast, setShowToast] = useState<boolean>(false);
 
   // 카테고리 목록
-  const itemTypes = ['식물', '전자기기', '가전', '스포츠', '식품', '의류', '서적', '취미', '가구'];
+  const itemTypes = [
+    '식물',
+    '전자기기',
+    '가전',
+    '스포츠',
+    '식품',
+    '의류',
+    '서적',
+    '취미',
+    '가구',
+    '기타',
+  ];
 
   // 토스트 메시지 표시 함수
   const displayToast = (message: string) => {
@@ -377,7 +389,14 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
 
   // 카테고리 선택 핸들러
   const selectItemType = (itemType: string) => {
-    setSelectedItemType(itemType === selectedItemType ? '' : itemType);
+    // 현재 선택된 값과 같다면 토글(선택 취소) 처리
+    const newSelected = itemType === selectedItemType ? '' : itemType;
+    setSelectedItemType(newSelected);
+
+    // 유형 하나라도 선택되면 에러 메시지 삭제
+    if (newSelected) {
+      setItemTypeError('');
+    }
   };
 
   // 유효성 검사
@@ -409,6 +428,14 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
       isValid = false;
     } else {
       setPriceError('');
+    }
+
+    // 물품 유형 선택 검사
+    if (!selectedItemType) {
+      setItemTypeError('물품 유형을 반드시 선택해주세요.');
+      isValid = false;
+    } else {
+      setItemTypeError('');
     }
 
     return isValid;
@@ -463,7 +490,17 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
           <Input
             type="text"
             value={itemName}
-            onChange={e => setItemName(e.target.value)}
+            maxLength={15}
+            onChange={e => {
+              const newValue = e.target.value;
+              setItemName(newValue);
+
+              if (newValue.length >= 15) {
+                setItemNameError('보관할 물품은 최대 15글자까지 입력 가능합니다.');
+              } else {
+                setItemNameError('');
+              }
+            }}
             placeholder="물품명을 입력해주세요"
           />
           {itemNameError && <HelperText>{itemNameError}</HelperText>}
@@ -480,6 +517,7 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
               </TagButton>
             ))}
           </TagContainer>
+          {itemTypeError && <HelperText>{itemTypeError}</HelperText>}
 
           <Label>보관 날짜</Label>
           <DateInputContainer>
@@ -512,20 +550,32 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
             <PriceInput
               type="number"
               value={price}
-              onChange={e => setPrice(e.target.value)}
+              onChange={e => {
+                const inputRaw = e.target.value;
+                let newValue = inputRaw.replace(/\D/g, '');
+
+                if (newValue.length > 7) {
+                  setPriceError('가격은 최대 7자리까지 입력 가능합니다.');
+                } else {
+                  setPriceError('');
+                }
+
+                newValue = newValue.slice(0, 7);
+                setPrice(newValue);
+              }}
               placeholder="가격을 입력해주세요"
             />
             <WonText>원</WonText>
           </PriceContainer>
           {priceError && <HelperText>{priceError}</HelperText>}
 
-          <Label>추가 메시지 (선택)</Label>
+          {/* <Label>추가 메시지 (선택)</Label>
           <Input
             type="text"
             value={message}
             onChange={e => setMessage(e.target.value)}
             placeholder="보관 시 참고할 내용이 있다면 입력해주세요"
-          />
+          /> */}
 
           {isLoading ? (
             <ButtonWithSpinner>
