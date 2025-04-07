@@ -280,27 +280,34 @@ const MyTrade: React.FC = () => {
   return (
     <Container>
       <div style={{ marginBottom: '20px' }}>
-        {trades.map(trade => (
-          <TradeCard key={trade.trade_id} onClick={() => handleTradeItemClick(trade.trade_id)}>
-            <div>
-              <TradeStatus>{trade.keeper_status ? '맡아줬어요' : '보관했어요'}</TradeStatus>
+        {trades.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
+            거래 내역이 없습니다.
+          </div>
+        ) : (
+          trades.map(trade => (
+            <TradeCard key={trade.trade_id} onClick={() => handleTradeItemClick(trade.trade_id)}>
               <div>
-                <TradeTitle>{trade.product_name}</TradeTitle>
+                <TradeStatus>{trade.keeper_status ? '맡아줬어요' : '보관했어요'}</TradeStatus>
+                <div>
+                  <TradeTitle>{trade.product_name}</TradeTitle>
+                </div>
               </div>
-            </div>
-            <TradeInfo>
-              {trade.post_address} | {trade.start_date}~
-              {
-                new Date(
-                  new Date(trade.start_date).getTime() + trade.storage_period * 24 * 60 * 60 * 1000,
-                )
-                  .toISOString()
-                  .split('T')[0]
-              }
-            </TradeInfo>
-            <TradeAmount>총 {trade.trade_price.toLocaleString()}원</TradeAmount>
-          </TradeCard>
-        ))}
+              <TradeInfo>
+                {trade.post_address} | {trade.start_date}~
+                {
+                  new Date(
+                    new Date(trade.start_date).getTime() +
+                      trade.storage_period * 24 * 60 * 60 * 1000,
+                  )
+                    .toISOString()
+                    .split('T')[0]
+                }
+              </TradeInfo>
+              <TradeAmount>총 {trade.trade_price.toLocaleString()}원</TradeAmount>
+            </TradeCard>
+          ))
+        )}
       </div>
 
       {/* 거래 상세 정보 모달 */}
