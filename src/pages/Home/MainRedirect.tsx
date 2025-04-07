@@ -1,13 +1,8 @@
-// src/pages/Home/MainRedirect.tsx (Updated)
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { isLoggedIn } from '../../utils/api/authUtils';
+import { isLoggedIn, checkAndRefreshToken } from '../../utils/api/authUtils';
 import { ROUTES } from '../../constants/routes';
 
-/**
- * 메인 리다이렉트 컴포넌트
- * 인증 상태에 따라 메인 페이지 또는 로그인 페이지로 리다이렉트
- */
 const MainRedirect: React.FC = () => {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
@@ -17,11 +12,18 @@ const MainRedirect: React.FC = () => {
     console.log('MainRedirect 컴포넌트 렌더링, 현재 경로:', location.pathname);
 
     // 토큰을 확인하여 인증 상태 저장
-    const checkAuthStatus = () => {
+    const checkAuthStatus = async () => {
       try {
+        // 토큰 재발급 시도
+        const tokenValid = await checkAndRefreshToken();
+
+        // 토큰 재발급 후 로그인 상태 확인
         const authStatus = isLoggedIn();
+
+        console.log('토큰 유효성:', tokenValid);
         console.log('인증 상태 확인:', authStatus ? '로그인됨' : '로그인되지 않음');
-        setIsAuthenticated(authStatus);
+
+        setIsAuthenticated(tokenValid && authStatus);
       } catch (error) {
         console.error('인증 상태 확인 오류:', error);
         setIsAuthenticated(false);
@@ -45,8 +47,8 @@ const MainRedirect: React.FC = () => {
     };
   }, [location.pathname]);
 
+  // 이하 코드는 기존과 동일
   if (isLoading) {
-    // 로딩 상태 표시
     return (
       <div className="flex justify-center items-center h-screen flex-col gap-5">
         <img src="/tajo-logo.png" alt="Logo" className="w-24 h-24" />

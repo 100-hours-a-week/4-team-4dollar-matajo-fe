@@ -22,6 +22,7 @@ import { createTrade, CreateTradeRequest } from '../../services/api/modules/trad
 import { LocalDeal } from '../../types/place.types';
 import client from '../../services/api/client';
 import { API_PATHS } from '../../constants/api';
+import { checkAndRefreshToken } from '../../utils/api/authUtils';
 
 const Container = styled.div`
   width: 100%;
@@ -281,60 +282,70 @@ const HomePage: React.FC = () => {
 
   // initializeApp에서는 getCurrentLocation의 반환값(주소)에 대해 한 번만 fetchLocationId()를 호출합니다.
   useEffect(() => {
-    if (!isLoggedIn()) {
-      navigate('/login');
-      return;
-    }
+    const checkTokenAndInitialize = async () => {
+      const isTokenValid = await checkAndRefreshToken();
+      if (!isTokenValid) {
+        navigate('/login', { replace: true });
+        return;
+      }
 
-    const initializeApp = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+      if (!isLoggedIn()) {
+        navigate('/login');
+        return;
+      }
 
-        console.log('앱 초기화 시작');
-        // 1. 현재 위치 가져오기 - 개선된 LocationService.getCurrentLocation() 사용
-        const locationInfo = await locationService.getCurrentLocation();
+      const initializeApp = async () => {
+        try {
+          setLoading(true);
+          setError(null);
 
-        if (locationInfo && locationInfo.formatted_address) {
-          console.log('현재 위치 조회 성공:', locationInfo);
+          console.log('앱 초기화 시작');
+          // 1. 현재 위치 가져오기 - 개선된 LocationService.getCurrentLocation() 사용
+          const locationInfo = await locationService.getCurrentLocation();
 
-          // 위치 정보 업데이트
-          setLocation(locationInfo.formatted_address);
+          if (locationInfo && locationInfo.formatted_address) {
+            console.log('현재 위치 조회 성공:', locationInfo);
 
-          // 지도 중심 업데이트
-          const lat = parseFloat(locationInfo.latitude);
-          const lng = parseFloat(locationInfo.longitude);
-          if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-            console.log('초기 지도 중심 설정:', { lat, lng });
-            setMapCenter({ lat, lng });
+            // 위치 정보 업데이트
+            setLocation(locationInfo.formatted_address);
+
+            // 지도 중심 업데이트
+            const lat = parseFloat(locationInfo.latitude);
+            const lng = parseFloat(locationInfo.longitude);
+            if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+              console.log('초기 지도 중심 설정:', { lat, lng });
+              setMapCenter({ lat, lng });
+            }
+
+            // 2. 위치 ID 조회
+            console.log('위치 ID 조회 시작');
+            const locationId = await fetchLocationId(locationInfo.formatted_address);
+            console.log('위치 ID 조회 결과:', locationId);
+          } else {
+            console.warn('현재 위치 정보를 가져올 수 없어 기본 위치를 사용합니다.');
+            setLocation(DEFAULT_LOCATION);
+            setMapCenter(DEFAULT_COORDINATES);
+
+            // 기본 위치의 ID 조회
+            await fetchLocationId(DEFAULT_LOCATION);
           }
+        } catch (error) {
+          console.error('앱 초기화 오류:', error);
+          setError('앱을 초기화하는 중 오류가 발생했습니다');
 
-          // 2. 위치 ID 조회
-          console.log('위치 ID 조회 시작');
-          const locationId = await fetchLocationId(locationInfo.formatted_address);
-          console.log('위치 ID 조회 결과:', locationId);
-        } else {
-          console.warn('현재 위치 정보를 가져올 수 없어 기본 위치를 사용합니다.');
+          // 기본 위치 사용
           setLocation(DEFAULT_LOCATION);
           setMapCenter(DEFAULT_COORDINATES);
-
-          // 기본 위치의 ID 조회
           await fetchLocationId(DEFAULT_LOCATION);
+
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('앱 초기화 오류:', error);
-        setError('앱을 초기화하는 중 오류가 발생했습니다');
+      };
 
-        // 기본 위치 사용
-        setLocation(DEFAULT_LOCATION);
-        setMapCenter(DEFAULT_COORDINATES);
-        await fetchLocationId(DEFAULT_LOCATION);
-
-        setLoading(false);
-      }
+      await initializeApp();
     };
 
-    initializeApp();
+    checkTokenAndInitialize();
   }, []);
 
   // locationId가 변경되면 지도 데이터를 로드합니다.
@@ -466,11 +477,18 @@ const HomePage: React.FC = () => {
     navigate(`/storages/${markerId}`);
   };
 
-  const handleRegisterClick = () => {
-    if (!isLoggedIn()) {
+  const handleRegisterClick = async () => {
+    const isTokenValid = await checkAndRefreshToken();
+    if (!isTokenValid) {
       navigate('/login', { replace: true });
       return;
     }
+
+    if (!isLoggedIn()) {
+      navigate('/login');
+      return;
+    }
+
     if (isKeeper()) {
       navigate(ROUTES.STORAGE_REGISTER, { replace: true });
     } else {

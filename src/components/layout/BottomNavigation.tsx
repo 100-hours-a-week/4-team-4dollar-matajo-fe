@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 // useAuth와 authUtils 임포트 수정
 import { useAuth } from '../../hooks/auth';
-import { isLoggedIn } from '../../utils/api/authUtils';
+import { isLoggedIn, checkAndRefreshToken } from '../../utils/api/authUtils';
 
 // 테마 컬러 상수 정의
 const THEME = {
@@ -105,16 +105,25 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabCha
   ];
 
   // 탭 클릭 핸들러
-  const handleTabClick = (tab: TabType, path: string) => {
+  const handleTabClick = async (tab: TabType, path: string) => {
     if (onTabChange) {
       onTabChange(tab);
-    } else {
-      if (!isAuthenticated && path !== '/main') {
-        navigate('/login');
-        return;
-      }
-      navigate(path);
+      return;
     }
+
+    const isTokenValid = await checkAndRefreshToken();
+    if (!isTokenValid) {
+      console.log('제발 여기여라!!!!!!!!!!!!!!!!!');
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    if (!isAuthenticated && path !== '/main') {
+      navigate('/login');
+      return;
+    }
+
+    navigate(path);
   };
 
   return (
