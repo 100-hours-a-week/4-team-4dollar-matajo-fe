@@ -97,6 +97,13 @@ const Divider = styled.div`
   margin: 16px auto;
 `;
 
+const NoDataMessage = styled.div`
+  text-align: center;
+  color: #bbb;
+  font-size: 14px;
+  margin-top: 40px;
+`;
+
 const BottomNav = styled.div`
   width: 375px;
   height: 76px;
@@ -272,7 +279,7 @@ const MyTrade: React.FC = () => {
   if (error) {
     return (
       <Container>
-        <div>{error}</div>
+        <NoDataMessage>거래내역이 없습니다.</NoDataMessage>
       </Container>
     );
   }
