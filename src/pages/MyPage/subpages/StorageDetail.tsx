@@ -17,7 +17,7 @@ import Toast from '../../../components/common/Toast';
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#3A00E5',
+  primary: '#280081',
   primaryLight: '#5E5CFD',
   primaryTransparent: 'rgba(56.26, 53.49, 252.61, 0.80)',
   background: '#F5F5FF',
@@ -159,7 +159,7 @@ const ChatButton = styled.div`
   padding: 3px 0;
   margin-top: 4px;
   position: relative;
-  background: ${THEME.primaryTransparent};
+  background: ${THEME.primary};
   border-radius: 10px;
   display: flex;
   justify-content: center;

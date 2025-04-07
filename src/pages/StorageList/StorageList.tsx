@@ -34,7 +34,7 @@ const Container = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 40px;
-  padding-top: 67px; 
+  padding-top: 67px;
 `;
 
 // 필터 태그 기본 스타일

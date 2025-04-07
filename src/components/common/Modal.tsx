@@ -67,7 +67,7 @@ const CancelButton = styled(Button)`
 
 // 확인 버튼 - 원래 스타일로 돌려놓음 (보라색 배경, 흰색 텍스트)
 const ConfirmButton = styled(Button)`
-  background-color: #3a00e5;
+  background-color: #280081;
   color: white;
   border: none;
 

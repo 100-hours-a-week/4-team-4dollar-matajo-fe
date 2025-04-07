@@ -18,7 +18,7 @@ moment.tz.setDefault('Asia/Seoul');
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#3A00E5',
+  primary: '#280081',
   primaryLight: '#5E5CFD',
   highlight: '#605EFD',
   grayText: '#6F6F6F',
