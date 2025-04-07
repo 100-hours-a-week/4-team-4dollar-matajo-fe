@@ -108,7 +108,8 @@ const FilterContainer = styled.div`
   padding: 5px 10px;
   margin-left: 20px;
   margin-right: 20px;
-  margin-bottom: 15px;
+  margin-top: 7px;
+  margin-bottom: 5px;
   display: flex;
   align-items: center;
 `;
@@ -539,12 +540,6 @@ const StorageList: React.FC = () => {
     <Container ref={containerRef}>
       {/* 페이지 헤더 */}
       <Header title="보관소 리스트" />
-
-      <SearchContainer>
-        <SearchInput>
-          <SearchIcon>⌕</SearchIcon>
-        </SearchInput>
-      </SearchContainer>
 
       {/* 필터 */}
       <FilterContainer>
