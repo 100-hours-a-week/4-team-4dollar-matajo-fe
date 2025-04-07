@@ -755,6 +755,46 @@ class ChatService {
   public removeErrorListener(callback: (error: string) => void): void {
     this.errorCallbacks = this.errorCallbacks.filter(cb => cb !== callback);
   }
+
+  public subscribeToReadStatus(roomId: number, callback: (data: any) => void): StompSubscription {
+    if (!this.stompClient?.connected) {
+      throw new Error('STOMP 클라이언트가 연결되지 않았습니다.');
+    }
+
+    const subscription = this.stompClient.subscribe(
+      `/topic/chat/${roomId}/status`,
+      (message: IMessage) => {
+        try {
+          const data = JSON.parse(message.body);
+          if (data.type === 'READ_STATUS_UPDATE') {
+            callback(data);
+          }
+        } catch (error) {
+          console.error('읽음 상태 처리 중 오류:', error);
+        }
+      },
+    );
+
+    // 구독 정보 저장 (나중에 필요시 해제할 수 있도록)
+    const subscriptionId = `read-status-${roomId}`;
+    this.subscriptions.set(subscriptionId, subscription);
+
+    return subscription;
+  }
+
+  public addSubscription(subscriptionId: string, subscription: StompSubscription): void {
+    // subscriptions 맵에 구독 추가
+    this.subscriptions.set(subscriptionId, subscription);
+  }
+
+  public removeSubscription(subscriptionId: string): void {
+    // 특정 구독 제거
+    const subscription = this.subscriptions.get(subscriptionId);
+    if (subscription) {
+      subscription.unsubscribe();
+      this.subscriptions.delete(subscriptionId);
+    }
+  }
 }
 
 export default ChatService;
