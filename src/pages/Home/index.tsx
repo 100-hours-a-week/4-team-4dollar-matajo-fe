@@ -27,7 +27,7 @@ import { checkAndRefreshToken } from '../../utils/api/authUtils';
 
 const Container = styled.div`
   width: 100%;
-  height: 100vh;
+  height: calc(100vh - 120px);
   position: relative;
   background: #ffffff;
   overflow: hidden;

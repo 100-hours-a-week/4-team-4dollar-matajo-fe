@@ -11,7 +11,7 @@ import { DaumAddressData } from '../../services/KakaoMapService';
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#5E5CFD',
+  primary: '#280081',
   background: '#F5F5FF',
   lightGray: '#EFEFEF',
   darkText: '#464646',
@@ -445,6 +445,22 @@ const EditStorageBasic: React.FC = () => {
       return;
     }
 
+    // 가격 입력 필드의 경우 7자리 제한 및 0으로 시작하는 숫자 방지
+    if (name === 'preferPrice') {
+      // 0으로 시작하는 숫자 방지
+      if (value.length > 1 && value.startsWith('0')) {
+        return;
+      }
+      // 7자리 제한
+      if (value.length > 7) {
+        return;
+      }
+      // 0원 입력 방지
+      if (value === '0') {
+        return;
+      }
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
     setErrors(prev => ({ ...prev, [name]: '' }));
   };
@@ -501,6 +517,12 @@ const EditStorageBasic: React.FC = () => {
       isValid = false;
     } else if (isNaN(Number(formData.preferPrice)) || Number(formData.preferPrice) <= 0) {
       newErrors.preferPrice = '유효한 가격을 입력해주세요.';
+      isValid = false;
+    } else if (formData.preferPrice.length > 7) {
+      newErrors.preferPrice = '가격은 최대 7자리까지 입력 가능합니다.';
+      isValid = false;
+    } else if (formData.preferPrice.startsWith('0')) {
+      newErrors.preferPrice = '0으로 시작하는 가격은 입력할 수 없습니다.';
       isValid = false;
     }
 
@@ -863,6 +885,7 @@ const EditStorageBasic: React.FC = () => {
                 isError={!!errors.preferPrice}
                 isFocused={focused.preferPrice}
                 hasValue={!!formData.preferPrice}
+                max={9999999}
               />
             </div>
           </FormContainer>

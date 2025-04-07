@@ -400,18 +400,18 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   const currentYRef = useRef<number>(0);
 
   const snapPoints = {
-    closed: window.innerHeight * 0.85,
+    closed: window.innerHeight * 0.75,
     'half-expanded': window.innerHeight * 0.5,
-    full: window.innerHeight * 0.2,
+    full: window.innerHeight * 0.15,
   };
 
   const calculateSnapPoint = (currentTop: number): BottomSheetState => {
     const viewportHeight = window.innerHeight;
     const currentPercentage = (currentTop / viewportHeight) * 100;
     const distances = {
-      closed: Math.abs(currentPercentage - 85),
+      closed: Math.abs(currentPercentage - 75),
       'half-expanded': Math.abs(currentPercentage - 50),
-      full: Math.abs(currentPercentage - 20),
+      full: Math.abs(currentPercentage - 15),
     };
     return Object.entries(distances).reduce((a, b) => (a[1] < b[1] ? a : b))[0] as BottomSheetState;
   };
