@@ -4,16 +4,14 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { isLoggedIn, isKeeper } from '../../utils/api/authUtils';
 import Modal from '../../components/common/Modal';
-import { LocationIdData, LocationIdResponse } from '../../services/api/modules/storage';
 import { LocalDeal } from '../../types/place.types';
-import { getRecentTrades, RecentTrade } from '../../services/api/modules/trades';
 import { checkAndRefreshToken } from '../../utils/api/authUtils';
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#3A00E5',
+  primary: '#280081',
   primaryLight: '#5E5CFD',
-  primaryAlpha: 'rgba(56.26, 53.49, 252.61, 0.80)',
+  primaryAlpha: 'rgba(40, 0, 129, 0.80)',
   background: '#F5F5FF',
   darkText: '#464646',
   lightGrayText: '#9C9C9C',
@@ -544,7 +542,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
                 fillRule="evenodd"
                 clipRule="evenodd"
                 d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z"
-                fill="#3A00E5"
+                fill="#280081"
               />
             </svg>
           </div>

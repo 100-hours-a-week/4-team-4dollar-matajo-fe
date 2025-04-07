@@ -7,7 +7,7 @@ import { isLoggedIn, checkAndRefreshToken } from '../../utils/api/authUtils';
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#3A00E5', // 선택되었을 때
+  primary: '#280081', // 선택되었을 때
   inactive: '#61646B', // 선택 안 되었을 때
   background: '#FFFFFF',
   gray: '#9E9E9E',
