@@ -322,25 +322,6 @@ const Dot = styled.div<{ isActive: boolean }>`
   transition: background-color 0.3s ease;
 `;
 
-const ScrollToTopButton = styled.div`
-  width: 59px;
-  height: 55px;
-  position: sticky;
-  left: 390px;
-  bottom: 0;
-  opacity: 0.8;
-  cursor: pointer;
-  z-index: 99;
-  transition: opacity 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    opacity: 1;
-  }
-`;
-
 // 위치 아이콘 SVG 컴포넌트 추가
 const LocationIconSVG = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -348,14 +329,6 @@ const LocationIconSVG = () => (
       d="M10 1.875C6.89844 1.875 4.375 4.39844 4.375 7.5C4.375 11.5625 10 18.125 10 18.125C10 18.125 15.625 11.5625 15.625 7.5C15.625 4.39844 13.1016 1.875 10 1.875ZM10 9.375C8.96484 9.375 8.125 8.53516 8.125 7.5C8.125 6.46484 8.96484 5.625 10 5.625C11.0352 5.625 11.875 6.46484 11.875 7.5C11.875 8.53516 11.0352 9.375 10 9.375Z"
       fill="#5E5CFD"
     />
-  </svg>
-);
-
-// 스크롤 상단 이동 버튼 SVG 컴포넌트 수정 (화살표 방향 위로)
-const ScrollTopIconSVG = () => (
-  <svg width="59" height="55" viewBox="0 0 59 55" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="29.5" cy="27.5" r="27.5" fill="#5E5CFD" fillOpacity="0.9" />
-    <path d="M29.5 15L17 27.5H25.375V40H33.625V27.5H42L29.5 15Z" fill="white" />
   </svg>
 );
 
@@ -464,7 +437,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
   const [isAuthor, setIsAuthor] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const lastRequestTimeRef = useRef<number>(0);
-  const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
+  const REQUEST_INTERVAL = 100; // 0.1초 간격으로 요청 제한
 
   // 주소 검색 기능 추가
   const searchAddressToCoordinate = useCallback(
@@ -604,13 +577,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     } catch (error) {
       console.error('채팅방 생성 실패:', error);
       showToastMessage('채팅방 생성에 실패했습니다. 다시 시도해주세요.', 'error');
-    }
-  };
-
-  const handleScrollToTop = () => {
-    // 컨테이너 요소가 있으면 해당 요소의 스크롤 위치를 맨 위로 이동
-    if (containerRef.current) {
-      containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -1266,10 +1232,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                 </KeeperInfo>
               </KeeperCard>
             </KeeperSection>
-            {/* 스크롤 상단 이동 버튼 */}
-            <ScrollToTopButton onClick={handleScrollToTop}>
-              <ScrollTopIconSVG />
-            </ScrollToTopButton>
             <BottomNavigation activeTab="보관소" />
           </ContentContainer>
         ) : (
