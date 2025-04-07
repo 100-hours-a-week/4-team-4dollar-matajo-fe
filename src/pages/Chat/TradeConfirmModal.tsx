@@ -463,7 +463,17 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
           <Input
             type="text"
             value={itemName}
-            onChange={e => setItemName(e.target.value)}
+            maxLength={15}
+            onChange={e => {
+              const newValue = e.target.value;
+              setItemName(newValue);
+
+              if (newValue.length > 15) {
+                setItemNameError('보관할 물품은 최대 15글자까지 입력 가능합니다.');
+              } else {
+                setItemNameError('');
+              }
+            }}
             placeholder="물품명을 입력해주세요"
           />
           {itemNameError && <HelperText>{itemNameError}</HelperText>}
@@ -519,13 +529,13 @@ const TradeConfirmModal: React.FC<TradeConfirmModalProps> = ({
           </PriceContainer>
           {priceError && <HelperText>{priceError}</HelperText>}
 
-          <Label>추가 메시지 (선택)</Label>
+          {/* <Label>추가 메시지 (선택)</Label>
           <Input
             type="text"
             value={message}
             onChange={e => setMessage(e.target.value)}
             placeholder="보관 시 참고할 내용이 있다면 입력해주세요"
-          />
+          /> */}
 
           {isLoading ? (
             <ButtonWithSpinner>
