@@ -319,7 +319,7 @@ const HomePage: React.FC = () => {
 
                 // 지도 중심을 현재 위치보다 약간 위로 설정
                 setMapCenter({
-                  lat: lat + 0.002, // 약 400m 위로 조정
+                  lat: lat - 0.002, // 약 400m 위로 조정
                   lng: lng,
                 });
 
@@ -450,7 +450,7 @@ const HomePage: React.FC = () => {
             if (coords) {
               // 게시글 위치보다 살짝 위로 이동 (더 넓은 시야 제공)
               setMapCenter({
-                lat: coords.lat + 0.002, // 약간 위쪽으로 조정
+                lat: coords.lat - 0.002, // 약간 위쪽으로 조정
                 lng: coords.lng,
               });
             } else {
@@ -498,7 +498,7 @@ const HomePage: React.FC = () => {
 
             // 지도 중심을 현재 위치보다 약간 위로 설정 (마커가 BottomSheet에 가려지지 않도록)
             setMapCenter({
-              lat: lat + 0.002, // 약 400m 위로 조정
+              lat: lat - 0.002, // 약 400m 위로 조정
               lng: lng,
             });
 
