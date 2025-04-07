@@ -27,8 +27,8 @@ const Title = styled.span`
 `;
 
 const TradeCard = styled.div`
-  width: 293px;
-  height: 95px;
+  width: 90%;
+  height: 100px;
   background: rgba(217, 217, 217, 0);
   border-radius: 10px;
   border: 1px #e0e0e0 solid;

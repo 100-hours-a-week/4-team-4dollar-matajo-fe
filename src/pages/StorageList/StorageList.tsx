@@ -37,43 +37,6 @@ const Container = styled.div`
   padding-bottom: 40px;
 `;
 
-// 검색창 컨테이너
-const SearchContainer = styled.div`
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  margin-top: 10px;
-  margin-bottom: 15px;
-`;
-
-// 검색창 컴포넌트
-const SearchInput = styled.div`
-  width: 294px;
-  height: 45px;
-  border-radius: 30px;
-  border: 1px ${THEME.primaryLight} solid;
-  position: relative;
-`;
-
-// 돋보기 아이콘
-const SearchIcon = styled.div`
-  width: 20px;
-  height: 40px;
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  text-align: center;
-  color: ${THEME.primaryLight};
-  font-size: 43.75px;
-  font-family: 'Noto Sans KR';
-  font-weight: 500;
-  letter-spacing: 0.04px;
-  line-height: 0.7;
-`;
-
 // 필터 태그 기본 스타일
 const FilterTag = styled.div<{ isActive: boolean }>`
   display: inline-flex;
@@ -559,12 +522,6 @@ const StorageList: React.FC = () => {
     <Container ref={containerRef}>
       {/* 페이지 헤더 */}
       <Header title="보관소 리스트" />
-
-      <SearchContainer>
-        <SearchInput>
-          <SearchIcon>⌕</SearchIcon>
-        </SearchInput>
-      </SearchContainer>
 
       {/* 필터 */}
       <FilterContainer>
