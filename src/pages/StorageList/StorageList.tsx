@@ -108,8 +108,7 @@ const FilterContainer = styled.div`
   padding: 5px 10px;
   margin-left: 20px;
   margin-right: 20px;
-  margin-top: 7px;
-  margin-bottom: 5px;
+  margin-bottom: 15px;
   display: flex;
   align-items: center;
 `;
@@ -336,6 +335,82 @@ const StorageList: React.FC = () => {
     }
   };
 
+  const fetchStorageFilterList = async (reset: boolean = true, queryParam: string) => {
+    try {
+      // 요청 간격 제한 확인
+      const now = Date.now();
+      if (now - lastRequestTimeRef.current < REQUEST_INTERVAL) {
+        console.log('요청 간격이 너무 짧습니다. 대기 중...');
+        return;
+      }
+      lastRequestTimeRef.current = now;
+
+      if (reset) {
+        setLoading(true);
+        setAllDataLoaded(false);
+        setOffset(0);
+      } else {
+        setIsLoadingMore(true);
+      }
+      setError(null);
+
+      const currentOffset = reset ? 0 : offset;
+
+      const response = await client.get(API_PATHS.POSTS.FILTER, {
+        params: {
+          tags: queryParam,
+          offset: currentOffset,
+          limit: limit,
+        },
+      });
+      if (response.data.success) {
+        const items = response.data.data || [];
+
+        console.log('API 응답:', response.data);
+        console.log('추출된 아이템:', items.length, '개');
+        console.log('현재 offset:', currentOffset);
+
+        if (reset) {
+          setAllStorageItems(items);
+          setStorageItems(items);
+        } else {
+          setAllStorageItems(prev => [...prev, ...items]);
+          setStorageItems(prev => [...prev, ...items]);
+        }
+
+        // 다음 offset 설정 - 1씩 증가
+        setOffset(currentOffset + 1);
+
+        // 결과가 limit보다 작으면 모든 데이터가 로드된 것으로 간주
+        if (items.length < limit) {
+          console.log('모든 데이터 로드 완료 (더 이상 데이터 없음)');
+          setAllDataLoaded(true);
+        } else {
+          console.log('추가 데이터 로드 필요');
+          setAllDataLoaded(false);
+        }
+      } else {
+        console.error('API 응답 실패:', response.data.message);
+        setError(`데이터를 불러오는 데 실패했습니다: ${response.data.message}`);
+
+        // 404 에러인 경우 모든 데이터가 로드된 것으로 간주
+        if (response.data.message === 'not_found_posts_page') {
+          console.log('페이지를 찾을 수 없음: 모든 데이터 로드 완료');
+          setAllDataLoaded(true);
+        }
+      }
+    } catch (err) {
+      console.error('보관소 목록 로드 오류:', err);
+      setError('데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      if (reset) {
+        setLoading(false);
+      } else {
+        setIsLoadingMore(false);
+      }
+    }
+  };
+
   // 초기 데이터 로드
   useEffect(() => {
     fetchStorageList(true);
@@ -354,7 +429,21 @@ const StorageList: React.FC = () => {
       const [entry] = entries;
       if (entry.isIntersecting && !loading && !isLoadingMore && !allDataLoaded) {
         console.log('로드 트리거 감지: 추가 데이터 로드');
-        fetchStorageList(false);
+
+        // 필터가 적용된 경우
+        if (
+          appliedFilters.storageLocation.length > 0 ||
+          appliedFilters.itemTypes.length > 0 ||
+          appliedFilters.storageTypes.length > 0 ||
+          appliedFilters.durationOptions.length > 0 ||
+          appliedFilters.isValuableSelected
+        ) {
+          const queryParam = createQueryParam(appliedFilters);
+          fetchStorageFilterList(false, queryParam);
+        } else {
+          // 필터가 적용되지 않은 경우
+          fetchStorageList(false);
+        }
       }
     };
 
@@ -371,69 +460,7 @@ const StorageList: React.FC = () => {
         observerRef.current.disconnect();
       }
     };
-  }, [loading, isLoadingMore, allDataLoaded, offset]);
-
-  // 필터링 함수
-  const filterItemsLocally = (items: StorageItem[], filters: FilterOptions) => {
-    if (isFilterEmpty(filters)) {
-      return items;
-    }
-
-    return items.filter(item => {
-      // 태그가 없는 경우 필터링에서 제외
-      if (!item.post_tags) {
-        return false;
-      }
-
-      // 보관 위치 필터
-      if (filters.storageLocation.length > 0) {
-        const hasMatchingLocation = filters.storageLocation.some(location =>
-          item.post_tags.includes(location),
-        );
-        if (!hasMatchingLocation) return false;
-      }
-
-      // 물건 유형 필터
-      if (filters.itemTypes.length > 0) {
-        const hasMatchingItemType = filters.itemTypes.some(type => item.post_tags.includes(type));
-        if (!hasMatchingItemType) return false;
-      }
-
-      // 보관 방식 필터
-      if (filters.storageTypes.length > 0) {
-        const hasMatchingStorageType = filters.storageTypes.some(type =>
-          item.post_tags.includes(type),
-        );
-        if (!hasMatchingStorageType) return false;
-      }
-
-      // 보관 기간 필터
-      if (filters.durationOptions.length > 0) {
-        const hasMatchingDuration = filters.durationOptions.some(duration =>
-          item.post_tags.includes(duration),
-        );
-        if (!hasMatchingDuration) return false;
-      }
-
-      // 귀중품 필터
-      if (filters.isValuableSelected && !item.post_tags.includes('귀중품')) {
-        return false;
-      }
-
-      return true;
-    });
-  };
-
-  // 필터가 비어있는지 확인하는 함수
-  const isFilterEmpty = (filters: FilterOptions) => {
-    return (
-      filters.storageLocation.length === 0 &&
-      filters.itemTypes.length === 0 &&
-      filters.storageTypes.length === 0 &&
-      filters.durationOptions.length === 0 &&
-      !filters.isValuableSelected
-    );
-  };
+  }, [loading, isLoadingMore, allDataLoaded, offset, appliedFilters]);
 
   // 필터 적용 핸들러
   const handleApplyFilter = (options: FilterOptions) => {
@@ -441,33 +468,25 @@ const StorageList: React.FC = () => {
     setAppliedFilters(options);
     setIsFilterModalOpen(false);
 
-    // 로컬 필터링 적용 (백엔드 필터링 지원 없음)
-    setLoading(true);
+    // 백엔드 필터링 호출
+    const queryParam = createQueryParam(options);
+    fetchStorageFilterList(true, queryParam);
+  };
 
-    // 필터링 로직
-    const filteredItems = filterItemsLocally(allStorageItems, options);
-    console.log(`필터링 결과: ${filteredItems.length}개 항목`);
-    setStorageItems(filteredItems);
+  const createQueryParam = (filterOptions: FilterOptions): string => {
+    const { storageLocation, itemTypes, storageTypes, durationOptions, isValuableSelected } =
+      filterOptions;
 
-    // 필터링 결과가 없으면 모든 데이터가 로드된 것으로 간주
-    if (filteredItems.length === 0) {
-      setAllDataLoaded(true);
-    } else {
-      setAllDataLoaded(false);
-    }
+    // 각 항목을 문자열로 변환하고 ','로 결합
+    const combinedOptions = [
+      ...storageLocation,
+      ...itemTypes,
+      ...storageTypes,
+      ...durationOptions,
+      isValuableSelected ? '귀중품' : '', // boolean 값을 문자열로 변환
+    ].join(',');
 
-    // 로딩 완료
-    setLoading(false);
-
-    // 필터가 적용되면 '전체' 필터를 제외하고 선택된 필터 카테고리들을 표시
-    const activeCategories = [];
-    if (options.storageLocation.length > 0) activeCategories.push('보관위치');
-    if (options.storageTypes.length > 0) activeCategories.push('보관방식');
-    if (options.itemTypes.length > 0) activeCategories.push('물건유형');
-    if (options.durationOptions.length > 0) activeCategories.push('보관기간');
-    if (options.isValuableSelected) activeCategories.push('귀중품');
-
-    setActiveFilterCategories(activeCategories.length > 0 ? activeCategories : ['전체']);
+    return combinedOptions;
   };
 
   // 필터 초기화 함수
@@ -540,6 +559,12 @@ const StorageList: React.FC = () => {
     <Container ref={containerRef}>
       {/* 페이지 헤더 */}
       <Header title="보관소 리스트" />
+
+      <SearchContainer>
+        <SearchInput>
+          <SearchIcon>⌕</SearchIcon>
+        </SearchInput>
+      </SearchContainer>
 
       {/* 필터 */}
       <FilterContainer>

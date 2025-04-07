@@ -290,7 +290,70 @@ const ChatroomList: React.FC = () => {
     };
   }, []);
 
-  // 채팅방 목록 불러오기
+  // src/pages/Chat/ChatroomList.tsx
+  useEffect(() => {
+    let webSocketCleanup: (() => void) | null = null;
+    let fcmCleanup: (() => void) | null = null;
+
+    // WebSocket 연결 및 메시지 수신 처리
+    const setupWebSocketSubscription = async () => {
+      try {
+        await chatService.connect();
+
+        // 모든 기존 채팅방에 대해 구독 설정
+        const subscriptions: number[] = [];
+        for (const chatroom of chatrooms) {
+          await chatService.subscribeToChatRoom(
+            chatroom.chatRoomId,
+            (message: ChatMessageResponseDto) => {
+              // 새 메시지 수신 시 해당 채팅방만 업데이트
+              handleNewChatroom(message);
+            },
+          );
+          subscriptions.push(chatroom.chatRoomId);
+        }
+
+        // 구독 해제 함수 반환
+        webSocketCleanup = () => {
+          subscriptions.forEach(roomId => chatService.unsubscribeFromChatRoom(roomId));
+        };
+      } catch (error) {
+        console.error('WebSocket 연결 실패:', error);
+      }
+    };
+
+    // FCM 메시지 수신 처리
+    const setupFcmListener = () => {
+      const fcmService = FcmService.getInstance();
+
+      const handleFcmMessage = async (payload: any) => {
+        // FCM 메시지에서 새 메시지 추출
+        const newMessage: ChatMessageResponseDto = payload.data?.message;
+        if (newMessage) {
+          // 새 메시지로 채팅방 목록 업데이트
+          handleNewChatroom(newMessage);
+        }
+      };
+
+      return fcmService.onMessage(handleFcmMessage);
+    };
+
+    // WebSocket 및 FCM 리스너 설정
+    setupWebSocketSubscription();
+    fcmCleanup = setupFcmListener();
+
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      if (webSocketCleanup) {
+        webSocketCleanup();
+      }
+      if (fcmCleanup) {
+        fcmCleanup();
+      }
+    };
+  }, [chatrooms]); // chatrooms 변경 시에도 재설정
+
+  // 채팅방 목록 로드 함수 개선
   const loadChatrooms = async () => {
     try {
       setLoading(true);
@@ -304,6 +367,7 @@ const ChatroomList: React.FC = () => {
         return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
       });
 
+      // 상태 즉시 업데이트
       setChatrooms(sortedChatRooms);
     } catch (err) {
       console.error('채팅방 목록 로드 실패:', err);
@@ -314,44 +378,42 @@ const ChatroomList: React.FC = () => {
     }
   };
 
-  // 새로운 채팅방 처리
-  const handleNewChatroom = (newChatroom: ChatMessageResponseDto) => {
-    const convertedChatroom: ChatRoomResponseDto = {
-      chatRoomId: newChatroom.room_id,
-      keeperStatus: false,
-      userNickname: newChatroom.sender_nickname,
-      postMainImage: '',
-      lastMessage: newChatroom.content,
-      lastMessageTime: newChatroom.created_at,
-      unreadCount: 0,
-      postAddress: '',
-    };
-
+  const handleNewChatroom = (newMessage: ChatMessageResponseDto) => {
     setChatrooms(prevChatrooms => {
-      // 중복 체크 후 새로운 채팅방 추가
-      const existingRoom = prevChatrooms.find(
-        room => room.chatRoomId === convertedChatroom.chatRoomId,
+      // 해당 채팅방 찾기
+      const existingRoomIndex = prevChatrooms.findIndex(
+        room => room.chatRoomId === newMessage.room_id,
       );
-      if (existingRoom) {
+
+      if (existingRoomIndex !== -1) {
         // 기존 채팅방이 있다면 마지막 메시지와 시간을 업데이트
-        const updatedRooms = prevChatrooms.map(room =>
-          room.chatRoomId === existingRoom.chatRoomId
-            ? {
-                ...room,
-                lastMessage: convertedChatroom.lastMessage,
-                lastMessageTime: convertedChatroom.lastMessageTime,
-                unreadCount: room.unreadCount + 1,
-              }
-            : room,
-        );
+        const updatedRooms = [...prevChatrooms];
+        updatedRooms[existingRoomIndex] = {
+          ...updatedRooms[existingRoomIndex],
+          lastMessage: newMessage.content,
+          lastMessageTime: newMessage.created_at,
+          unreadCount: updatedRooms[existingRoomIndex].unreadCount + 1,
+        };
 
         // 정렬된 목록 반환
         return updatedRooms.sort(
           (a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime(),
         );
       } else {
+        // 새로운 채팅방 추가 (기존 로직 유지)
+        const newChatroom: ChatRoomResponseDto = {
+          chatRoomId: newMessage.room_id,
+          keeperStatus: false,
+          userNickname: newMessage.sender_nickname,
+          postMainImage: '',
+          lastMessage: newMessage.content,
+          lastMessageTime: newMessage.created_at,
+          unreadCount: 1,
+          postAddress: '',
+        };
+
         // 새로운 채팅방 추가 후 정렬
-        return [...prevChatrooms, { ...convertedChatroom, unreadCount: 1 }].sort(
+        return [...prevChatrooms, newChatroom].sort(
           (a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime(),
         );
       }
@@ -577,7 +639,7 @@ const ChatroomList: React.FC = () => {
   return (
     <>
       {/* 상단 헤더 */}
-      <Header title="채팅 리스트" />
+      <Header title="채팅 리스트" showBackButton={true} onBack={() => navigate('/')} />
 
       <Container>
         {/* 에러 메시지 표시 */}

@@ -10,7 +10,6 @@ import moment from 'moment-timezone';
 import client from '../../services/api/client';
 import { uploadImage } from '../../services/api/modules/image';
 import FcmService from '../../services/FcmService';
-import Toast from '../../components/common/Toast';
 
 // moment 타임존 설정
 moment.tz.setDefault('Asia/Seoul');
@@ -31,7 +30,7 @@ const THEME = {
 const Container = styled.div`
   width: 100%;
   max-width: 480px;
-  height: calc(100vh - 30px);
+  height: calc(100vh - 100px);
   position: relative;
   background: ${THEME.background};
   overflow: auto;
@@ -453,20 +452,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   // 새 메시지 사운드 객체 생성
   const messageSound = useRef<HTMLAudioElement | null>(null);
 
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
-
-  // 토스트 메시지 표시 함수
-  const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-    }, 3000);
-  };
-
   useEffect(() => {
     // 기존 오디오 객체가 있으면 제거
     if (messageSound.current) {
@@ -595,11 +580,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
   // 채팅방 컴포넌트에서 연결 상태 관리 개선
   useEffect(() => {
-    if (!roomId) {
-      console.error('roomId가 필요합니다');
-      handleBack();
-      return;
-    }
+    if (!roomId) return;
 
     setError(null);
     setRoomTitle(`채팅방 ${roomId}`);
@@ -617,16 +598,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         setIsConnected(true);
         setError(null);
         console.log('채팅 서버 연결됨');
-
-        // 메시지 읽음 상태 업데이트
-        try {
-          if (roomId) {
-            await chatService.markMessagesAsRead(roomId, currentUserId);
-            console.log('메시지 읽음 처리 완료');
-          }
-        } catch (error) {
-          console.error('메시지 읽음 처리 실패:', error);
-        }
 
         // 메시지 구독
         console.log('채팅방 구독 시도 중...');
@@ -656,17 +627,43 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
             const newMessages = [...prev, message];
             // WebSocket으로 받은 메시지도 savedMessages에 저장
             setSavedMessages(newMessages);
+
+            // 상대방이 보낸 메시지이고 읽지 않은 경우에만 읽음 처리
+            if (message.sender_id !== currentUserId && !message.read_status) {
+              chatService.markMessagesAsReadViaWebSocket(roomId, currentUserId).catch(e => {
+                console.error('읽음 처리 실패:', e);
+              });
+            }
+
             return newMessages;
           });
-
-          // 상대방이 보낸 메시지인 경우 읽음 처리
-          if (message.sender_id !== currentUserId) {
-            // 메시지 읽음 처리
-            chatService.markMessagesAsRead(roomId, currentUserId).catch(e => {
-              console.error('읽음 처리 실패:', e);
-            });
-          }
         });
+
+        // 읽음 상태 구독 로직
+        const handleReadStatusUpdate = (data: any) => {
+          console.log('읽음 상태 업데이트:', data);
+
+          setMessages(prevMessages =>
+            prevMessages.map(msg => {
+              if (data.messageIds && data.messageIds.includes(msg.message_id)) {
+                return { ...msg, read_status: true };
+              }
+              return msg;
+            }),
+          );
+        };
+
+        const readStatusSubscriptionId = `read-status-${roomId}`;
+
+        try {
+          const readStatusSubscription = chatService.subscribeToReadStatus(
+            roomId,
+            handleReadStatusUpdate,
+          );
+          chatService.addSubscription(readStatusSubscriptionId, readStatusSubscription);
+        } catch (error) {
+          console.error('읽음 상태 구독 실패:', error);
+        }
 
         console.log('채팅방 구독 성공');
       } catch (error) {
@@ -889,7 +886,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
       }
     } catch (error) {
       console.error('메시지 전송 실패:', error);
-      showToastMessage('메시지 전송에 실패했습니다. 네트워크 연결을 확인해주세요.', 'error');
+      setError('메시지 전송에 실패했습니다. 네트워크 연결을 확인해주세요.');
     }
   };
 
@@ -1085,7 +1082,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   const handleReadStatus = async (message: ChatMessageResponseDto) => {
     if (!message.read_status && message.sender_id !== currentUserId && roomId) {
       try {
-        await chatService.markMessagesAsRead(roomId, currentUserId);
+        await chatService.markMessagesAsReadViaWebSocket(roomId, currentUserId);
         // 메시지 상태 업데이트
         setMessages(prev =>
           prev.map(msg =>
@@ -1342,12 +1339,6 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={handleTradeConfirm}
         chatroomId={roomId || 0}
-      />
-      <Toast
-        message={toastMessage}
-        visible={showToast}
-        onClose={() => setShowToast(false)}
-        type={toastType}
       />
     </Container>
   );
