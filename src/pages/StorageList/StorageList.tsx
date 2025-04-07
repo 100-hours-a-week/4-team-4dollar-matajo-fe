@@ -11,13 +11,13 @@ import { API_PATHS } from '../../constants/api';
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#3A00E5',
-  primaryLight: '#5E5CFD',
-  primaryAlpha: 'rgba(94, 92, 253, 0.60)',
+  primary: '#280081',
+  primaryLight: '#29145A',
+  primaryAlpha: '#29145A',
   background: '#F5F5FF',
   darkText: '#464646',
   lightGrayText: '#999999',
-  priceText: '#3A5BFF',
+  priceText: '#280081',
   borderColor: '#EFEFF0',
   white: '#FFFFFF',
 };
@@ -34,44 +34,7 @@ const Container = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 40px;
-  margin-top: 0;
-`;
-
-// 검색창 컨테이너
-const SearchContainer = styled.div`
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  margin-top: 10px;
-  margin-bottom: 15px;
-`;
-
-// 검색창 컴포넌트
-const SearchInput = styled.div`
-  width: 294px;
-  height: 45px;
-  border-radius: 30px;
-  border: 1px ${THEME.primaryLight} solid;
-  position: relative;
-`;
-
-// 돋보기 아이콘
-const SearchIcon = styled.div`
-  width: 20px;
-  height: 40px;
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  text-align: center;
-  color: ${THEME.primaryLight};
-  font-size: 43.75px;
-  font-family: 'Noto Sans KR';
-  font-weight: 500;
-  letter-spacing: 0.04px;
-  line-height: 0.7;
+  padding-top: 67px; /* 헤더(47px) + 필터영역(50px) */
 `;
 
 // 필터 태그 기본 스타일
@@ -82,14 +45,13 @@ const FilterTag = styled.div<{ isActive: boolean }>`
   height: 28px;
   padding: 0 12px;
   margin: 0 3px;
-  border-radius: 30px;
+  border-radius: 31px;
   background: ${props => (props.isActive ? THEME.primaryAlpha : 'transparent')};
-  border: ${props =>
-    props.isActive ? `1px ${THEME.primaryLight} solid` : `1px ${THEME.primaryLight} solid`};
-  color: ${props => (props.isActive ? THEME.white : THEME.lightGrayText)};
+  border: 0.5px solid ${props => (props.isActive ? THEME.primary : '#868686')};
+  color: ${props => (props.isActive ? THEME.white : '#868686')};
   font-size: 12px;
   font-family: 'Noto Sans KR';
-  font-weight: 400;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
 `;
@@ -98,26 +60,30 @@ const FilterTag = styled.div<{ isActive: boolean }>`
 const FilterContainer = styled.div`
   width: 100%;
   max-width: 480px;
-  min-height: 40px;
+  height: 44px;
   overflow-x: auto;
   white-space: nowrap;
   scrollbar-width: none; /* Firefox */
   &::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Edge */
   }
-  padding: 5px 10px;
-  margin-left: 20px;
-  margin-right: 20px;
-  margin-bottom: 15px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
+  position: fixed;
+  top: 47px; /* 헤더 높이 */
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 `;
 
 // 아이템 그리드 컨테이너
 const ItemGridContainer = styled.div`
   width: 100%;
   max-width: 480px;
-  padding: 10px 15px 76px;
+  padding: 5px 15px 76px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
@@ -127,8 +93,9 @@ const ItemGridContainer = styled.div`
 const StorageItem = styled.div`
   display: flex;
   flex-direction: column;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   cursor: pointer;
+  width: 100%;
 
   &:hover {
     opacity: 0.9;
@@ -165,7 +132,7 @@ const StorageName = styled.div`
   font-family: 'Noto Sans KR';
   font-weight: 700;
   letter-spacing: 0.02px;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 `;
 
 // 보관소 위치
@@ -175,7 +142,7 @@ const StorageLocation = styled.div`
   font-family: 'Noto Sans KR';
   font-weight: 350;
   letter-spacing: 0.01px;
-  margin-bottom: 5px;
+  margin-bottom: 2px;
 `;
 
 // 보관소 가격
@@ -640,12 +607,6 @@ const StorageList: React.FC = () => {
     <Container ref={containerRef}>
       {/* 페이지 헤더 */}
       <Header title="보관소 리스트" />
-
-      <SearchContainer>
-        <SearchInput>
-          <SearchIcon>⌕</SearchIcon>
-        </SearchInput>
-      </SearchContainer>
 
       {/* 필터 */}
       <FilterContainer>
