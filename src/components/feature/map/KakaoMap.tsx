@@ -262,16 +262,14 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           const userLng = position.coords.longitude;
           setCurrentUserLocation({ lat: userLat, lng: userLng });
 
-          // 정확한 사용자 위치로 이동 (추가 조정 없이)
-          const currentLatLng = new window.kakao.maps.LatLng(userLat, userLng);
+          // 정확한 사용자 위치로 이동 (마커가 BottomSheet에 가려지지 않도록 위로 조정)
+          const currentLatLng = new window.kakao.maps.LatLng(userLat - 0.002, userLng);
           kakaoMapRef.current.setCenter(currentLatLng);
           kakaoMapRef.current.setLevel(3); // 현재 위치 버튼 클릭시 레벨 3으로 고정
 
-          // 사용자 위치 마커 업데이트
-
           // 이동 후 중심 위치 변경 이벤트 발생
           if (onCenterChanged) {
-            onCenterChanged(userLat, userLng);
+            onCenterChanged(userLat - 0.002, userLng);
           }
 
           // 외부 콜백 호출
@@ -292,13 +290,13 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     } else {
       alert('이 브라우저에서는 위치 정보를 지원하지 않습니다.');
     }
-  }, [onCenterChanged, onCurrentLocationClick, addUserLocationMarker]);
+  }, [onCenterChanged, onCurrentLocationClick]);
 
-  // 중심 위치 변경 시 지도 업데이트 (메모이제이션된 중심 좌표 사용)
+  // 중심 위치 변경 시 지도 업데이트 (애니메이션 제거)
   useEffect(() => {
     if (kakaoMapRef.current && memoizedCenter && isMapInitialized) {
-      // 부드럽게 중심 좌표 변경 (애니메이션 적용)
-      kakaoMapRef.current.panTo(memoizedCenter);
+      // 애니메이션 없이 바로 중심 좌표 변경
+      kakaoMapRef.current.setCenter(memoizedCenter);
     }
   }, [memoizedCenter, isMapInitialized]);
 

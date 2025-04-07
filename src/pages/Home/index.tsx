@@ -303,44 +303,91 @@ const HomePage: React.FC = () => {
           setError(null);
 
           console.log('앱 초기화 시작');
-          // 1. 현재 위치 가져오기 - 개선된 LocationService.getCurrentLocation() 사용
-          const locationInfo = await locationService.getCurrentLocation();
 
-          if (locationInfo && locationInfo.formatted_address) {
-            console.log('현재 위치 조회 성공:', locationInfo);
+          // 위치 권한 확인 및 현재 위치 가져오기
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              async position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
 
-            // 위치 정보 업데이트
-            setLocation(locationInfo.formatted_address);
+                // 현재 위치 상태 업데이트
+                setUserLocation({
+                  lat: lat,
+                  lng: lng,
+                });
 
-            // 지도 중심 업데이트
-            const lat = parseFloat(locationInfo.latitude);
-            const lng = parseFloat(locationInfo.longitude);
-            if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-              console.log('초기 지도 중심 설정:', { lat, lng });
-              setMapCenter({ lat, lng });
-            }
+                // 지도 중심을 현재 위치보다 약간 위로 설정
+                setMapCenter({
+                  lat: lat - 0.002, // 약 400m 위로 조정
+                  lng: lng,
+                });
 
-            // 2. 위치 ID 조회
-            console.log('위치 ID 조회 시작');
-            const locationId = await fetchLocationId(locationInfo.formatted_address);
-            console.log('위치 ID 조회 결과:', locationId);
+                // 현재 위치의 주소 정보 가져오기
+                if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                  const geocoder = new window.kakao.maps.services.Geocoder();
+                  geocoder.coord2Address(lng, lat, async (result: any, status: any) => {
+                    if (status === 'OK' && result && result.length > 0) {
+                      const addressResult = result[0];
+                      const region1 = addressResult.address.region_1depth_name || '';
+                      const region2 = addressResult.address.region_2depth_name || '';
+                      const region3 = addressResult.address.region_3depth_name || '';
+                      const shortAddress = `${region1} ${region2} ${region3}`.trim();
+
+                      console.log('현재 위치 주소:', shortAddress);
+                      setLocation(shortAddress);
+
+                      // locationId 조회
+                      try {
+                        const response = await client.get(API_PATHS.PLACE.LOCATIONS.INFO, {
+                          params: { formattedAddress: shortAddress },
+                        });
+
+                        if (
+                          response.data?.success &&
+                          response.data.data &&
+                          response.data.data.length > 0
+                        ) {
+                          const locationData = response.data.data[0];
+                          setLocationId(locationData.id);
+                          localStorage.setItem('currentLocationId', locationData.id.toString());
+                        }
+                      } catch (error) {
+                        console.error('위치 ID 조회 중 오류:', error);
+                        // 에러 발생 시 기본 위치 사용
+                        setLocation(DEFAULT_LOCATION);
+                        setMapCenter(DEFAULT_COORDINATES);
+                        await fetchLocationId(DEFAULT_LOCATION);
+                      }
+                    }
+                  });
+                }
+              },
+              error => {
+                // 위치 권한 거부 또는 오류 시 기본 위치 사용
+                console.warn('현재 위치 정보를 가져올 수 없어 기본 위치를 사용합니다:', error);
+                setLocation(DEFAULT_LOCATION);
+                setMapCenter(DEFAULT_COORDINATES);
+                fetchLocationId(DEFAULT_LOCATION);
+              },
+              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+            );
           } else {
-            console.warn('현재 위치 정보를 가져올 수 없어 기본 위치를 사용합니다.');
+            // geolocation을 지원하지 않는 경우 기본 위치 사용
+            console.warn('Geolocation이 지원되지 않아 기본 위치를 사용합니다.');
             setLocation(DEFAULT_LOCATION);
             setMapCenter(DEFAULT_COORDINATES);
-
-            // 기본 위치의 ID 조회
             await fetchLocationId(DEFAULT_LOCATION);
           }
         } catch (error) {
           console.error('앱 초기화 오류:', error);
           setError('앱을 초기화하는 중 오류가 발생했습니다');
 
-          // 기본 위치 사용
+          // 오류 발생 시 기본 위치 사용
           setLocation(DEFAULT_LOCATION);
           setMapCenter(DEFAULT_COORDINATES);
           await fetchLocationId(DEFAULT_LOCATION);
-
+        } finally {
           setLoading(false);
         }
       };
@@ -420,13 +467,15 @@ const HomePage: React.FC = () => {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
 
-            // 현재 위치 상태 업데이트 및 지도 중심 이동
+            // 현재 위치 상태 업데이트
             setUserLocation({
               lat: lat,
               lng: lng,
             });
+
+            // 지도 중심을 현재 위치보다 약간 위로 설정 (마커가 BottomSheet에 가려지지 않도록)
             setMapCenter({
-              lat: lat,
+              lat: lat - 0.002, // 약 400m 위로 조정
               lng: lng,
             });
 
@@ -481,15 +530,14 @@ const HomePage: React.FC = () => {
   const handleCurrentLocationClick = useCallback(async () => {
     try {
       setLoading(true);
-      await updateUserLocation();
-      setMapLevel(3);
+      setMapLevel(3); // 줌 레벨만 설정
     } catch (error) {
       console.error('위치 이동 중 오류:', error);
       setError('위치 정보를 갱신하는 중 오류가 발생했습니다');
     } finally {
       setLoading(false);
     }
-  }, [updateUserLocation]);
+  }, []);
 
   const handleMarkerClick = (markerId: string) => {
     navigate(`/storages/${markerId}`);
