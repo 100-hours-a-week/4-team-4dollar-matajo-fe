@@ -6,7 +6,6 @@ import BottomNavigation from '../../components/layout/BottomNavigation';
 import StorageFilterModal, {
   FilterOptions,
 } from '../../components/feature/storage/StorageFilterModal';
-import { getStorageList, StorageItem as StorageItemType } from '../../services/api/modules/place';
 import client from '../../services/api/client';
 import { API_PATHS } from '../../constants/api';
 
@@ -35,6 +34,43 @@ const Container = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 40px;
+`;
+
+// 검색창 컨테이너
+const SearchContainer = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  margin-top: 10px;
+  margin-bottom: 15px;
+`;
+
+// 검색창 컴포넌트
+const SearchInput = styled.div`
+  width: 294px;
+  height: 45px;
+  border-radius: 30px;
+  border: 1px ${THEME.primaryLight} solid;
+  position: relative;
+`;
+
+// 돋보기 아이콘
+const SearchIcon = styled.div`
+  width: 20px;
+  height: 40px;
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  color: ${THEME.primaryLight};
+  font-size: 43.75px;
+  font-family: 'Noto Sans KR';
+  font-weight: 500;
+  letter-spacing: 0.04px;
+  line-height: 0.7;
 `;
 
 // 필터 태그 기본 스타일
@@ -430,7 +466,15 @@ const StorageList: React.FC = () => {
     console.log('필터 적용:', options);
     setAppliedFilters(options);
     setIsFilterModalOpen(false);
+    // 필터가 적용되면 '전체' 필터를 제외하고 선택된 필터 카테고리들을 표시
+    const activeCategories = [];
+    if (options.storageLocation.length > 0) activeCategories.push('보관위치');
+    if (options.storageTypes.length > 0) activeCategories.push('보관방식');
+    if (options.itemTypes.length > 0) activeCategories.push('물건유형');
+    if (options.durationOptions.length > 0) activeCategories.push('보관기간');
+    if (options.isValuableSelected) activeCategories.push('귀중품');
 
+    setActiveFilterCategories(activeCategories.length > 0 ? activeCategories : ['전체']);
     // 백엔드 필터링 호출
     const queryParam = createQueryParam(options);
     fetchStorageFilterList(true, queryParam);
@@ -522,6 +566,12 @@ const StorageList: React.FC = () => {
     <Container ref={containerRef}>
       {/* 페이지 헤더 */}
       <Header title="보관소 리스트" />
+
+      <SearchContainer>
+        <SearchInput>
+          <SearchIcon>⌕</SearchIcon>
+        </SearchInput>
+      </SearchContainer>
 
       {/* 필터 */}
       <FilterContainer>
