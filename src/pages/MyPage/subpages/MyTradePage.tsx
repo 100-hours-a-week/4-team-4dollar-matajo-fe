@@ -17,34 +17,6 @@ const Container = styled.div`
   margin: 0 auto;
 `;
 
-const StatusBar = styled.div`
-  width: 375px;
-  height: 25px;
-  left: 0px;
-  top: 0px;
-  position: absolute;
-  background: #f5f5f5;
-`;
-
-const Header = styled.div`
-  width: 373px;
-  height: 47px;
-  left: 0px;
-  top: 22px;
-  position: absolute;
-  background: #f5f5ff;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-`;
-
-const BackButton = styled.div`
-  left: 12px;
-  top: 33px;
-  position: absolute;
-  cursor: pointer;
-`;
-
 const Title = styled.span`
   color: #464646;
   font-size: 15px;
@@ -55,8 +27,8 @@ const Title = styled.span`
 `;
 
 const TradeCard = styled.div`
-  width: 90%;
-  height: 120px;
+  width: 293px;
+  height: 95px;
   background: rgba(217, 217, 217, 0);
   border-radius: 10px;
   border: 1px #e0e0e0 solid;
@@ -65,7 +37,17 @@ const TradeCard = styled.div`
   position: relative;
   margin-left: auto;
   margin-right: auto;
-  cursor: default;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0px);
+  }
 `;
 
 const TradeTitle = styled.span`
@@ -85,17 +67,6 @@ const TradeStatus = styled.span`
   letter-spacing: 0.01px;
   display: block;
   margin-bottom: 4px;
-`;
-
-const TradeId = styled.span`
-  color: #c0bdbd;
-  font-size: 10px;
-  font-family: Noto Sans KR;
-  font-weight: 700;
-  letter-spacing: 0.01px;
-  display: inline-block;
-  margin-left: 8px;
-  vertical-align: middle;
 `;
 
 const TradeInfo = styled.span`
@@ -155,6 +126,67 @@ const NavText = styled.span<{ active?: boolean }>`
   letter-spacing: 0.6px;
 `;
 
+// 모달 스타일 컴포넌트 추가
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  width: 320px;
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #888;
+  &:hover {
+    color: #333;
+  }
+`;
+
+const ModalTitle = styled.h2`
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: #333;
+  font-weight: 700;
+`;
+
+const DetailItem = styled.div`
+  margin-bottom: 12px;
+`;
+
+const DetailLabel = styled.div`
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 4px;
+`;
+
+const DetailValue = styled.div`
+  font-size: 16px;
+  color: #333;
+  font-weight: 500;
+`;
+
 const MyTrade: React.FC = () => {
   const navigate = useNavigate();
   const [trades, setTrades] = useState<TradeItem[]>([]);
@@ -162,6 +194,10 @@ const MyTrade: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const lastRequestTimeRef = useRef<number>(0);
   const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
+
+  // 선택된 거래와 모달 상태 추가
+  const [selectedTrade, setSelectedTrade] = useState<TradeItem | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     // 요청 간격 제한 확인
@@ -206,6 +242,25 @@ const MyTrade: React.FC = () => {
     fetchTrades();
   }, [navigate]);
 
+  const handleTradeItemClick = (tradeId: number) => {
+    // navigate(`/${ROUTES.MYPAGE}/${ROUTES.MYTRADE}/${tradeId}`);
+    console.log(`거래 ID ${tradeId} 항목 클릭됨`);
+    // 페이지 이동 없이 처리
+
+    // 선택된 거래 찾기
+    const trade = trades.find(t => t.trade_id === tradeId);
+    if (trade) {
+      setSelectedTrade(trade);
+      setIsModalOpen(true);
+    }
+  };
+
+  // 모달 닫기 함수
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedTrade(null);
+  };
+
   if (loading) {
     return (
       <Container>
@@ -226,12 +281,11 @@ const MyTrade: React.FC = () => {
     <Container>
       <div style={{ marginBottom: '20px' }}>
         {trades.map(trade => (
-          <TradeCard key={trade.trade_id}>
+          <TradeCard key={trade.trade_id} onClick={() => handleTradeItemClick(trade.trade_id)}>
             <div>
               <TradeStatus>{trade.keeper_status ? '맡아줬어요' : '보관했어요'}</TradeStatus>
               <div>
                 <TradeTitle>{trade.product_name}</TradeTitle>
-                <TradeId>타조 {trade.trade_id}</TradeId>
               </div>
             </div>
             <TradeInfo>
@@ -248,6 +302,59 @@ const MyTrade: React.FC = () => {
           </TradeCard>
         ))}
       </div>
+
+      {/* 거래 상세 정보 모달 */}
+      {isModalOpen && selectedTrade && (
+        <ModalOverlay onClick={closeModal}>
+          <ModalContent onClick={e => e.stopPropagation()}>
+            <CloseButton onClick={closeModal}>&times;</CloseButton>
+            <ModalTitle>거래 상세 정보</ModalTitle>
+
+            <DetailItem>
+              <DetailLabel>거래 유형</DetailLabel>
+              <DetailValue>{selectedTrade.keeper_status ? '맡아줬어요' : '보관했어요'}</DetailValue>
+            </DetailItem>
+
+            <DetailItem>
+              <DetailLabel>보관 물품</DetailLabel>
+              <DetailValue>{selectedTrade.product_name}</DetailValue>
+            </DetailItem>
+
+            <DetailItem>
+              <DetailLabel>보관 장소</DetailLabel>
+              <DetailValue>{selectedTrade.post_address}</DetailValue>
+            </DetailItem>
+
+            <DetailItem>
+              <DetailLabel>거래 일자</DetailLabel>
+              <DetailValue>{selectedTrade.trade_date}</DetailValue>
+            </DetailItem>
+
+            <DetailItem>
+              <DetailLabel>보관 기간</DetailLabel>
+              <DetailValue>
+                {selectedTrade.start_date} ~{' '}
+                {
+                  new Date(
+                    new Date(selectedTrade.start_date).getTime() +
+                      selectedTrade.storage_period * 24 * 60 * 60 * 1000,
+                  )
+                    .toISOString()
+                    .split('T')[0]
+                }
+                ({selectedTrade.storage_period}일)
+              </DetailValue>
+            </DetailItem>
+
+            <DetailItem>
+              <DetailLabel>거래 금액</DetailLabel>
+              <DetailValue style={{ color: '#3835FD', fontWeight: '700' }}>
+                총 {selectedTrade.trade_price.toLocaleString()}원
+              </DetailValue>
+            </DetailItem>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </Container>
   );
 };
