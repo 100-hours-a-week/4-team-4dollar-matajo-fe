@@ -3,13 +3,13 @@ import styled from 'styled-components';
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#8966EF',
+  primary: '#280081',
   background: '#FFFFFF',
-  tagActive: 'rgba(58, 0, 229, 0.60)',
+  tagActive: '#29145A',
   tagBorder: '#868686',
   textDark: '#000000',
   textGray: '#868686',
-  buttonBorder: 'rgba(137, 102, 239, 0.20)',
+  buttonBorder: 'rgba(40, 0, 129, 0.20)',
 };
 
 // 모달 컨테이너
@@ -46,6 +46,7 @@ const ModalHeader = styled.div`
   padding: 20px;
   margin-left: 130px;
   border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 10px;
 `;
 
 // 모달 제목
@@ -60,8 +61,8 @@ const ModalTitle = styled.h2`
 
 // 닫기 버튼
 const CloseButton = styled.div`
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
   transform: rotate(-45deg);
   position: relative;
@@ -74,23 +75,23 @@ const CloseButton = styled.div`
   }
 
   &::before {
-    width: 24px;
-    height: 2px;
-    top: 11px;
+    width: 20px;
+    height: 1.5px;
+    top: 9px;
     left: 0;
   }
 
   &::after {
-    width: 2px;
-    height: 24px;
+    width: 1.5px;
+    height: 20px;
     top: 0;
-    left: 11px;
+    left: 9px;
   }
 `;
 
 // 모달 컨텐츠
 const ModalContent = styled.div`
-  padding: 10px 10px;
+  padding: 10px 24px;
 `;
 
 // 섹션 제목
@@ -100,7 +101,7 @@ const SectionTitle = styled.h3`
   font-family: 'Noto Sans KR';
   font-weight: 500;
   line-height: 19.21px;
-  margin: 20px 0 15px 0;
+  margin: 15px 3px 15px;
 `;
 
 // 태그 컨테이너
@@ -108,18 +109,19 @@ const TagContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 20px;
+  margin: 0 0 20px;
+  padding: 0 4px;
 `;
 
 // 태그 버튼
 const TagButton = styled.button<{ isSelected: boolean }>`
-  height: 37px;
-  padding: 0 15px;
+  height: 28px;
+  padding: 0 12px;
   border-radius: 31px;
   border: 0.5px solid ${props => (props.isSelected ? THEME.primary : THEME.tagBorder)};
   background: ${props => (props.isSelected ? THEME.tagActive : 'transparent')};
   color: ${props => (props.isSelected ? 'white' : THEME.textGray)};
-  font-size: 13px;
+  font-size: 12px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
   line-height: 19.21px;
@@ -130,20 +132,21 @@ const TagButton = styled.button<{ isSelected: boolean }>`
 // 위치 선택 컨테이너
 const LocationContainer = styled.div`
   display: flex;
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 0 4px;
 `;
 
 // 위치 옵션 버튼
 const LocationOptionButton = styled.button<{ isSelected: boolean }>`
-  width: 163px;
-  height: 47px;
+  width: 150px;
+  height: 42px;
   border-radius: 10px;
   border: 1px solid ${props => (props.isSelected ? THEME.primary : '#D9D9D9')};
   background: ${props => (props.isSelected ? THEME.background : THEME.background)};
   display: flex;
   align-items: center;
-  padding-left: 15px;
+  padding-left: 12px;
   position: relative;
   cursor: pointer;
 `;
@@ -161,7 +164,7 @@ const IconContainer = styled.div`
 // 위치 옵션 텍스트
 const LocationOptionText = styled.span<{ isSelected: boolean }>`
   color: ${props => (props.isSelected ? THEME.textDark : THEME.textGray)};
-  font-size: 14px;
+  font-size: 12px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
   line-height: 19.21px;
@@ -169,14 +172,15 @@ const LocationOptionText = styled.span<{ isSelected: boolean }>`
 
 // 하단 버튼 영역
 const ButtonContainer = styled.div`
-  width: 355px;
-  height: 50px;
+  width: 100%;
+  height: 70px;
   position: absolute;
   bottom: 0;
   left: 0;
   background: white;
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 10px;
   gap: 10px;
   border-top: 1px solid rgba(136, 139, 144, 0.2);
@@ -184,7 +188,7 @@ const ButtonContainer = styled.div`
 
 // 초기화 버튼
 const ResetButton = styled.button`
-  width: 100px;
+  width: 90px;
   height: 49px;
   background: white;
   border-radius: 11px;
@@ -198,7 +202,7 @@ const ResetButton = styled.button`
 
 // 필터링 결과 보기 버튼
 const ApplyButton = styled.button`
-  width: 240px;
+  width: 230px;
   height: 49px;
   background: ${THEME.primary};
   border-radius: 11px;

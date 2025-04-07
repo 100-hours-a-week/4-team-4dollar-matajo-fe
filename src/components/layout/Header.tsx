@@ -56,7 +56,7 @@ const OptionButton = styled.div`
 const OptionDot = styled.div`
   width: 3px;
   height: 3px;
-  background: #464646;
+  background: white;
   border-radius: 9999px;
 `;
 
