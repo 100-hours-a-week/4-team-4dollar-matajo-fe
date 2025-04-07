@@ -34,6 +34,7 @@ const Container = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 40px;
+  margin-top: 0;
 `;
 
 // 검색창 컨테이너
@@ -186,6 +187,34 @@ const StoragePrice = styled.div`
   letter-spacing: 0.01px;
 `;
 
+// 스크롤 상단 이동 버튼 스타일 컴포넌트 추가
+const ScrollToTopButton = styled.div`
+  width: 59px;
+  height: 55px;
+  position: fixed;
+  right: 20px;
+  bottom: 110px;
+  opacity: 0.8;
+  cursor: pointer;
+  z-index: 99;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    opacity: 1;
+  }
+`;
+
+// 스크롤 상단 이동 버튼 SVG 컴포넌트 추가
+const ScrollTopIconSVG = () => (
+  <svg width="59" height="55" viewBox="0 0 59 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="29.5" cy="27.5" r="27.5" fill="#5E5CFD" fillOpacity="0.9" />
+    <path d="M29.5 15L17 27.5H25.375V40H33.625V27.5H42L29.5 15Z" fill="white" />
+  </svg>
+);
+
 // 필터 유형 정의
 type FilterType = '전체' | '보관위치' | '보관방식' | '물건유형' | '보관기간' | '귀중품';
 
@@ -247,7 +276,10 @@ const StorageList: React.FC = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const lastRequestTimeRef = useRef<number>(0);
-  const REQUEST_INTERVAL = 500; // 1초 간격으로 요청 제한
+  const REQUEST_INTERVAL = 100; // 0.1초로 간격 줄임
+  const isRequestPendingRef = useRef<boolean>(false); // 요청 중인지 확인하는 ref 추가
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // API 호출 함수 - offset 기반 페이지네이션 사용
   const fetchStorageList = async (reset: boolean = true) => {
@@ -258,6 +290,14 @@ const StorageList: React.FC = () => {
         console.log('요청 간격이 너무 짧습니다. 대기 중...');
         return;
       }
+
+      // 이미 요청 중인 경우 중복 요청 방지
+      if (isRequestPendingRef.current) {
+        console.log('이미 요청이 진행 중입니다.');
+        return;
+      }
+
+      isRequestPendingRef.current = true;
       lastRequestTimeRef.current = now;
 
       if (reset) {
@@ -331,6 +371,7 @@ const StorageList: React.FC = () => {
       } else {
         setIsLoadingMore(false);
       }
+      isRequestPendingRef.current = false; // 요청 완료 후 상태 초기화
     }
   };
 
@@ -342,6 +383,14 @@ const StorageList: React.FC = () => {
         console.log('요청 간격이 너무 짧습니다. 대기 중...');
         return;
       }
+
+      // 이미 요청 중인 경우 중복 요청 방지
+      if (isRequestPendingRef.current) {
+        console.log('이미 요청이 진행 중입니다.');
+        return;
+      }
+
+      isRequestPendingRef.current = true;
       lastRequestTimeRef.current = now;
 
       if (reset) {
@@ -407,6 +456,7 @@ const StorageList: React.FC = () => {
       } else {
         setIsLoadingMore(false);
       }
+      isRequestPendingRef.current = false; // 요청 완료 후 상태 초기화
     }
   };
 
@@ -460,6 +510,30 @@ const StorageList: React.FC = () => {
       }
     };
   }, [loading, isLoadingMore, allDataLoaded, offset, appliedFilters]);
+
+  // 스크롤 이벤트 핸들러 수정
+  useEffect(() => {
+    const handleScroll = () => {
+      // window 객체의 스크롤 위치 확인
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      setShowScrollTop(scrollTop > 300); // 300px 이상 스크롤 시 버튼 표시
+    };
+
+    // window 객체에 이벤트 리스너 추가
+    window.addEventListener('scroll', handleScroll);
+
+    // 초기 스크롤 위치 확인
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // 스크롤 상단 이동 핸들러 수정
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // 필터 적용 핸들러
   const handleApplyFilter = (options: FilterOptions) => {
@@ -655,6 +729,13 @@ const StorageList: React.FC = () => {
         initialFilters={appliedFilters as FilterOptions}
         currentFilter={currentModalFilter as FilterType}
       />
+
+      {/* 스크롤 상단 이동 버튼 추가 */}
+      {showScrollTop && (
+        <ScrollToTopButton onClick={handleScrollToTop}>
+          <ScrollTopIconSVG />
+        </ScrollToTopButton>
+      )}
 
       {/* 하단 네비게이션 */}
       <BottomNavigation activeTab="보관소" />

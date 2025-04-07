@@ -236,7 +236,7 @@ const LocationText = styled.div`
 
 const MapContainer = styled.div`
   width: 100%;
-  height: 125px;
+  height: 200px;
   border-radius: 5px;
   overflow: hidden;
   margin-bottom: 15px;
@@ -322,25 +322,6 @@ const Dot = styled.div<{ isActive: boolean }>`
   transition: background-color 0.3s ease;
 `;
 
-const ScrollToTopButton = styled.div`
-  width: 59px;
-  height: 55px;
-  position: sticky;
-  left: 390px;
-  bottom: 0;
-  opacity: 0.8;
-  cursor: pointer;
-  z-index: 99;
-  transition: opacity 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    opacity: 1;
-  }
-`;
-
 // 위치 아이콘 SVG 컴포넌트 추가
 const LocationIconSVG = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -348,14 +329,6 @@ const LocationIconSVG = () => (
       d="M10 1.875C6.89844 1.875 4.375 4.39844 4.375 7.5C4.375 11.5625 10 18.125 10 18.125C10 18.125 15.625 11.5625 15.625 7.5C15.625 4.39844 13.1016 1.875 10 1.875ZM10 9.375C8.96484 9.375 8.125 8.53516 8.125 7.5C8.125 6.46484 8.96484 5.625 10 5.625C11.0352 5.625 11.875 6.46484 11.875 7.5C11.875 8.53516 11.0352 9.375 10 9.375Z"
       fill="#5E5CFD"
     />
-  </svg>
-);
-
-// 스크롤 상단 이동 버튼 SVG 컴포넌트 수정 (화살표 방향 위로)
-const ScrollTopIconSVG = () => (
-  <svg width="59" height="55" viewBox="0 0 59 55" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="29.5" cy="27.5" r="27.5" fill="#5E5CFD" fillOpacity="0.9" />
-    <path d="M29.5 15L17 27.5H25.375V40H33.625V27.5H42L29.5 15Z" fill="white" />
   </svg>
 );
 
@@ -404,6 +377,7 @@ const DropdownIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  color: white;
 `;
 
 const DeleteItem = styled(DropdownItem)`
@@ -463,7 +437,7 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
   const [isAuthor, setIsAuthor] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const lastRequestTimeRef = useRef<number>(0);
-  const REQUEST_INTERVAL = 500; // 0.5초 간격으로 요청 제한
+  const REQUEST_INTERVAL = 100; // 0.1초 간격으로 요청 제한
 
   // 주소 검색 기능 추가
   const searchAddressToCoordinate = useCallback(
@@ -531,9 +505,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
               console.warn('주소를 좌표로 변환 실패:', response.data.data.post_address);
               setToastMessage('장소 위치를 검색할 수 없습니다.');
               setShowToast(true);
-              setTimeout(() => {
-                setShowToast(false);
-              }, 3000);
             }
           }
 
@@ -557,15 +528,25 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     fetchStorageDetail();
   }, [id, searchAddressToCoordinate]);
 
-  // 토스트 메시지 표시 함수
+  // 토스트 메시지 표시 함수 수정
   const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    console.log('토스트 메시지 표시 시도:', { message, type });
     setToastMessage(message);
     setToastType(type);
     setShowToast(true);
-    setTimeout(() => {
+
+    const timer = setTimeout(() => {
+      console.log('토스트 타이머 실행');
       setShowToast(false);
     }, 3000);
+
+    return () => clearTimeout(timer);
   };
+
+  // 토스트 상태 변경 추적
+  useEffect(() => {
+    console.log('토스트 상태 변경:', { showToast, toastMessage, toastType });
+  }, [showToast, toastMessage, toastType]);
 
   // 채팅하기 버튼 클릭 핸들러 수정
   const handleChatClick = async () => {
@@ -574,7 +555,8 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     try {
       // 작성자와 현재 사용자가 같은지 확인 (editable 값으로 판단)
       if (storageDetail.editable) {
-        showToastMessage('본인의 장소에는 채팅을 생성할 수 없습니다.');
+        console.log('자신의 게시글 채팅 시도 - 토스트 표시');
+        showToastMessage('본인의 장소에는 채팅을 생성할 수 없습니다.', 'info');
         return;
       }
 
@@ -595,13 +577,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
     } catch (error) {
       console.error('채팅방 생성 실패:', error);
       showToastMessage('채팅방 생성에 실패했습니다. 다시 시도해주세요.', 'error');
-    }
-  };
-
-  const handleScrollToTop = () => {
-    // 컨테이너 요소가 있으면 해당 요소의 스크롤 위치를 맨 위로 이동
-    if (containerRef.current) {
-      containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -972,19 +947,40 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
         {
           id: 'visibility',
           label: isHidden ? '공개하기' : '비공개',
-          icon: (
+          icon: isHidden ? (
             <svg
               width="16"
-              height="12"
-              viewBox="0 0 16 12"
+              height="16"
+              viewBox="0 0 16 16"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
               <path
                 fillRule="evenodd"
                 clipRule="evenodd"
-                d="M3.25714 0.937622C2.94655 0.638122 2.45197 0.647114 2.15247 0.957707C1.85297 1.2683 1.86196 1.76288 2.17255 2.06238C2.53721 2.41402 2.95322 2.81343 3.40503 3.24519C2.28345 4.19916 1.56522 5.34604 1.06365 6.14695C1.02701 6.20546 0.991397 6.26233 0.956995 6.31693C0.733103 6.67232 0.839699 7.14191 1.19508 7.36581C1.28446 7.42212 1.38107 7.45752 1.47917 7.47332L1.96152 8.67918C1.97512 8.78469 2.0112 8.88902 2.07137 8.9851C2.62551 9.86985 3.33735 10.6302 4.37312 11.158C5.3984 11.6804 6.68146 11.9447 8.3323 11.9447C9.7853 11.9447 10.9628 11.5982 11.9238 11.0771C12.3246 11.4106 12.6622 11.6747 12.9065 11.8375C13.2655 12.0769 13.7505 11.9799 13.9899 11.6209C14.2292 11.2619 14.1322 10.7768 13.7732 10.5375C13.6457 10.4525 13.4712 10.3209 13.2549 10.1475C14.3369 9.20348 15.0346 8.08275 15.524 7.29659L15.5261 7.29329C15.5619 7.23575 15.5968 7.17974 15.6304 7.12602L15.8398 6.79161L15.6871 6.42782C14.9572 4.69003 12.7412 1.5 8.29317 1.5C6.85365 1.5 5.68318 1.83645 4.72481 2.34498C4.18173 1.82679 3.68409 1.34933 3.25714 0.937622Z"
-                fill="#212121"
+                d="M8 3C4.36364 3 1.25818 5.33091 0 8.5C1.25818 11.6691 4.36364 14 8 14C11.6364 14 14.7418 11.6691 16 8.5C14.7418 5.33091 11.6364 3 8 3ZM8 11.5C6.06727 11.5 4.5 10.0673 4.5 8.5C4.5 6.93273 6.06727 5.5 8 5.5C9.93273 5.5 11.5 6.93273 11.5 8.5C11.5 10.0673 9.93273 11.5 8 11.5ZM8 10C7.17182 10 6.5 9.32818 6.5 8.5C6.5 7.67182 7.17182 7 8 7C8.82818 7 9.5 7.67182 9.5 8.5C9.5 9.32818 8.82818 10 8 10Z"
+                fill="#020202"
+              />
+            </svg>
+          ) : (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M8 3C4.36364 3 1.25818 5.33091 0 8.5C1.25818 11.6691 4.36364 14 8 14C11.6364 14 14.7418 11.6691 16 8.5C14.7418 5.33091 11.6364 3 8 3ZM8 11.5C6.06727 11.5 4.5 10.0673 4.5 8.5C4.5 6.93273 6.06727 5.5 8 5.5C9.93273 5.5 11.5 6.93273 11.5 8.5C11.5 10.0673 9.93273 11.5 8 11.5ZM8 10C7.17182 10 6.5 9.32818 6.5 8.5C6.5 7.67182 7.17182 7 8 7C8.82818 7 9.5 7.67182 9.5 8.5C9.5 9.32818 8.82818 10 8 10Z"
+                fill="#020202"
+              />
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M8 6.5C7.17182 6.5 6.5 7.17182 6.5 8C6.5 8.82818 7.17182 9.5 8 9.5C8.82818 9.5 9.5 8.82818 9.5 8C9.5 7.17182 8.82818 6.5 8 6.5Z"
+                fill="#020202"
               />
             </svg>
           ),
@@ -1236,10 +1232,6 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
                 </KeeperInfo>
               </KeeperCard>
             </KeeperSection>
-            {/* 스크롤 상단 이동 버튼 */}
-            <ScrollToTopButton onClick={handleScrollToTop}>
-              <ScrollTopIconSVG />
-            </ScrollToTopButton>
             <BottomNavigation activeTab="보관소" />
           </ContentContainer>
         ) : (
@@ -1254,15 +1246,15 @@ const StorageDetail: React.FC<StorageDetailProps> = ({ id: propId, onBack }) => 
             <div>보관소 정보가 없습니다.</div>
           </div>
         )}
-
-        {/* Toast 컴포넌트 추가 */}
-        <Toast
-          message={toastMessage}
-          visible={showToast}
-          onClose={() => setShowToast(false)}
-          type={toastType}
-        />
       </Container>
+
+      {/* Toast 컴포넌트를 Container 밖으로 이동 */}
+      <Toast
+        message={toastMessage}
+        visible={showToast}
+        onClose={() => setShowToast(false)}
+        type={toastType}
+      />
     </>
   );
 };
