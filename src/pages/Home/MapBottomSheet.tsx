@@ -397,9 +397,7 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   const [currentLocation, setCurrentLocation] = useState<string>(location);
   // 최근 거래 내역은 내부에서 관리
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
-  const [locationInfoId, setLocationInfoId] = useState<number | undefined>(
-    propLocationInfoId ?? undefined,
-  );
+  const [locationInfoId, setLocationInfoId] = useState<number>(propLocationInfoId ?? -1);
 
   const bottomSheetRef = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
@@ -487,11 +485,13 @@ const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
   useEffect(() => {
     const fetchRecentTrades = async () => {
-      if (locationInfoId === undefined) {
-        console.log('locationInfoId가 없어서 거래 내역 조회를 건너뜁니다.');
-        return;
-      }
       try {
+        if (locationInfoId === -1) {
+          console.warn('locationInfoId가 -1이어서 최근 거래 내역을 가져올 수 없습니다.');
+          setRecentTrades([]);
+          return;
+        }
+
         const response = await getRecentTrades(locationInfoId);
         if (response.success && Array.isArray(response.data)) {
           setRecentTrades(response.data);

@@ -215,7 +215,7 @@ const HomePage: React.FC = () => {
       const [postsResponse, dealsResponse, tradesResponse] = await Promise.all([
         getPostsByLocation(locationId),
         getLocalDeals(locationId),
-        client.get(`${API_PATHS.TRADES.RECENT_BY_LOCATION}?locationInfoId=${locationId}`),
+        client.get(API_PATHS.TRADES.RECENT_BY_LOCATION),
       ]);
 
       // 1. 게시글 데이터 처리
