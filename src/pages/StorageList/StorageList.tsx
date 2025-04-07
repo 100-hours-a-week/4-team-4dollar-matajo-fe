@@ -34,7 +34,7 @@ const Container = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 40px;
-  padding-top: 67px; /* 헤더(47px) + 필터영역(50px) */
+  padding-top: 67px;
 `;
 
 // 필터 태그 기본 스타일
