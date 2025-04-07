@@ -630,7 +630,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
 
             // 상대방이 보낸 메시지이고 읽지 않은 경우에만 읽음 처리
             if (message.sender_id !== currentUserId && !message.read_status) {
-              chatService.markMessagesAsRead(roomId, currentUserId).catch(e => {
+              chatService.markMessagesAsReadViaWebSocket(roomId, currentUserId).catch(e => {
                 console.error('읽음 처리 실패:', e);
               });
             }
@@ -1082,7 +1082,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
   const handleReadStatus = async (message: ChatMessageResponseDto) => {
     if (!message.read_status && message.sender_id !== currentUserId && roomId) {
       try {
-        await chatService.markMessagesAsRead(roomId, currentUserId);
+        await chatService.markMessagesAsReadViaWebSocket(roomId, currentUserId);
         // 메시지 상태 업데이트
         setMessages(prev =>
           prev.map(msg =>

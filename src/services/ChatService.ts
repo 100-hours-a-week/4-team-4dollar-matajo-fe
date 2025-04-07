@@ -600,23 +600,23 @@ class ChatService {
   }
 
   // 메시지 읽음 처리 - 수정된 파라미터 이름
-  public markMessagesAsRead(roomId: number, userId: number): Promise<boolean> {
-    return client
-      .put<CommonResponse<null>>(
-        `${API_PATHS.CHAT.READ.replace(':roomId', roomId.toString())}`,
-        null,
-        {
-          params: { userId },
-        },
-      )
-      .then(response => {
-        return response.data.success === true;
-      })
-      .catch(error => {
-        console.error('Error marking messages as read:', error);
-        return false;
-      });
-  }
+  // public markMessagesAsRead(roomId: number, userId: number): Promise<boolean> {
+  //   return client
+  //     .put<CommonResponse<null>>(
+  //       `${API_PATHS.CHAT.READ.replace(':roomId', roomId.toString())}`,
+  //       null,
+  //       {
+  //         params: { userId },
+  //       },
+  //     )
+  //     .then(response => {
+  //       return response.data.success === true;
+  //     })
+  //     .catch(error => {
+  //       console.error('Error marking messages as read:', error);
+  //       return false;
+  //     });
+  // }
 
   // 이미지 업로드
   public uploadImage(file: File): Promise<string> {
@@ -636,6 +636,35 @@ class ChatService {
         }
         throw new Error(response.data.message || '이미지 업로드에 실패했습니다');
       });
+  }
+
+  // WebSocket을 통한 메시지 읽음 상태 업데이트
+  public markMessagesAsReadViaWebSocket(roomId: number, userId: number): Promise<boolean> {
+    // ChatService.ts의 markMessagesAsRead 또는 markMessagesAsReadViaWebSocket 함수 내에
+    console.count('읽음 상태 업데이트 호출');
+    console.trace('읽음 상태 업데이트 호출 위치');
+    return new Promise((resolve, reject) => {
+      if (!this.isConnected()) {
+        console.warn('WebSocket 연결이 없습니다. HTTP 방식으로 대체합니다.');
+      }
+
+      try {
+        // WebSocket을 통해 읽음 상태 업데이트 메시지 전송
+        this.stompClient!.publish({
+          destination: `/app/${roomId}/read`,
+          body: JSON.stringify({ userId: userId }),
+          headers: {
+            'content-type': 'application/json',
+            userId: userId.toString(),
+          },
+        });
+
+        console.log(`WebSocket을 통한 읽음 상태 업데이트 전송: roomId=${roomId}, userId=${userId}`);
+        resolve(true);
+      } catch (error) {
+        console.error('WebSocket 읽음 상태 업데이트 실패:', error);
+      }
+    });
   }
 
   public confirmTrade(roomId: number, tradeData: TradeData): Promise<number> {
