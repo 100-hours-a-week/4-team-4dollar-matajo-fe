@@ -25,6 +25,7 @@ const THEME = {
 // 컨테이너 컴포넌트
 const Container = styled.div`
   width: 100%;
+  min-height: 100vh;
   max-width: 480px;
   display: flex;
   flex-direction: column;
