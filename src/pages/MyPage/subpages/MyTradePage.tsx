@@ -6,6 +6,20 @@ import { TradeItem } from '../../../services/api/modules/trades';
 import { ROUTES } from '../../../constants/routes';
 import { checkAndRefreshToken } from '../../../utils/api/authUtils';
 
+// 테마 컬러 상수 정의 - 향후 별도 파일로 분리 가능
+const THEME = {
+  primary: '#3835FD',
+  primaryLight: '#605EFD',
+  primaryAlpha: 'rgba(56.26, 53.49, 252.61, 0.80)',
+  background: '#F5F5FF',
+  darkText: '#616161',
+  lightGrayText: '#C0BDBD',
+  blackText: '#292929',
+  borderColor: '#E0E0E0',
+  dividerColor: '#DCDCDC',
+  white: '#FFFFFF',
+};
+
 const Container = styled.div`
   width: 100%;
   max-width: 375px;
@@ -95,6 +109,14 @@ const Divider = styled.div`
   height: 1px;
   background: #dcdcdc;
   margin: 16px auto;
+`;
+
+const NoDataMessage = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  color: ${THEME.lightGrayText};
+  font-size: 16px;
+  font-family: 'Noto Sans KR';
 `;
 
 const BottomNav = styled.div`
@@ -269,10 +291,11 @@ const MyTrade: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error || trades.length === 0) {
+    // trades 배열이 비어있을 경우에도 처리
     return (
       <Container>
-        <div>{error}</div>
+        <NoDataMessage>거래내역이 없습니다.</NoDataMessage>
       </Container>
     );
   }
