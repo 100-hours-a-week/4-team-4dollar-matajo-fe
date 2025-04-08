@@ -35,6 +35,8 @@ const Container = styled.div`
   max-width: 480px;
   height: calc(100vh - 70px); /* 네비게이션 바 높이 제외 */
   position: relative;
+  display: flex;
+  flex-direction: column;
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
@@ -44,7 +46,8 @@ const Container = styled.div`
 
 // 프로그레스 바 컨테이너
 const ProgressContainer = styled.div`
-  margin: 20px 22px;
+  max-width: 332px;
+  margin: 20px auto;
   position: relative;
 `;
 
@@ -149,8 +152,9 @@ const TagButton = styled.button<{ isSelected: boolean }>`
 
 // 다음 버튼
 const NextButton = styled.button`
-  width: 349px;
-  height: 47px;
+  width: 100%;
+  max-width: 349px;
+  min-height: 47px;
   position: relative;
   margin: 30px auto;
   display: block;

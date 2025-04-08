@@ -50,6 +50,9 @@ const Container = styled.div`
   height: calc(100vh - 70px);
   position: relative;
   background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 116px;
@@ -58,7 +61,7 @@ const Container = styled.div`
 
 // 프로그레스 바 컨테이너
 const ProgressContainer = styled.div`
-  margin: 20px 22px;
+  margin: 20px auto;
   position: relative;
 `;
 
@@ -92,6 +95,7 @@ const ProgressText = styled.span`
 
 // 폼 컨테이너
 const FormContainer = styled.div`
+  width: 100%;
   padding: 0 40px;
   margin-top: 20px;
 `;
@@ -107,7 +111,8 @@ const RequiredMark = styled.span`
 
 // 이미지 업로드 영역 (대표 이미지)
 const MainImageUploadArea = styled.div`
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
   height: 200px;
   background: ${THEME.lightGray};
   border-radius: 5px;
@@ -122,7 +127,8 @@ const MainImageUploadArea = styled.div`
 
 // 이미지 업로드 영역 (추가 이미지)
 const DetailImageUploadArea = styled.div`
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
   height: 154px;
   background: ${THEME.lightGray};
   border-radius: 5px;
@@ -246,11 +252,11 @@ const DeleteButton = styled.button`
 
 // 완료 버튼
 const CompleteButton = styled.button`
-  width: 400px;
-  height: 47px;
+  width: 100%;
+  max-width: 349px;
+  min-height: 47px;
   position: relative;
   margin-top: 30px;
-  margin-left: 40px;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;

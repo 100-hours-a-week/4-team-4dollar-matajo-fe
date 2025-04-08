@@ -51,7 +51,7 @@ const Container = styled.div`
 
 // 프로그레스 바 컨테이너
 const ProgressContainer = styled.div`
-  margin: 20px 22px;
+  margin: 20px auto;
   position: relative;
 `;
 
@@ -179,7 +179,8 @@ const TextArea = styled.textarea<{ isError?: boolean; isFocused?: boolean }>`
 
 // 다음 버튼
 const NextButton = styled.button`
-  width: 349px;
+  width: 100%;
+  max-width: 349px;
   min-height: 47px;
   position: relative;
   bottom: 0px;
