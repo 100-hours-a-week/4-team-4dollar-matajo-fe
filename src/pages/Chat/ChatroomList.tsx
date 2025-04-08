@@ -574,9 +574,13 @@ const ChatroomList: React.FC = () => {
   // 메시지 내용 가공 (14자 이상이면 ... 처리)
   const formatMessage = (message: string) => {
     if (!message) return '';
+    if (message.startsWith('https://matajo.store')) {
+      return '사진을 보냈습니다.';
+    }
     if (message.length > 14) {
       return `${message.substring(0, 14)}...`;
     }
+    console.log('formatted: ', message);
     return message;
   };
 
