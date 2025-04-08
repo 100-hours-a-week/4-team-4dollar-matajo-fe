@@ -59,8 +59,8 @@ const TradeTitle = styled.span`
   display: inline-block;
 `;
 
-const TradeStatus = styled.span`
-  color: rgba(56.26, 53.49, 252.61, 0.8);
+const TradeStatus = styled.span<{ isKeeper?: boolean }>`
+  color: ${props => (props.isKeeper ? 'rgba(56.26, 53.49, 252.61, 0.8)' : '#FD5C5C')};
   font-size: 13px;
   font-family: Noto Sans KR;
   font-weight: 700;
@@ -288,7 +288,9 @@ const MyTrade: React.FC = () => {
           trades.map(trade => (
             <TradeCard key={trade.trade_id} onClick={() => handleTradeItemClick(trade.trade_id)}>
               <div>
-                <TradeStatus>{trade.keeper_status ? '맡아줬어요' : '보관했어요'}</TradeStatus>
+                <TradeStatus isKeeper={trade.keeper_status}>
+                  {trade.keeper_status ? '맡아줬어요' : '보관했어요'}
+                </TradeStatus>
                 <div>
                   <TradeTitle>{trade.product_name}</TradeTitle>
                 </div>
@@ -319,7 +321,14 @@ const MyTrade: React.FC = () => {
 
             <DetailItem>
               <DetailLabel>거래 유형</DetailLabel>
-              <DetailValue>{selectedTrade.keeper_status ? '맡아줬어요' : '보관했어요'}</DetailValue>
+              <DetailValue
+                style={{
+                  color: selectedTrade.keeper_status ? '#3835FD' : '#FD5C5C',
+                  fontWeight: 700,
+                }}
+              >
+                {selectedTrade.keeper_status ? '맡아줬어요' : '보관했어요'}
+              </DetailValue>
             </DetailItem>
 
             <DetailItem>
