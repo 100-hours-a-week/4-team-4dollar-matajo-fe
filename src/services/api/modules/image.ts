@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { API_PATHS } from '../../../constants/api';
 import client from '../client';
 
@@ -77,7 +78,7 @@ const uploadImageToS3 = async (presigned_url: string, file: File): Promise<void>
       file_size: file.size,
     });
 
-    await client.put(presigned_url, file, {
+    await axios.put(presigned_url, file, {
       headers: {
         'Content-Type': file.type,
       },
@@ -217,7 +218,7 @@ export const uploadImageWithPresignedUrl = async (
   file: File,
 ): Promise<string> => {
   try {
-    await client.put(presignedUrl, file, {
+    await axios.put(presignedUrl, file, {
       headers: {
         'Content-Type': file.type,
       },
