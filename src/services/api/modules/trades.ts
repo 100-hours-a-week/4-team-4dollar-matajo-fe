@@ -32,6 +32,7 @@ export interface TradeItem {
   start_date: string;
   storage_period: number;
   trade_price: number;
+  nickname: string;
 }
 
 // 내 거래 내역 응답 인터페이스

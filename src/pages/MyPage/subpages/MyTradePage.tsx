@@ -60,7 +60,7 @@ const TradeTitle = styled.span`
 `;
 
 const TradeStatus = styled.span<{ isKeeper?: boolean }>`
-  color: ${props => (props.isKeeper ? 'rgba(56.26, 53.49, 252.61, 0.8)' : '#FD5C5C')};
+  color: ${props => (props.isKeeper ? 'rgba(56.26, 53.49, 252.61, 0.8)' : '#C100C5')};
   font-size: 13px;
   font-family: Noto Sans KR;
   font-weight: 700;
@@ -323,7 +323,7 @@ const MyTrade: React.FC = () => {
               <DetailLabel>거래 유형</DetailLabel>
               <DetailValue
                 style={{
-                  color: selectedTrade.keeper_status ? '#3835FD' : '#FD5C5C',
+                  color: selectedTrade.keeper_status ? '#3835FD' : '#8A006F',
                   fontWeight: 700,
                 }}
               >
@@ -334,6 +334,11 @@ const MyTrade: React.FC = () => {
             <DetailItem>
               <DetailLabel>보관 물품</DetailLabel>
               <DetailValue>{selectedTrade.product_name}</DetailValue>
+            </DetailItem>
+
+            <DetailItem>
+              <DetailLabel>닉네임</DetailLabel>
+              <DetailValue>{selectedTrade.nickname}</DetailValue>
             </DetailItem>
 
             <DetailItem>
