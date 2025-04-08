@@ -24,7 +24,7 @@ import {
 
 const RegistrationContainer = styled.div`
   width: 100%;
-  max-width: 375px;
+  max-width: 480px;
   min-height: 100vh;
   margin: 0 auto;
   background-color: #f5f5ff;
@@ -34,7 +34,7 @@ const RegistrationContainer = styled.div`
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#5E5CFD',
+  primary: '#280081',
   background: '#F5F5FF',
   lightGray: '#EFEFEF',
   darkText: '#464646',
@@ -54,13 +54,16 @@ const Container = styled.div`
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding-bottom: 116px;
   padding-top: 47px; /* 헤더 높이만큼 패딩 */
 `;
 
 // 프로그레스 바 컨테이너
 const ProgressContainer = styled.div`
-  margin: 20px 22px;
+  margin: 20px auto;
   position: relative;
 `;
 
@@ -94,7 +97,8 @@ const ProgressText = styled.span`
 
 // 폼 컨테이너
 const FormContainer = styled.div`
-  padding: 0 25px;
+  width: 100%;
+  padding: 0 40px;
   margin-top: 20px;
 `;
 
@@ -126,7 +130,8 @@ const RequiredMark = styled.span`
 
 // 이미지 업로드 영역 (대표 이미지)
 const MainImageUploadArea = styled.div`
-  width: 320px;
+  width: 100%;
+  max-width: 400px;
   height: 200px;
   background: ${THEME.lightGray};
   border-radius: 5px;
@@ -141,7 +146,8 @@ const MainImageUploadArea = styled.div`
 
 // 이미지 업로드 영역 (추가 이미지)
 const DetailImageUploadArea = styled.div`
-  width: 320px;
+  width: 100%;
+  max-width: 400px;
   height: 154px;
   background: ${THEME.lightGray};
   border-radius: 5px;
@@ -266,11 +272,11 @@ const DeleteImageButton = styled.button`
 
 // 완료 버튼
 const CompleteButton = styled.button`
-  width: 325px;
-  height: 47px;
+  width: 100%;
+  max-width: 349px;
+  min-height: 47px;
   position: relative;
   margin-top: 30px;
-  margin-left: 25px;
   background: ${THEME.primary};
   border-radius: 15px;
   border: none;
@@ -437,7 +443,7 @@ const Registration3: React.FC = () => {
     }
   }, [mainImageData, detailImageData]);
 
-  const showToast = (message: string) => {
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToastMessage(message);
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 3000);
@@ -457,8 +463,7 @@ const Registration3: React.FC = () => {
     }
   };
 
-  const MAX_TOTAL_SIZE = 5 * 1024 * 1024; // 5MB
-  const MAX_SINGLE_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+  const MAX_SINGLE_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
   // 대표 이미지(mainImageFile) + 서브 이미지(detailImageFiles) 용량 총합 구하기
   const getTotalUploadedSize = () => {
@@ -475,6 +480,18 @@ const Registration3: React.FC = () => {
   const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // 파일 형식 검사
+    const validImageTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/heic', 'image/webp'];
+    if (!validImageTypes.includes(file.type)) {
+      showToast('PNG, JPG, JPEG, HEIC, WEBP 형식의 이미지만 가능합니다.', 'error');
+      return;
+    }
+
+    if (file.size > MAX_SINGLE_FILE_SIZE) {
+      showToast('10MB 이하의 이미지만 가능합니다.', 'error');
+      return;
+    }
 
     try {
       // presigned URL 요청
@@ -502,7 +519,6 @@ const Registration3: React.FC = () => {
     const files = e.target.files;
     if (!files) return;
 
-    // 최대 4장까지 가능
     const remainingSlots = 4 - detailImageData.length;
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
@@ -512,6 +528,24 @@ const Registration3: React.FC = () => {
       const newFiles: File[] = [];
 
       for (const file of filesToProcess) {
+        // 파일 형식 검사
+        const validImageTypes = [
+          'image/png',
+          'image/jpg',
+          'image/jpeg',
+          'image/heic',
+          'image/webp',
+        ];
+        if (!validImageTypes.includes(file.type)) {
+          showToast('PNG, JPG, JPEG, HEIC, WEBP 형식의 이미지만 가능합니다.', 'error');
+          continue;
+        }
+
+        if (file.size > MAX_SINGLE_FILE_SIZE) {
+          showToast('10MB 이하의 이미지만 가능합니다.', 'error');
+          continue;
+        }
+
         // presigned URL 요청
         const presignedUrlResponse = await getPresignedUrl(file.name, file.type, 'post');
 
@@ -577,6 +611,12 @@ const Registration3: React.FC = () => {
   const handleComplete = async () => {
     if (!prevFormData) {
       showToast('이전 단계 데이터가 없습니다. 다시 시도해주세요.');
+      return;
+    }
+
+    // 메인 이미지 필수 체크
+    if (!mainImageData) {
+      showToast('대표 이미지는 필수입니다.');
       return;
     }
 
@@ -702,7 +742,7 @@ const Registration3: React.FC = () => {
         localStorage.removeItem('storage_register_basic');
         localStorage.removeItem('storage_register_details');
         localStorage.removeItem('storage_register_images');
-        setPostId(response.id); // 성공 응답에서 post_id 저장
+        setPostId(response.data.post_id.toString()); // post_id를 문자열로 변환
 
         openConfirmModal();
       } else {
@@ -810,7 +850,7 @@ const Registration3: React.FC = () => {
               type="file"
               ref={mainImageInputRef}
               onChange={handleMainImageChange}
-              accept="image/*"
+              accept="image/png,image/jpg,image/jpeg,image/heic,image/webp"
               style={{ display: 'none' }}
             />
 
@@ -864,7 +904,7 @@ const Registration3: React.FC = () => {
               type="file"
               ref={detailImagesInputRef}
               onChange={handleDetailImagesChange}
-              accept="image/*"
+              accept="image/png,image/jpg,image/jpeg,image/heic,image/webp"
               multiple
               style={{ display: 'none' }}
             />

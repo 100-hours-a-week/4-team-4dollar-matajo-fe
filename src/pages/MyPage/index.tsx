@@ -614,8 +614,10 @@ const MyPage: React.FC = () => {
   const handleSubmit = async () => {
     const trimmed = nickname.trim();
 
-    if (trimmed.length === 0 || trimmed.length > 10) {
-      setHelperText('닉네임은 1~10자여야 합니다.');
+    const nicknameRegex = /^[가-힣a-zA-Z0-9]+$/;
+
+    if (trimmed.length < 1 || trimmed.length > 10 || !nicknameRegex.test(trimmed)) {
+      setHelperText('닉네임은 1~10자, 특수문자 제외');
       return;
     }
 

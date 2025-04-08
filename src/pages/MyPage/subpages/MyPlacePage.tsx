@@ -89,19 +89,20 @@ const PlaceAddress = styled.div`
 
 // 공개 여부 태그
 const VisibilityTag = styled.div<{ isPublic: boolean }>`
-  width: 45px;
-  height: 17px;
-  padding: 2px 8px;
-  border-radius: 21px;
-  display: flex;
-  justify-content: center;
+  display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
+  height: 16px;
+  padding: 0.5px 4px;
+  border-radius: 10px;
   color: ${props => (props.isPublic ? THEME.primaryAlpha : THEME.lightGrayText)};
   border: 1px solid ${props => (props.isPublic ? THEME.primaryAlpha : THEME.lightGrayText)};
-  font-size: 12px;
+  font-size: 10px;
   font-family: 'Noto Sans KR';
   font-weight: 500;
   margin-bottom: 5px;
+  white-space: nowrap;
+  width: fit-content;
 `;
 
 // 화살표 아이콘

@@ -1336,7 +1336,7 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         {/* 숨겨진 파일 입력 */}
         <input
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpg,image/jpeg,image/heic,image/webp"
           ref={fileInputRef}
           style={{ display: 'none' }}
           onChange={handleImageSelect}

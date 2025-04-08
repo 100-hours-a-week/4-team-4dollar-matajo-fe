@@ -88,8 +88,8 @@ export const API_PATHS = {
     RECENT_BY_LOCATION: '/api/trades',
   },
   IMAGE: {
-    PRESIGNED_URL: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/temp-upload',
-    MOVE_IMAGE: 'https://cggn6k5n62.execute-api.ap-northeast-2.amazonaws.com/dev/move-image',
+    PRESIGNED_URL: '/api/images/presigned-url',
+    MOVE_IMAGE: '/api/images/move',
   },
   FCM: {
     REGISTER_TOKEN: '/api/fcm/token',

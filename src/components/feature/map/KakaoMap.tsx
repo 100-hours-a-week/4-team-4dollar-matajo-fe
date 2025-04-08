@@ -78,7 +78,9 @@ interface KakaoMapProps {
   showCurrentLocation?: boolean;
   onCurrentLocationClick?: () => void;
   detailMode?: boolean;
-  locationInfoId?: string; // 위치 정보 ID 추가
+  locationInfoId?: string;
+  userLocation?: { lat: number; lng: number } | null; // 현재 위치 좌표
+  userLocationMarkerImage?: string; // 현재 위치 마커 이미지 URL
 }
 
 const KakaoMap: React.FC<KakaoMapProps> = ({
@@ -95,6 +97,8 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   onCurrentLocationClick,
   detailMode = false,
   locationInfoId,
+  userLocation,
+  userLocationMarkerImage,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const kakaoMapRef = useRef<any>(null);
@@ -258,16 +262,14 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           const userLng = position.coords.longitude;
           setCurrentUserLocation({ lat: userLat, lng: userLng });
 
-          // 정확한 사용자 위치로 이동 (추가 조정 없이)
-          const currentLatLng = new window.kakao.maps.LatLng(userLat, userLng);
+          // 정확한 사용자 위치로 이동 (마커가 BottomSheet에 가려지지 않도록 위로 조정)
+          const currentLatLng = new window.kakao.maps.LatLng(userLat - 0.002, userLng);
           kakaoMapRef.current.setCenter(currentLatLng);
           kakaoMapRef.current.setLevel(3); // 현재 위치 버튼 클릭시 레벨 3으로 고정
 
-          // 사용자 위치 마커 업데이트
-
           // 이동 후 중심 위치 변경 이벤트 발생
           if (onCenterChanged) {
-            onCenterChanged(userLat, userLng);
+            onCenterChanged(userLat - 0.002, userLng);
           }
 
           // 외부 콜백 호출
@@ -288,13 +290,13 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     } else {
       alert('이 브라우저에서는 위치 정보를 지원하지 않습니다.');
     }
-  }, [onCenterChanged, onCurrentLocationClick, addUserLocationMarker]);
+  }, [onCenterChanged, onCurrentLocationClick]);
 
-  // 중심 위치 변경 시 지도 업데이트 (메모이제이션된 중심 좌표 사용)
+  // 중심 위치 변경 시 지도 업데이트 (애니메이션 제거)
   useEffect(() => {
     if (kakaoMapRef.current && memoizedCenter && isMapInitialized) {
-      // 부드럽게 중심 좌표 변경 (애니메이션 적용)
-      kakaoMapRef.current.panTo(memoizedCenter);
+      // 애니메이션 없이 바로 중심 좌표 변경
+      kakaoMapRef.current.setCenter(memoizedCenter);
     }
   }, [memoizedCenter, isMapInitialized]);
 
@@ -373,7 +375,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
           // 인포윈도우 추가
           const infowindow = new window.kakao.maps.InfoWindow({
-            content: `<div style="padding:5px;font-size:12px;">${markerData.name || markerData.address}</div>`,
+            content: `<div style="padding:5px;font-size:12px;">${markerData.name}</div>`,
           });
 
           // 마우스 오버 시 인포윈도우 표시
@@ -507,6 +509,52 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     }
   }, [isLocationModalOpen, draggable, zoomable, detailMode, isMapInitialized]);
 
+  // 현재 위치 마커 업데이트 함수
+  const updateUserLocationMarker = useCallback(() => {
+    if (!kakaoMapRef.current || !userLocation) return;
+
+    // 기존 현재 위치 마커 제거
+    if (userLocationMarkerRef.current) {
+      userLocationMarkerRef.current.setMap(null);
+    }
+
+    // 현재 위치 마커 이미지 설정
+    let markerImage;
+    if (userLocationMarkerImage) {
+      const imageSize = new window.kakao.maps.Size(36, 36); // 이미지 크기를 36x36으로 설정
+      const imageOption = {
+        offset: new window.kakao.maps.Point(18, 18), // 이미지 중심점을 이미지 크기의 절반으로 설정
+        shape: 'circle', // 마커 모양을 원형으로 설정 (선택사항)
+        spriteOrigin: new window.kakao.maps.Point(0, 0), // 스프라이트 이미지의 시작점
+        spriteSize: new window.kakao.maps.Size(36, 36), // 스프라이트 이미지의 전체 크기
+      };
+
+      markerImage = new window.kakao.maps.MarkerImage(
+        userLocationMarkerImage,
+        imageSize,
+        imageOption,
+      );
+    }
+
+    // 현재 위치 마커 생성
+    const position = new window.kakao.maps.LatLng(userLocation.lat, userLocation.lng);
+    const marker = new window.kakao.maps.Marker({
+      position,
+      map: kakaoMapRef.current,
+      image: markerImage,
+      zIndex: 10, // 다른 마커보다 위에 표시
+    });
+
+    userLocationMarkerRef.current = marker;
+  }, [userLocation, userLocationMarkerImage]);
+
+  // 현재 위치 마커 업데이트 effect
+  useEffect(() => {
+    if (isMapInitialized) {
+      updateUserLocationMarker();
+    }
+  }, [isMapInitialized, updateUserLocationMarker]);
+
   return (
     <>
       {!detailMode && showCurrentLocation && (
@@ -520,7 +568,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           >
             <path
               d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
-              fill="#3A00E5"
+              fill="#280081"
             />
           </svg>
         </RefreshButton>

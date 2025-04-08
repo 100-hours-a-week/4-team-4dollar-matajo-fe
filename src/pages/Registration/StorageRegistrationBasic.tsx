@@ -13,7 +13,7 @@ import { ROUTES } from '../../constants/routes';
 
 // 테마 컬러 상수 정의
 const THEME = {
-  primary: '#5E5CFD',
+  primary: '#280081',
   background: '#F5F5FF',
   lightGray: '#EFEFEF',
   darkText: '#464646',
@@ -52,7 +52,7 @@ const Container = styled.div`
 
 // 프로그레스 바 컨테이너
 const ProgressContainer = styled.div`
-  margin: 20px 22px;
+  margin: 20px auto;
   position: relative;
 `;
 
@@ -200,7 +200,8 @@ const TextArea = styled.textarea<{ isError?: boolean; isFocused?: boolean }>`
 
 // 다음 버튼
 const NextButton = styled.button`
-  width: 349px;
+  width: 100%;
+  max-width: 349px;
   min-height: 47px;
   position: relative;
   bottom: 0px;
