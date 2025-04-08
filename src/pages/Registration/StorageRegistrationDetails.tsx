@@ -50,7 +50,8 @@ const ProgressContainer = styled.div`
 
 // 프로그레스 배경
 const ProgressBackground = styled.div`
-  width: 332px;
+  max-width: 332px;
+  width: 100%;
   height: 12px;
   background: ${THEME.lightGray};
   border-radius: 7px;
