@@ -1026,9 +1026,9 @@ const Chat: React.FC<ChatProps> = ({ onBack }) => {
         ),
     );
 
-    // 메시지를 시간순으로 정렬 (오래된 메시지가 위로 가도록)
+    // 메시지를 ID 순으로 정렬 (오래된 메시지가 위로 가도록)
     const sortedMessages = [...filteredMessages].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      (a, b) => (a.message_id || 0) - (b.message_id || 0),
     );
 
     sortedMessages.forEach(message => {
