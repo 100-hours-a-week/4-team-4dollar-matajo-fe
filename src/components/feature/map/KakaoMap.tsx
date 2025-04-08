@@ -375,7 +375,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
           // 인포윈도우 추가
           const infowindow = new window.kakao.maps.InfoWindow({
-            content: `<div style="padding:5px;font-size:12px;">${markerData.name || markerData.address}</div>`,
+            content: `<div style="padding:5px;font-size:12px;">${markerData.name}</div>`,
           });
 
           // 마우스 오버 시 인포윈도우 표시
