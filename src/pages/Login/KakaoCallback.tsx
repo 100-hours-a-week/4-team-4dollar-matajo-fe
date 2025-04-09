@@ -3,6 +3,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { kakaoLogin } from '../../services/api/modules/auth';
 import { saveToken } from '../../utils/api/authUtils';
+import FcmService from '../../services/FcmService';
+import { API_PATHS } from '../../constants/api';
+import client from '../../services/api/client';
 
 /**
  * 카카오 로그인 콜백 처리 컴포넌트
@@ -51,6 +54,38 @@ const KakaoCallback: React.FC = () => {
 
           // accessToken만 저장
           saveToken(response.data.accessToken);
+
+          // 로그인 성공 후 FCM 토큰 처리
+          try {
+            const fcmService = FcmService.getInstance();
+            // 현재 FCM 토큰 가져오기 (이미 생성되어 있다면)
+            const currentToken = fcmService.getCurrentToken();
+
+            if (currentToken) {
+              console.log('기존 FCM 토큰 사용:', currentToken.substring(0, 10) + '...');
+
+              // 사용자 ID가 있으면 토큰 갱신에 사용할 수 있습니다
+              const userId = response.data.userId;
+              if (userId) {
+                await client.post(API_PATHS.FCM.REGISTER_TOKEN, { token: currentToken });
+                console.log('FCM 토큰 서버 등록 완료');
+              }
+            } else {
+              // 알림 권한이 이미 부여되어 있는 경우에만 토큰 요청
+              if (Notification.permission === 'granted') {
+                // 토큰 생성 및 등록 - 이 메서드는 public이므로 사용 가능
+                const token = await fcmService.getAndRegisterToken();
+                if (token) {
+                  console.log('새 FCM 토큰 생성 및 등록:', token.substring(0, 10) + '...');
+                }
+              } else {
+                console.log('알림 권한이 없어 FCM 토큰 생성을 건너뜁니다. 나중에 권한 요청 예정.');
+              }
+            }
+          } catch (fcmError) {
+            // FCM 토큰 등록 실패는 로그인 실패로 간주하지 않음
+            console.error('FCM 토큰 처리 중 오류:', fcmError);
+          }
 
           // 메인 페이지로 리디렉션
           const returnPath = sessionStorage.getItem('returnPath') || '/';
