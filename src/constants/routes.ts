@@ -1,5 +1,4 @@
 // constants/routes.ts
-
 // 라우트 경로 상수 정의
 export const ROUTES = {
   // 홈 관련
