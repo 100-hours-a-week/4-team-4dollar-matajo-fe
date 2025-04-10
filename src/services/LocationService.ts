@@ -1,5 +1,6 @@
 // src/services/LocationService.ts
 import { getLocationInfo } from './api/modules/place';
+import { LocationIdData } from '../types/location';
 
 export interface LocationInfo {
   formatted_address: string;
@@ -195,18 +196,46 @@ class LocationService {
     this.saveCurrentLocation();
   }
 
-  // 주소로 위치 ID 조회 함수
-  public async getLocationIdByAddress(address: string): Promise<LocationIdInfo | null> {
+  /**
+   * 주소로 위치 ID를 조회하는 통합 메서드
+   * @param address 검색할 주소
+   * @returns LocationIdData[] 형태의 위치 정보 배열
+   */
+  public async getLocationId(address: string): Promise<LocationIdData[]> {
     try {
-      // place 모듈의 getLocationInfo 함수 호출
+      // 캐시 확인 로직이 있다면 여기에 추가
+
+      // API 호출
       const response = await getLocationInfo(address);
 
       if (response?.success && response.data) {
-        const locationData = response.data[0];
+        // 응답 데이터를 LocationIdData[] 형태로 변환
+        return response.data.map((item: any) => ({
+          id: item.id,
+          latitude: item.latitude,
+          longitude: item.longitude,
+          address: item.formatted_address,
+        }));
+      }
+
+      return [];
+    } catch (error) {
+      console.error('위치 ID 조회 실패:', error);
+      return [];
+    }
+  }
+
+  // 기존 메서드는 내부적으로 새 메서드를 사용하도록 수정
+  public async getLocationIdByAddress(address: string): Promise<LocationIdInfo | null> {
+    try {
+      const results = await this.getLocationId(address);
+
+      if (results.length > 0) {
+        const locationData = results[0];
         return {
           id: locationData.id,
-          dong: locationData.dong,
-          formatted_address: locationData.formatted_address,
+          dong: locationData.address?.split(' ')[2] || undefined,
+          formatted_address: locationData.address,
           latitude: locationData.latitude,
           longitude: locationData.longitude,
         };

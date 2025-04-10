@@ -132,32 +132,10 @@ const HomePage: React.FC = () => {
         return undefined;
       }
 
-      const response = await client.get(API_PATHS.PLACE.LOCATIONS.INFO, {
-        params: { formattedAddress: address },
-      });
-
-      if (response.data?.success && response.data.data && response.data.data.length > 0) {
-        const locationData = response.data.data[0];
-
-        // 상태 업데이트
-        setLocationId(locationData.id);
-        localStorage.setItem('currentLocationId', locationData.id.toString());
-
-        // skipMapCenter가 false일 때만 지도 중심 업데이트
-        if (!skipMapCenter && locationData.latitude && locationData.longitude) {
-          setMapCenter({ lat: locationData.latitude, lng: locationData.longitude });
-        }
-
-        return locationData.id;
-      }
-
-      setLocationId(undefined);
-      localStorage.removeItem('currentLocationId');
-      return undefined;
+      const locationInfo = await LocationService.getInstance().getLocationIdByAddress(address);
+      return locationInfo?.id;
     } catch (error) {
-      console.error('위치 ID 조회 오류:', error);
-      setLocationId(undefined);
-      localStorage.removeItem('currentLocationId');
+      console.error('위치 ID 조회 중 오류 발생:', error);
       return undefined;
     }
   }, []);
