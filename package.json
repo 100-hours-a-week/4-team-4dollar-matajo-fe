@@ -97,7 +97,7 @@
     "prestart": "npm run lint-and-format",
     "start": "react-scripts start",
     "prepare": "husky",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org matajo --project javascript-react ./build && sentry-cli sourcemaps upload --org matajo --project javascript-react ./build "
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org ktb-2nd --project typescript-react ./build && sentry-cli --url https://sentry.yimtaejong.com/ sourcemaps upload --org ktb-2nd --project typescript-react ./build"
   },
   "eslintConfig": {
     "extends": [
