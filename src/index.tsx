@@ -8,7 +8,7 @@ import reportWebVitals from './reportWebVitals';
 import * as Sentry from '@sentry/react';
 
 Sentry.init({
-  dsn: 'https://3b28a98ac7f65163e38fd50e967c9f93@o4509048071847936.ingest.us.sentry.io/4509049711820800',
+  dsn: 'https://a21e2be4e2e0e9a881fe5bd6ab13b642@sentry.yimtaejong.com/8',
   integrations: [Sentry.browserTracingIntegration()],
   // Tracing
   tracesSampleRate: 1.0, //  Capture 100% of the transactions
@@ -17,6 +17,7 @@ Sentry.init({
     'localhost',
     /^https:\/\/matajo\.store\/api/,
     /^https:\/\/matajo\.store/,
+    /^https:\/\/api\.matajo\.store/,
   ],
 });
 
