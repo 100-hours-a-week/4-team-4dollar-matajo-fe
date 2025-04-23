@@ -359,8 +359,11 @@ const ChatroomList: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const chatRooms = await chatService.loadChatRooms();
-      console.log('로드된 채팅방 목록:', chatRooms);
+      const allChatRooms = await chatService.loadChatRooms();
+      console.log('로드된 채팅방 목록:', allChatRooms);
+
+      // 메시지가 존재하는 방만 필터링
+      const chatRooms = allChatRooms.filter(room => room.lastMessageTime);
 
       // lastMessageTime을 기준으로 정렬
       const sortedChatRooms = chatRooms.sort((a, b) => {
