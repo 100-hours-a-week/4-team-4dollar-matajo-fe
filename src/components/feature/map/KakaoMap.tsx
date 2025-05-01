@@ -58,6 +58,7 @@ interface Marker {
   longitude: number;
   address: string;
   isCompanyStorage?: boolean;
+  kakaoMapLink?: string;
 }
 
 // 주소 검색 결과 인터페이스
@@ -377,9 +378,19 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
 
           // 클릭 이벤트 추가
           if (onMarkerClick) {
-            window.kakao.maps.event.addListener(marker, 'click', function () {
-              onMarkerClick(markerData.id);
-            });
+            if (imageSrc === '/storage-marker.png') {
+              window.kakao.maps.event.addListener(marker, 'click', function () {
+                // markerData에 kakao_map_link가 있다고 가정
+                if (markerData.kakaoMapLink) {
+                  // 새 창에서 카카오맵 링크 열기
+                  window.open(markerData.kakaoMapLink, '_blank');
+                }
+              });
+            } else {
+              window.kakao.maps.event.addListener(marker, 'click', function () {
+                onMarkerClick(markerData.id);
+              });
+            }
           }
 
           // 인포윈도우 추가
@@ -514,6 +525,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
           latitude: coords.lat,
           longitude: coords.lng,
           address: item.address,
+          kakaoMapLink: item.kakao_map_link,
           isCompanyStorage: true,
         });
       }
