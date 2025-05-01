@@ -2,7 +2,11 @@
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
-import { getLocationPosts, LocationPost } from '../../../services/api/modules/storage';
+import {
+  getLocationPosts,
+  LocationPost,
+  getStoragesByLocation,
+} from '../../../services/api/modules/storage';
 
 // 컨테이너 스타일
 const MapContainer = styled.div`
@@ -53,6 +57,7 @@ interface Marker {
   latitude: number;
   longitude: number;
   address: string;
+  isCompanyStorage?: boolean;
 }
 
 // 주소 검색 결과 인터페이스
@@ -105,6 +110,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
   const markersRef = useRef<Map<string, any>>(new Map());
   const geocoderRef = useRef<any>(null);
   const userLocationMarkerRef = useRef<any>(null);
+  const lastMarkersRef = useRef<Marker[]>([]);
   const lastFetchedLocationIdRef = useRef<string | null>(null);
 
   const [isMapInitialized, setIsMapInitialized] = useState<boolean>(false);
@@ -305,6 +311,9 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     (newStorageMarkers: Marker[]) => {
       if (!kakaoMapRef.current || !isMapInitialized) return;
 
+      // 새로 받은 마커 리스트를 기억
+      lastMarkersRef.current = newStorageMarkers;
+
       // 유효한 좌표를 가진 마커만 필터링
       const validMarkers = newStorageMarkers.filter(marker => {
         const lat = parseFloat(marker.latitude.toString());
@@ -354,8 +363,8 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
         // 없으면 새 마커 생성
         else {
           // 마커 이미지 설정
-          const imageSrc =
-            'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png';
+          const imageSrc = markerData.isCompanyStorage ? '/storage-marker.png' : '/box-marker.png';
+
           const imageSize = new window.kakao.maps.Size(24, 35);
           const imageOption = { offset: new window.kakao.maps.Point(12, 35) };
           const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
@@ -479,12 +488,56 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     }
   }, [locationInfoId, isMapInitialized, getCoordinatesByAddress, updateKakaoMapMarkers]);
 
+  const fetchCompanyStorages = useCallback(async () => {
+    if (!locationInfoId || !kakaoMapRef.current || !geocoderRef.current || !isMapInitialized)
+      return;
+
+    // 중복 호출 방지
+    //if (locationInfoId === lastFetchedLocationIdRef.current) return;
+
+    setIsLoading(true);
+    try {
+      const res = await getStoragesByLocation(locationInfoId);
+      if (!res.success || !res.data) return;
+
+      // 1) 비어있는 배열을 준비
+      const storageMarkers: Marker[] = [];
+
+      // 2) 하나씩 순회하면서 좌표 변환 → 못 구하면 건너뛰기
+      for (const item of res.data) {
+        const coords = await getCoordinatesByAddress(item.address);
+        if (!coords) continue;
+
+        storageMarkers.push({
+          id: item.id.toString(),
+          name: item.name,
+          latitude: coords.lat,
+          longitude: coords.lng,
+          address: item.address,
+          isCompanyStorage: true,
+        });
+      }
+
+      // 3) 한 번에 업데이트
+      //updateKakaoMapMarkers(storageMarkers);
+      //lastFetchedLocationIdRef.current = locationInfoId;
+
+      // 기존 box-marker 들(lastMarkersRef) 과 합쳐서 한 번만 갱신
+      const combined = [...lastMarkersRef.current, ...storageMarkers];
+      updateKakaoMapMarkers(combined);
+    } catch (e) {
+      console.error('업체 보관소 조회 오류:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [locationInfoId, isMapInitialized, getCoordinatesByAddress, updateKakaoMapMarkers]);
+
   // locationInfoId 변경 시 API 호출 - 참조 객체 사용으로 의존성 제거
   useEffect(() => {
-    if (locationInfoId && isMapInitialized && locationInfoId !== lastFetchedLocationIdRef.current) {
-      fetchLocationPosts();
-    }
-  }, [locationInfoId, fetchLocationPosts, isMapInitialized]);
+    if (!locationInfoId || !isMapInitialized) return;
+    fetchLocationPosts();
+    fetchCompanyStorages();
+  }, [locationInfoId, fetchLocationPosts, isMapInitialized, fetchCompanyStorages]);
 
   // 기본 마커 업데이트 - 위치 기반 게시글이 없을 때만
   useEffect(() => {
@@ -521,12 +574,12 @@ const KakaoMap: React.FC<KakaoMapProps> = ({
     // 현재 위치 마커 이미지 설정
     let markerImage;
     if (userLocationMarkerImage) {
-      const imageSize = new window.kakao.maps.Size(36, 36); // 이미지 크기를 36x36으로 설정
+      const imageSize = new window.kakao.maps.Size(24, 35);
       const imageOption = {
         offset: new window.kakao.maps.Point(18, 18), // 이미지 중심점을 이미지 크기의 절반으로 설정
         shape: 'circle', // 마커 모양을 원형으로 설정 (선택사항)
         spriteOrigin: new window.kakao.maps.Point(0, 0), // 스프라이트 이미지의 시작점
-        spriteSize: new window.kakao.maps.Size(36, 36), // 스프라이트 이미지의 전체 크기
+        spriteSize: new window.kakao.maps.Size(24, 36), // 스프라이트 이미지의 전체 크기
       };
 
       markerImage = new window.kakao.maps.MarkerImage(

@@ -647,7 +647,7 @@ const HomePage: React.FC = () => {
           onCurrentLocationClick={handleCurrentLocationClick}
           locationInfoId={locationId?.toString()}
           userLocation={userLocation}
-          userLocationMarkerImage="/current-location-marker.png" // 현재 위치 마커 이미지
+          userLocationMarkerImage="/yellow-marker.png" // 현재 위치 마커 이미지
         />
       </MapWrapper>
 
