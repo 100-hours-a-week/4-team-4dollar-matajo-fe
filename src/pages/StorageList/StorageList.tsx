@@ -68,7 +68,7 @@ const FilterContainer = styled.div`
   &::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Edge */
   }
-  padding: 10px 20px;
+  padding: 10px 0px;
   display: flex;
   align-items: center;
   position: fixed;
