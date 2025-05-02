@@ -248,13 +248,14 @@ const KeeperSection = styled.div`
 
 const KeeperCard = styled.div`
   width: 100%;
+  max-width: 400px;
   height: 50px;
   border-radius: 10px;
   border: 1px #cfcffe solid;
   position: relative;
   display: flex;
   align-items: center;
-  padding: 0 15px;
+  padding-left: 15px;
 `;
 
 const KeeperInfo = styled.div`
