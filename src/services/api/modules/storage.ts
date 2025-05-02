@@ -298,6 +298,39 @@ export const getLocationPosts = async (locationInfoId: string): Promise<Location
   }
 };
 
+// 위치 기반 사설보관소 조회 API
+
+export interface StorageResponseDto {
+  id: number; // 기존 storageId → id
+  name: string; // 기존 storageName → name
+  address: string; // 그대로 address
+  kakao_map_link: string; // 새 필드
+}
+
+export interface StorageListResponse {
+  success: boolean;
+  message: string;
+  data: StorageResponseDto[];
+}
+
+/**
+ * 위치 기반 보관소 목록 조회
+ * GET /api/posts/storages/location?locationInfoId={locationInfoId}
+ */
+export const getStoragesByLocation = async (
+  locationInfoId: string,
+): Promise<StorageListResponse> => {
+  try {
+    const response = await client.get<StorageListResponse>(`/api/posts/storages/location`, {
+      params: { locationInfoId },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('위치 기반 보관소 조회 실패:', error);
+    return { success: false, message: '조회 실패', data: [] };
+  }
+};
+
 // createStorage 함수를 registerStorage의 별칭으로 내보내기
 export const createStorage = registerStorage;
 

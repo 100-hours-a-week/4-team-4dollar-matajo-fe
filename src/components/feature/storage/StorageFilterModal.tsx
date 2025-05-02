@@ -44,7 +44,7 @@ const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  margin-left: 130px;
+  // margin-left: 130px;
   border-bottom: 1px solid #f0f0f0;
   margin-bottom: 10px;
 `;
@@ -55,7 +55,7 @@ const ModalTitle = styled.h2`
   font-size: 16px;
   font-family: 'Noto Sans KR';
   font-weight: 900;
-  margin: 0;
+  margin: auto;
   align-items: center;
 `;
 
@@ -374,7 +374,7 @@ const StorageFilterModal: React.FC<StorageFilterModalProps> = ({
     <ModalOverlay onClick={handleOverlayClick}>
       <ModalContainer onClick={e => e.stopPropagation()}>
         <ModalHeader>
-          <ModalTitle>보관 방식</ModalTitle>
+          <ModalTitle>필터</ModalTitle>
           <CloseButton onClick={onClose} />
         </ModalHeader>
 
